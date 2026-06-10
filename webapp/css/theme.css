@@ -1,0 +1,42 @@
+/* ==========================================================================
+   Theme CSS — Brand Tokens
+   All brand colors, font families, font sizes, spacing values, and border radii
+   are defined here as CSS custom properties. Changing a value in this file
+   updates the entire application appearance without editing component styles.
+   ========================================================================== */
+
+:root {
+  /* --- Colors --- */
+  --color-primary: #1a73e8;
+  --color-secondary: #5f6368;
+  --color-background: #ffffff;
+  --color-text: #202124;
+  --color-error: #d93025;
+  --color-success: #1e8e3e;
+
+  /* --- Font Families --- */
+  --font-heading: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-body: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* --- Font Sizes --- */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-md: 1.125rem;
+  --font-size-lg: 1.5rem;
+  --font-size-xl: 2rem;
+
+  /* --- Spacing --- */
+  --spacing-base: 0.5rem;
+  --spacing-xs: calc(var(--spacing-base) * 0.5);
+  --spacing-sm: var(--spacing-base);
+  --spacing-md: calc(var(--spacing-base) * 2);
+  --spacing-lg: calc(var(--spacing-base) * 3);
+  --spacing-xl: calc(var(--spacing-base) * 4);
+
+  /* --- Border Radii --- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+}

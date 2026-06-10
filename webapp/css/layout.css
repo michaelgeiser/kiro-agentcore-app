@@ -1,0 +1,315 @@
+/* ==========================================================================
+   Layout CSS — Responsive Grid, Navigation, and Structure
+   Mobile-first approach with breakpoints:
+     - Small:  320px – 767px  (default / base styles)
+     - Medium: 768px – 1023px
+     - Large:  1024px – 1920px
+   All values use CSS custom properties from theme.css.
+   ========================================================================== */
+
+/* --- Reset & Base --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background-color: var(--color-background);
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Focus Indicators (Requirement 10.4) --- */
+:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* --- Header & Navigation --- */
+header {
+  background-color: var(--color-background);
+  border-bottom: 1px solid var(--color-secondary);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: var(--spacing-sm) var(--spacing-md);
+  max-width: 1920px;
+  margin: 0 auto;
+}
+
+.nav-brand {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.nav-brand:hover {
+  text-decoration: underline;
+}
+
+/* --- Hamburger Toggle (visible below 768px) --- */
+.nav-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+}
+
+.nav-toggle:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.nav-toggle-icon,
+.nav-toggle-icon::before,
+.nav-toggle-icon::after {
+  display: block;
+  width: 1.25rem;
+  height: 2px;
+  background-color: var(--color-text);
+  border-radius: var(--radius-full);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  position: relative;
+}
+
+.nav-toggle-icon::before,
+.nav-toggle-icon::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 100%;
+}
+
+.nav-toggle-icon::before {
+  top: -6px;
+}
+
+.nav-toggle-icon::after {
+  top: 6px;
+}
+
+/* Hamburger open state animation */
+.nav-toggle[aria-expanded="true"] .nav-toggle-icon {
+  background-color: transparent;
+}
+
+.nav-toggle[aria-expanded="true"] .nav-toggle-icon::before {
+  top: 0;
+  transform: rotate(45deg);
+}
+
+.nav-toggle[aria-expanded="true"] .nav-toggle-icon::after {
+  top: 0;
+  transform: rotate(-45deg);
+}
+
+/* --- Nav Links (mobile: collapsed) --- */
+.nav-links {
+  list-style: none;
+  display: none;
+  flex-direction: column;
+  width: 100%;
+  gap: 0;
+  padding-top: var(--spacing-sm);
+}
+
+.nav-links.open {
+  display: flex;
+}
+
+.nav-links li {
+  width: 100%;
+}
+
+.nav-links a,
+.nav-links button {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  text-decoration: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  border-radius: var(--radius-sm);
+}
+
+.nav-links a:hover,
+.nav-links button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--color-primary);
+}
+
+.nav-links a[aria-current="page"] {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.nav-logout {
+  color: var(--color-error);
+}
+
+/* --- Main Content Area --- */
+main {
+  flex: 1;
+  width: 100%;
+  max-width: 1920px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+}
+
+/* --- Footer --- */
+footer {
+  text-align: center;
+  padding: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-secondary);
+  border-top: 1px solid var(--color-secondary);
+}
+
+/* --- Grid Layout Utility --- */
+.grid {
+  display: grid;
+  gap: var(--spacing-md);
+  grid-template-columns: 1fr;
+}
+
+/* --- Container Utility --- */
+.container {
+  width: 100%;
+  padding-left: var(--spacing-md);
+  padding-right: var(--spacing-md);
+  margin: 0 auto;
+}
+
+/* ==========================================================================
+   Medium Breakpoint: 768px – 1023px
+   ========================================================================== */
+@media (min-width: 768px) {
+  /* Navigation: show links inline, hide hamburger */
+  .nav-toggle {
+    display: none;
+  }
+
+  .nav-links {
+    display: flex;
+    flex-direction: row;
+    width: auto;
+    padding-top: 0;
+    gap: var(--spacing-sm);
+    align-items: center;
+  }
+
+  .nav-links li {
+    width: auto;
+  }
+
+  .nav-links a,
+  .nav-links button {
+    width: auto;
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  /* Main content */
+  main {
+    padding: var(--spacing-lg);
+  }
+
+  /* Grid: two-column layout */
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .container {
+    max-width: 960px;
+  }
+}
+
+/* ==========================================================================
+   Large Breakpoint: 1024px – 1920px
+   ========================================================================== */
+@media (min-width: 1024px) {
+  nav {
+    padding: var(--spacing-md) var(--spacing-lg);
+  }
+
+  .nav-brand {
+    font-size: var(--font-size-lg);
+  }
+
+  .nav-links a,
+  .nav-links button {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-base);
+  }
+
+  /* Main content */
+  main {
+    padding: var(--spacing-xl);
+  }
+
+  /* Grid: three-column layout for large screens */
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .container {
+    max-width: 1200px;
+  }
+}
+
+/* ==========================================================================
+   Accessibility: Reduced Motion
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
