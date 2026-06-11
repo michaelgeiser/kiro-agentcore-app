@@ -1,0 +1,12 @@
+{
+  "app": "python3 app.py",
+  "context": {
+    "appName": "prescoach",
+    "envName": "dev",
+    "instanceId": "kiro",
+    "githubRepo": "michaelgeiser/kiro-agentcore-app",
+    "githubBranch": "main",
+    "cloudfrontDistId": "",
+    "s3Bucket": ""
+  }
+}
