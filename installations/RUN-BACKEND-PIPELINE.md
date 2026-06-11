@@ -71,6 +71,44 @@ Open the URL to see full CloudWatch logs.
 
 ---
 
+## Option C: Run from Windows (CMD or PowerShell with AWS CLI)
+
+### Trigger the pipeline
+
+```cmd
+aws codepipeline start-pipeline-execution --name prescoach-dev-kiro-backend --region us-east-1
+```
+
+### Check status
+
+```cmd
+aws codepipeline get-pipeline-state --name prescoach-dev-kiro-backend --region us-east-1 --query "stageStates[*].{Stage:stageName,Status:latestExecution.status}" --output table
+```
+
+### Get build logs URL
+
+```cmd
+for /f "tokens=*" %i in ('aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-backend-build --query "ids[0]" --output text') do set BUILD_ID=%i
+aws codebuild batch-get-builds --ids %BUILD_ID% --query "builds[0].logs.deepLink" --output text
+```
+
+**PowerShell version:**
+
+```powershell
+aws codepipeline start-pipeline-execution --name prescoach-dev-kiro-backend --region us-east-1
+
+# Check status
+aws codepipeline get-pipeline-state --name prescoach-dev-kiro-backend --region us-east-1 --query "stageStates[*].{Stage:stageName,Status:latestExecution.status}" --output table
+
+# Get build logs URL
+$BuildId = aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-backend-build --query "ids[0]" --output text
+aws codebuild batch-get-builds --ids $BuildId --query "builds[0].logs.deepLink" --output text
+```
+
+> **Note:** Ensure your AWS CLI is configured with the correct profile/credentials for your account. If using IAM Identity Center SSO: `aws sso login --profile your-profile-name`
+
+---
+
 ## Expected Duration
 
 | Stage | Time |

@@ -81,6 +81,7 @@ def handler(event: dict[str, Any], context: Any) -> None:
         message = SqsMessageBody(
             submission_id=submission.submission_id,
             user_id=submission.user_id,
+            s3_bucket=bucket,
             s3_file_key=submission.s3_file_key,
             original_file_name=submission.original_file_name,
             presentation_title=submission.presentation_title,
