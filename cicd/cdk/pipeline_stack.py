@@ -267,7 +267,7 @@ class PipelineStack(Stack):
                             branch=github_branch,
                             oauth_token=github_token,
                             output=full_source_output,
-                            trigger=actions.GitHubTrigger.WEBHOOK,  # Auto-trigger on push to main
+                            trigger=actions.GitHubTrigger.NONE,  # Manual trigger only
                         ),
                     ],
                 ),
