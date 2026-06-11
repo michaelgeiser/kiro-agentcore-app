@@ -25,6 +25,12 @@ async function init() {
       await auth.handleCallback(code);
     } catch (error) {
       showToast('Login failed. Please try again.', 'error');
+      // Clear the code from URL to prevent retry loop
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+      // Don't call auth.login() here — let the user click to retry
+      // Otherwise we get an infinite redirect loop with Cognito
+      return;
     }
 
     // Remove the authorization code from URL to keep it clean

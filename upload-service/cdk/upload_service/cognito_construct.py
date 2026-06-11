@@ -97,23 +97,27 @@ class CognitoConstruct(Construct):
             id_token_validity=Duration.hours(1),
         )
 
-        # --- CDK Outputs ---
+        # --- CDK Outputs (scoped to Stack for predictable output keys) ---
+        from aws_cdk import Stack as _Stack
+
+        stack = _Stack.of(self)
+
         CfnOutput(
-            self,
+            stack,
             "CognitoUserPoolId",
             value=self.user_pool.user_pool_id,
             description="Cognito User Pool ID",
         )
 
         CfnOutput(
-            self,
+            stack,
             "CognitoAppClientId",
             value=self.user_pool_client.user_pool_client_id,
             description="Cognito App Client ID",
         )
 
         CfnOutput(
-            self,
+            stack,
             "CognitoDomain",
             value=self.user_pool_domain.base_url(),
             description="Cognito Hosted UI Domain URL",

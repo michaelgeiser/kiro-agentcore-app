@@ -81,8 +81,11 @@ export const auth = {
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
 
-    // Store code_verifier in memory for the callback exchange
+    // Store code_verifier in sessionStorage to survive the redirect to Cognito
     codeVerifier = verifier;
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('pkce_code_verifier', verifier);
+    }
 
     const params = new URLSearchParams({
       response_type: 'code',
@@ -104,6 +107,11 @@ export const auth = {
    * @returns {Promise<boolean>} True if token exchange succeeded
    */
   async handleCallback(code) {
+    // Retrieve code_verifier — try memory first, then sessionStorage (survives redirect)
+    if (!codeVerifier && typeof sessionStorage !== 'undefined') {
+      codeVerifier = sessionStorage.getItem('pkce_code_verifier');
+    }
+
     if (!codeVerifier) {
       throw new Error('Missing code_verifier. Login flow may not have been initiated properly.');
     }
@@ -132,6 +140,9 @@ export const auth = {
 
     // Clear code_verifier after successful exchange
     codeVerifier = null;
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('pkce_code_verifier');
+    }
 
     return true;
   },

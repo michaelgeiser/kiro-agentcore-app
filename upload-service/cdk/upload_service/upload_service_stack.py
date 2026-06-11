@@ -142,7 +142,8 @@ class UploadServiceStack(Stack):
         )
 
         # --- Lambda Functions ---
-        lambda_code = _lambda.Code.from_asset("src")
+        # Path is relative to where `cdk` CLI is invoked (the cdk/ directory)
+        lambda_code = _lambda.Code.from_asset("../src")
 
         # Upload Lambda
         upload_lambda = _lambda.Function(
