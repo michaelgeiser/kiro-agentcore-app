@@ -1,0 +1,24 @@
+[project]
+name = "preparation-workflow"
+version = "0.1.0"
+description = "Preparation Workflow for the Presentation Coaching Platform - orchestrates file validation, audio extraction, embedding creation, and hand-off"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "--tb=short -q"
+
+[tool.hypothesis]
+max_examples = 100
+deadline = 500
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*", "infra/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80
