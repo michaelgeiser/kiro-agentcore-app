@@ -1,0 +1,8 @@
+{
+  "app": "python3 app.py",
+  "context": {
+    "appName": "prescoach",
+    "envName": "dev",
+    "instanceId": "kiro"
+  }
+}

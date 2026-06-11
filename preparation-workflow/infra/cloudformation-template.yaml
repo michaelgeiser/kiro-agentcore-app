@@ -1,0 +1,865 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Preparation Workflow Infrastructure - Step Functions, Lambda functions,
+  SQS queues, SNS topic, SSM parameters, and EventBridge Pipe.
+
+Parameters:
+  EnvName:
+    Type: String
+    Default: dev
+    Description: Deployment environment (dev, staging, prod)
+  AppName:
+    Type: String
+    Default: prescoach
+    Description: Application name prefix
+  LambdaCodeBucket:
+    Type: String
+    Description: S3 bucket containing Lambda deployment package
+    Default: ''
+  LambdaCodeKey:
+    Type: String
+    Description: S3 key for Lambda deployment package (zip)
+    Default: ''
+
+Conditions:
+  HasLambdaCode: !Not [!Equals [!Ref LambdaCodeBucket, '']]
+
+Resources:
+
+  # =========================================================================
+  # SQS Queues
+  # =========================================================================
+
+  DLQInput:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${EnvName}-preparation-dlq-input'
+      MessageRetentionPeriod: 1209600  # 14 days
+
+  InputQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${EnvName}-preparation-input'
+      VisibilityTimeout: 900  # 15 minutes
+      MessageRetentionPeriod: 604800  # 7 days
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DLQInput.Arn
+        maxReceiveCount: 3
+
+  DLQHandoff:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${EnvName}-preparation-dlq-handoff.fifo'
+      FifoQueue: true
+      MessageRetentionPeriod: 1209600
+
+  HandoffQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AppName}-${EnvName}-preparation-handoff.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      VisibilityTimeout: 300  # 5 minutes
+      MessageRetentionPeriod: 604800
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DLQHandoff.Arn
+        maxReceiveCount: 3
+
+  # =========================================================================
+  # SNS Topic
+  # =========================================================================
+
+  ErrorTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${AppName}-${EnvName}-preparation-errors'
+      DisplayName: Preparation Workflow Error Notifications
+
+  # =========================================================================
+  # SSM Parameters
+  # =========================================================================
+
+  SSMEmbeddingModelId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/prescoach/${EnvName}/preparation-workflow/embedding-model-id'
+      Type: String
+      Value: 'amazon.nova-embed-multimodal-v1:0'
+      Description: Bedrock model identifier for embedding creation
+
+  SSMChunkSizeSeconds:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/prescoach/${EnvName}/preparation-workflow/chunk-size-seconds'
+      Type: String
+      Value: '30'
+      Description: Audio chunk duration in seconds
+
+  SSMChunkOverlapSeconds:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/prescoach/${EnvName}/preparation-workflow/chunk-overlap-seconds'
+      Type: String
+      Value: '5'
+      Description: Overlap between consecutive audio chunks in seconds
+
+  SSMMaxRetryAttempts:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/prescoach/${EnvName}/preparation-workflow/max-retry-attempts'
+      Type: String
+      Value: '3'
+      Description: Maximum retry count for service calls
+
+  SSMVideoProcessingEnabled:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/prescoach/${EnvName}/preparation-workflow/video-processing-enabled'
+      Type: String
+      Value: 'false'
+      Description: Feature flag for video file processing
+
+  SSMVectorStoreEndpoint:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/prescoach/${EnvName}/preparation-workflow/vector-store-endpoint'
+      Type: String
+      Value: 's3://prescoach-vectors'
+      Description: Vector store connection endpoint
+
+  SSMVectorStoreType:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/prescoach/${EnvName}/preparation-workflow/vector-store-type'
+      Type: String
+      Value: 's3'
+      Description: Vector store type (s3, opensearch, etc.)
+
+  SSMBatchSize:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/prescoach/${EnvName}/preparation-workflow/batch-size'
+      Type: String
+      Value: '10'
+      Description: Number of chunks per batch embedding call
+
+  SSMBatchProcessingEnabled:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/prescoach/${EnvName}/preparation-workflow/batch-processing-enabled'
+      Type: String
+      Value: 'false'
+      Description: Feature flag for batch embedding processing
+
+  # =========================================================================
+  # IAM Roles for Lambda Functions
+  # =========================================================================
+
+  LambdaBaseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AppName}-${EnvName}-prep-lambda-base'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SSMReadAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParametersByPath
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/prescoach/${EnvName}/preparation-workflow/*'
+
+  ExtractAudioRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AppName}-${EnvName}-prep-extract-audio'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: MediaConvertAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - mediaconvert:CreateJob
+                  - mediaconvert:GetJob
+                  - mediaconvert:DescribeEndpoints
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub 'arn:aws:s3:::${AppName}-${EnvName}-*/*'
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${AppName}-${EnvName}-mediaconvert-role'
+
+  ChunkAudioRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AppName}-${EnvName}-prep-chunk-audio'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub 'arn:aws:s3:::${AppName}-${EnvName}-*/*'
+
+  CreateEmbeddingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AppName}-${EnvName}-prep-create-embedding'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: BedrockAndS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource: !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/*'
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub 'arn:aws:s3:::${AppName}-${EnvName}-*/*'
+
+  StoreVectorsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AppName}-${EnvName}-prep-store-vectors'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3WriteAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: !Sub 'arn:aws:s3:::${AppName}-${EnvName}-*/*'
+
+  PublishHandoffRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AppName}-${EnvName}-prep-publish-handoff'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SQSSendAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:GetQueueUrl
+                Resource: !GetAtt HandoffQueue.Arn
+
+  HandleFailureRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AppName}-${EnvName}-prep-handle-failure'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: FailureHandlerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: dynamodb:UpdateItem
+                Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AppName}-${EnvName}-submissions'
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref ErrorTopic
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:GetQueueUrl
+                Resource:
+                  - !GetAtt DLQInput.Arn
+                  - !GetAtt DLQHandoff.Arn
+
+  # =========================================================================
+  # Lambda Functions (placeholder code — update with real deployment package)
+  # =========================================================================
+
+  LoadConfigFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-${EnvName}-prep-loadconfig'
+      Runtime: python3.12
+      Handler: src.handlers.load_config.handler
+      Role: !GetAtt LambdaBaseRole.Arn
+      Timeout: 60
+      MemorySize: 256
+      Description: Fetch SSM parameters for workflow configuration
+      Environment:
+        Variables:
+          ENV_NAME: !Ref EnvName
+          SSM_PREFIX: !Sub '/prescoach/${EnvName}/preparation-workflow'
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return {"statusCode": 200, "body": "placeholder - deploy real code via CI/CD"}
+
+  ParseMessageFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-${EnvName}-prep-parsemessage'
+      Runtime: python3.12
+      Handler: src.handlers.parse_message.handler
+      Role: !GetAtt LambdaBaseRole.Arn
+      Timeout: 60
+      MemorySize: 256
+      Description: Parse and validate SQS message body
+      Environment:
+        Variables:
+          ENV_NAME: !Ref EnvName
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return {"statusCode": 200, "body": "placeholder"}
+
+  ValidateFormatFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-${EnvName}-prep-validateformat'
+      Runtime: python3.12
+      Handler: src.handlers.validate_format.handler
+      Role: !GetAtt LambdaBaseRole.Arn
+      Timeout: 60
+      MemorySize: 256
+      Description: Validate file format against accepted types
+      Environment:
+        Variables:
+          ENV_NAME: !Ref EnvName
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return {"statusCode": 200, "body": "placeholder"}
+
+  ExtractAudioFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-${EnvName}-prep-extractaudio'
+      Runtime: python3.12
+      Handler: src.services.audio_extraction.handler
+      Role: !GetAtt ExtractAudioRole.Arn
+      Timeout: 300
+      MemorySize: 256
+      Description: Submit MediaConvert job for audio extraction
+      Environment:
+        Variables:
+          ENV_NAME: !Ref EnvName
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return {"statusCode": 200, "body": "placeholder"}
+
+  ChunkAudioFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-${EnvName}-prep-chunkaudio'
+      Runtime: python3.12
+      Handler: src.services.chunking.handler
+      Role: !GetAtt ChunkAudioRole.Arn
+      Timeout: 300
+      MemorySize: 512
+      Description: Divide audio into chunks and upload to S3
+      Environment:
+        Variables:
+          ENV_NAME: !Ref EnvName
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return {"statusCode": 200, "body": "placeholder"}
+
+  CreateEmbeddingFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-${EnvName}-prep-createembedding'
+      Runtime: python3.12
+      Handler: src.services.embedding.handler
+      Role: !GetAtt CreateEmbeddingRole.Arn
+      Timeout: 300
+      MemorySize: 512
+      Description: Invoke Bedrock for embedding creation
+      Environment:
+        Variables:
+          ENV_NAME: !Ref EnvName
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return {"statusCode": 200, "body": "placeholder"}
+
+  StoreVectorsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-${EnvName}-prep-storevectors'
+      Runtime: python3.12
+      Handler: src.services.vector_store.handler
+      Role: !GetAtt StoreVectorsRole.Arn
+      Timeout: 120
+      MemorySize: 256
+      Description: Write embeddings to vector store
+      Environment:
+        Variables:
+          ENV_NAME: !Ref EnvName
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return {"statusCode": 200, "body": "placeholder"}
+
+  PublishHandoffFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-${EnvName}-prep-publishhandoff'
+      Runtime: python3.12
+      Handler: src.handlers.publish_handoff.handler
+      Role: !GetAtt PublishHandoffRole.Arn
+      Timeout: 60
+      MemorySize: 256
+      Description: Publish handoff message to FIFO SQS queue
+      Environment:
+        Variables:
+          ENV_NAME: !Ref EnvName
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return {"statusCode": 200, "body": "placeholder"}
+
+  HandleFailureFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AppName}-${EnvName}-prep-handlefailure'
+      Runtime: python3.12
+      Handler: src.handlers.handle_failure.handler
+      Role: !GetAtt HandleFailureRole.Arn
+      Timeout: 60
+      MemorySize: 256
+      Description: Handle workflow failures
+      Environment:
+        Variables:
+          ENV_NAME: !Ref EnvName
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return {"statusCode": 200, "body": "placeholder"}
+
+  # =========================================================================
+  # Step Functions State Machine
+  # =========================================================================
+
+  StateMachineLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/stepfunctions/${AppName}-${EnvName}-preparation-workflow'
+      RetentionInDays: 14
+
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AppName}-${EnvName}-prep-sfn-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaInvoke
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !GetAtt LoadConfigFunction.Arn
+                  - !GetAtt ParseMessageFunction.Arn
+                  - !GetAtt ValidateFormatFunction.Arn
+                  - !GetAtt ExtractAudioFunction.Arn
+                  - !GetAtt ChunkAudioFunction.Arn
+                  - !GetAtt CreateEmbeddingFunction.Arn
+                  - !GetAtt StoreVectorsFunction.Arn
+                  - !GetAtt PublishHandoffFunction.Arn
+                  - !GetAtt HandleFailureFunction.Arn
+        - PolicyName: DynamoDBUpdate
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: dynamodb:UpdateItem
+                Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AppName}-${EnvName}-submissions'
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogDelivery
+                  - logs:GetLogDelivery
+                  - logs:UpdateLogDelivery
+                  - logs:DeleteLogDelivery
+                  - logs:ListLogDeliveries
+                  - logs:PutResourcePolicy
+                  - logs:DescribeResourcePolicies
+                  - logs:DescribeLogGroups
+                Resource: '*'
+
+  PreparationWorkflowStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    DependsOn:
+      - LoadConfigFunction
+      - ParseMessageFunction
+      - ValidateFormatFunction
+      - ExtractAudioFunction
+      - ChunkAudioFunction
+      - CreateEmbeddingFunction
+      - StoreVectorsFunction
+      - PublishHandoffFunction
+      - HandleFailureFunction
+    Properties:
+      StateMachineName: !Sub '${AppName}-${EnvName}-preparation-workflow'
+      StateMachineType: STANDARD
+      RoleArn: !GetAtt StateMachineRole.Arn
+      LoggingConfiguration:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt StateMachineLogGroup.Arn
+        IncludeExecutionData: true
+        Level: ALL
+      DefinitionString: !Sub |
+        {
+          "Comment": "Preparation Workflow - Standard Workflow for audio/video processing pipeline",
+          "StartAt": "LoadConfig",
+          "States": {
+            "LoadConfig": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${LoadConfigFunction.Arn}",
+                "Payload.$": "$"
+              },
+              "ResultPath": "$.config",
+              "ResultSelector": {"value.$": "$.Payload"},
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
+              "Next": "ParseMessage"
+            },
+            "ParseMessage": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${ParseMessageFunction.Arn}",
+                "Payload.$": "$"
+              },
+              "ResultPath": "$.parsed_message",
+              "ResultSelector": {"value.$": "$.Payload"},
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
+              "Next": "UpdateStatusProcessing"
+            },
+            "UpdateStatusProcessing": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:updateItem",
+              "Parameters": {
+                "TableName": "${AppName}-${EnvName}-submissions",
+                "Key": {"submission_id": {"S.$": "$.parsed_message.value.submission_id"}},
+                "UpdateExpression": "SET processing_status = :status",
+                "ExpressionAttributeValues": {":status": {"S": "Processing"}}
+              },
+              "ResultPath": "$.dynamodb_update_processing",
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 1, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
+              "Next": "ValidateFileFormat"
+            },
+            "ValidateFileFormat": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${ValidateFormatFunction.Arn}",
+                "Payload": {
+                  "original_file_name.$": "$.parsed_message.value.original_file_name",
+                  "video_processing_enabled.$": "$.config.value.video_processing_enabled"
+                }
+              },
+              "ResultPath": "$.validation_result",
+              "ResultSelector": {"value.$": "$.Payload"},
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
+              "Next": "CheckVideoFlag"
+            },
+            "CheckVideoFlag": {
+              "Type": "Choice",
+              "Choices": [
+                {"Variable": "$.validation_result.value.decision", "StringEquals": "embed", "Next": "ChunkAudio"},
+                {"Variable": "$.validation_result.value.decision", "StringEquals": "extract_audio", "Next": "ExtractAudio"},
+                {"Variable": "$.validation_result.value.decision", "StringEquals": "fail", "Next": "HandleFailure"}
+              ],
+              "Default": "HandleFailure"
+            },
+            "ExtractAudio": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${ExtractAudioFunction.Arn}",
+                "Payload": {
+                  "s3_bucket.$": "$.parsed_message.value.s3_bucket",
+                  "s3_file_key.$": "$.parsed_message.value.s3_file_key",
+                  "user_id.$": "$.parsed_message.value.user_id",
+                  "submission_id.$": "$.parsed_message.value.submission_id",
+                  "config.$": "$.config.value"
+                }
+              },
+              "ResultPath": "$.extraction_result",
+              "ResultSelector": {"value.$": "$.Payload"},
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 30, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
+              "Next": "ChunkAudio"
+            },
+            "ChunkAudio": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${ChunkAudioFunction.Arn}",
+                "Payload": {
+                  "s3_bucket.$": "$.parsed_message.value.s3_bucket",
+                  "s3_file_key.$": "$.parsed_message.value.s3_file_key",
+                  "user_id.$": "$.parsed_message.value.user_id",
+                  "submission_id.$": "$.parsed_message.value.submission_id",
+                  "config.$": "$.config.value",
+                  "extraction_result.$": "$.extraction_result"
+                }
+              },
+              "ResultPath": "$.chunks",
+              "ResultSelector": {"value.$": "$.Payload"},
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
+              "Next": "CreateEmbeddings"
+            },
+            "CreateEmbeddings": {
+              "Type": "Map",
+              "ItemsPath": "$.chunks.value.chunks",
+              "MaxConcurrency": 10,
+              "Parameters": {
+                "chunk.$": "$$.Map.Item.Value",
+                "config.$": "$.config.value",
+                "submission_id.$": "$.parsed_message.value.submission_id",
+                "user_id.$": "$.parsed_message.value.user_id"
+              },
+              "Iterator": {
+                "StartAt": "ProcessChunkEmbedding",
+                "States": {
+                  "ProcessChunkEmbedding": {
+                    "Type": "Task",
+                    "Resource": "arn:aws:states:::lambda:invoke",
+                    "Parameters": {
+                      "FunctionName": "${CreateEmbeddingFunction.Arn}",
+                      "Payload.$": "$"
+                    },
+                    "ResultSelector": {"value.$": "$.Payload"},
+                    "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 5, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+                    "End": true
+                  }
+                }
+              },
+              "ResultPath": "$.embeddings",
+              "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
+              "Next": "StoreVectors"
+            },
+            "StoreVectors": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${StoreVectorsFunction.Arn}",
+                "Payload": {
+                  "embeddings.$": "$.embeddings",
+                  "submission_id.$": "$.parsed_message.value.submission_id",
+                  "user_id.$": "$.parsed_message.value.user_id",
+                  "config.$": "$.config.value"
+                }
+              },
+              "ResultPath": "$.store_result",
+              "ResultSelector": {"value.$": "$.Payload"},
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
+              "Next": "PublishHandoff"
+            },
+            "PublishHandoff": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${PublishHandoffFunction.Arn}",
+                "Payload": {
+                  "submission_id.$": "$.parsed_message.value.submission_id",
+                  "user_id.$": "$.parsed_message.value.user_id",
+                  "s3_file_key.$": "$.parsed_message.value.s3_file_key",
+                  "presentation_title.$": "$.parsed_message.value.presentation_title",
+                  "store_result.$": "$.store_result.value",
+                  "chunks.$": "$.chunks.value",
+                  "config.$": "$.config.value"
+                }
+              },
+              "ResultPath": "$.handoff_result",
+              "ResultSelector": {"value.$": "$.Payload"},
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
+              "Next": "UpdateStatusCompleted"
+            },
+            "UpdateStatusCompleted": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::dynamodb:updateItem",
+              "Parameters": {
+                "TableName": "${AppName}-${EnvName}-submissions",
+                "Key": {"submission_id": {"S.$": "$.parsed_message.value.submission_id"}},
+                "UpdateExpression": "SET processing_status = :status",
+                "ExpressionAttributeValues": {":status": {"S": "Completed"}}
+              },
+              "ResultPath": "$.dynamodb_update_completed",
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 1, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
+              "End": true
+            },
+            "HandleFailure": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${HandleFailureFunction.Arn}",
+                "Payload": {
+                  "execution_input.$": "$",
+                  "error_info.$": "$.error_info"
+                }
+              },
+              "ResultSelector": {"value.$": "$.Payload"},
+              "End": true
+            }
+          }
+        }
+
+  # =========================================================================
+  # EventBridge Pipe: SQS Input Queue → Step Functions
+  # =========================================================================
+
+  PipeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AppName}-${EnvName}-prep-pipe-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: pipes.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: PipePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt InputQueue.Arn
+              - Effect: Allow
+                Action: states:StartExecution
+                Resource: !GetAtt PreparationWorkflowStateMachine.Arn
+
+  InputToStepFunctionsPipe:
+    Type: AWS::Pipes::Pipe
+    Properties:
+      Name: !Sub '${AppName}-${EnvName}-prep-input-to-sfn'
+      RoleArn: !GetAtt PipeRole.Arn
+      Source: !GetAtt InputQueue.Arn
+      SourceParameters:
+        SqsQueueParameters:
+          BatchSize: 1
+          MaximumBatchingWindowInSeconds: 0
+      Target: !GetAtt PreparationWorkflowStateMachine.Arn
+      TargetParameters:
+        StepFunctionStateMachineParameters:
+          InvocationType: FIRE_AND_FORGET
+
+Outputs:
+  StateMachineArn:
+    Value: !GetAtt PreparationWorkflowStateMachine.Arn
+    Description: Preparation Workflow state machine ARN
+  InputQueueUrl:
+    Value: !Ref InputQueue
+    Description: SQS Input Queue URL
+  HandoffQueueUrl:
+    Value: !Ref HandoffQueue
+    Description: SQS Handoff Queue URL (FIFO)
+  ErrorTopicArn:
+    Value: !Ref ErrorTopic
+    Description: SNS Error Topic ARN
+  DLQInputUrl:
+    Value: !Ref DLQInput
+    Description: Input Dead Letter Queue URL
+  DLQHandoffUrl:
+    Value: !Ref DLQHandoff
+    Description: Handoff Dead Letter Queue URL (FIFO)

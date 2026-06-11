@@ -206,7 +206,7 @@ aws codepipeline list-pipelines \
   --region us-east-1 \
   --query 'pipelines[*].name' \
   --output table
-```
+```df -h ~
 
 Should show:
 
