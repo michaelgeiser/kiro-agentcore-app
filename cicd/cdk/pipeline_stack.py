@@ -194,7 +194,7 @@ class PipelineStack(Stack):
                             "npm install -g aws-cdk@latest",
                             "echo 'Installing Lambda dependencies...'",
                             "cd upload-service",
-                            "pip install -r requirements.txt -t src/",
+                            "pip install -r requirements.txt -t .",
                             "echo 'Installing CDK dependencies...'",
                             "cd cdk",
                             "pip install -r requirements.txt",

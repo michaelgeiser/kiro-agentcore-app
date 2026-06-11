@@ -142,8 +142,25 @@ class UploadServiceStack(Stack):
         )
 
         # --- Lambda Functions ---
-        # Path is relative to where `cdk` CLI is invoked (the cdk/ directory)
-        lambda_code = _lambda.Code.from_asset("../src")
+        # Package the entire upload-service directory so that "src" is a top-level
+        # package inside the Lambda zip (imports use "from src.xxx import ...")
+        lambda_code = _lambda.Code.from_asset(
+            "../",
+            exclude=[
+                "cdk/*",
+                "cdk",
+                "tests/*",
+                "tests",
+                "scripts/*",
+                "scripts",
+                "requirements-dev.txt",
+                "pyproject.toml",
+                ".venv/*",
+                ".venv",
+                "__pycache__",
+                "*.pyc",
+            ],
+        )
 
         # Upload Lambda
         upload_lambda = _lambda.Function(
@@ -151,7 +168,7 @@ class UploadServiceStack(Stack):
             "UploadLambda",
             function_name=f"{resource_prefix}-upload",
             runtime=_lambda.Runtime.PYTHON_3_12,
-            handler="handlers/upload.handler",
+            handler="src.handlers.upload.handler",
             code=lambda_code,
             environment={
                 "S3_BUCKET_NAME": uploads_bucket.bucket_name,
@@ -168,7 +185,7 @@ class UploadServiceStack(Stack):
             "GetSubmissionsLambda",
             function_name=f"{resource_prefix}-get-submissions",
             runtime=_lambda.Runtime.PYTHON_3_12,
-            handler="handlers/get_submissions.handler",
+            handler="src.handlers.get_submissions.handler",
             code=lambda_code,
             environment={
                 "DYNAMODB_TABLE_NAME": submissions_table.table_name,
@@ -182,7 +199,7 @@ class UploadServiceStack(Stack):
             "ConfirmUploadLambda",
             function_name=f"{resource_prefix}-confirm-upload",
             runtime=_lambda.Runtime.PYTHON_3_12,
-            handler="handlers/confirm_upload.handler",
+            handler="src.handlers.confirm_upload.handler",
             code=lambda_code,
             environment={
                 "DYNAMODB_TABLE_NAME": submissions_table.table_name,
