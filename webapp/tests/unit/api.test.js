@@ -104,22 +104,37 @@ describe('API Client', () => {
     });
   });
 
-  describe('uploadSubmission — progress callback (Requirement 2.7)', () => {
+  describe('uploadSubmission — two-step presigned URL flow (Requirements 10.2, 10.3)', () => {
+    let originalFetch;
+
     beforeEach(() => {
+      originalFetch = global.fetch;
       // auth.getAccessToken returns a valid token
       auth.getAccessToken.mockResolvedValue('test-access-token');
     });
 
     afterEach(() => {
+      global.fetch = originalFetch;
       vi.restoreAllMocks();
     });
 
-    it('invokes onProgress with percentage values during upload', async () => {
+    it('POSTs metadata to /submissions and PUTs file to presigned URL with progress', async () => {
       const file = new File(['test content'], 'presentation.mp4', { type: 'video/mp4' });
       const metadata = { title: 'My Presentation' };
       const onProgress = vi.fn();
 
-      // Mock send to simulate progress events and a successful load
+      // Step 1: Mock fetch for metadata POST returning presigned URL
+      global.fetch = vi.fn(async () => ({
+        status: 201,
+        ok: true,
+        text: async () => JSON.stringify({
+          submissionId: 'sub-123',
+          presignedUrl: 'https://s3.amazonaws.com/bucket/uploads/user/sub-123/presentation.mp4?signed=xyz',
+          status: 'Pending',
+        }),
+      }));
+
+      // Step 2: Mock XHR send for the S3 PUT with progress events
       vi.spyOn(XMLHttpRequest.prototype, 'send').mockImplementation(function () {
         const xhr = this;
 
@@ -135,13 +150,24 @@ describe('API Client', () => {
           xhr.upload.dispatchEvent(progressEvent);
         }
 
-        // Simulate successful response
+        // Simulate successful S3 response
         Object.defineProperty(xhr, 'status', { value: 200, writable: true, configurable: true });
-        Object.defineProperty(xhr, 'responseText', { value: '{"id":"sub-123"}', writable: true, configurable: true });
+        Object.defineProperty(xhr, 'responseText', { value: '', writable: true, configurable: true });
         xhr.dispatchEvent(new Event('load'));
       });
 
-      await api.uploadSubmission(file, metadata, onProgress);
+      const result = await api.uploadSubmission(file, metadata, onProgress);
+
+      // Verify metadata POST was called correctly
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      const [fetchUrl, fetchOptions] = global.fetch.mock.calls[0];
+      expect(fetchUrl).toBe(`${API_BASE_URL}/submissions`);
+      expect(fetchOptions.method).toBe('POST');
+      const body = JSON.parse(fetchOptions.body);
+      expect(body.title).toBe('My Presentation');
+      expect(body.fileName).toBe('presentation.mp4');
+      expect(body.contentType).toBe('video/mp4');
+      expect(body.fileSizeBytes).toBe(file.size);
 
       // Verify progress was called with correct percentages
       expect(onProgress).toHaveBeenCalledTimes(4);
@@ -149,6 +175,11 @@ describe('API Client', () => {
       expect(onProgress).toHaveBeenNthCalledWith(2, 50);
       expect(onProgress).toHaveBeenNthCalledWith(3, 75);
       expect(onProgress).toHaveBeenNthCalledWith(4, 100);
+
+      // Verify result contains metadata response
+      expect(result.submissionId).toBe('sub-123');
+      expect(result.presignedUrl).toContain('s3.amazonaws.com');
+      expect(result.status).toBe('Pending');
     });
 
     it('does not invoke onProgress when event is not lengthComputable', async () => {
@@ -156,6 +187,18 @@ describe('API Client', () => {
       const metadata = { title: 'Audio Presentation' };
       const onProgress = vi.fn();
 
+      // Step 1: Mock fetch for metadata POST
+      global.fetch = vi.fn(async () => ({
+        status: 201,
+        ok: true,
+        text: async () => JSON.stringify({
+          submissionId: 'sub-456',
+          presignedUrl: 'https://s3.amazonaws.com/bucket/uploads/user/sub-456/audio.mp3?signed=abc',
+          status: 'Pending',
+        }),
+      }));
+
+      // Step 2: Mock XHR with non-computable progress
       vi.spyOn(XMLHttpRequest.prototype, 'send').mockImplementation(function () {
         const xhr = this;
 
@@ -163,15 +206,116 @@ describe('API Client', () => {
         const progressEvent = new ProgressEvent('progress', { lengthComputable: false, loaded: 0, total: 0 });
         xhr.upload.dispatchEvent(progressEvent);
 
-        // Simulate successful response
+        // Simulate successful S3 response
         Object.defineProperty(xhr, 'status', { value: 200, writable: true, configurable: true });
-        Object.defineProperty(xhr, 'responseText', { value: '{"id":"sub-123"}', writable: true, configurable: true });
+        Object.defineProperty(xhr, 'responseText', { value: '', writable: true, configurable: true });
         xhr.dispatchEvent(new Event('load'));
       });
 
       await api.uploadSubmission(file, metadata, onProgress);
 
       expect(onProgress).not.toHaveBeenCalled();
+    });
+
+    it('throws network error when S3 PUT fails with XHR error event', async () => {
+      const file = new File(['test content'], 'video.webm', { type: 'video/webm' });
+      const metadata = { title: 'My Video' };
+      const onProgress = vi.fn();
+
+      // Step 1: Mock fetch for metadata POST
+      global.fetch = vi.fn(async () => ({
+        status: 201,
+        ok: true,
+        text: async () => JSON.stringify({
+          submissionId: 'sub-789',
+          presignedUrl: 'https://s3.amazonaws.com/bucket/uploads/user/sub-789/video.webm?signed=def',
+          status: 'Pending',
+        }),
+      }));
+
+      // Step 2: Mock XHR to fire error event
+      vi.spyOn(XMLHttpRequest.prototype, 'send').mockImplementation(function () {
+        const xhr = this;
+        xhr.dispatchEvent(new Event('error'));
+      });
+
+      await expect(api.uploadSubmission(file, metadata, onProgress)).rejects.toThrow(
+        ERROR_MESSAGES.network
+      );
+    });
+
+    it('throws API error when S3 PUT returns non-2xx status', async () => {
+      const file = new File(['test content'], 'talk.m4a', { type: 'audio/x-m4a' });
+      const metadata = { title: 'My Talk' };
+      const onProgress = vi.fn();
+
+      // Step 1: Mock fetch for metadata POST
+      global.fetch = vi.fn(async () => ({
+        status: 201,
+        ok: true,
+        text: async () => JSON.stringify({
+          submissionId: 'sub-999',
+          presignedUrl: 'https://s3.amazonaws.com/bucket/uploads/user/sub-999/talk.m4a?signed=ghi',
+          status: 'Pending',
+        }),
+      }));
+
+      // Step 2: Mock XHR to return 403 (e.g., presigned URL expired)
+      vi.spyOn(XMLHttpRequest.prototype, 'send').mockImplementation(function () {
+        const xhr = this;
+        Object.defineProperty(xhr, 'status', { value: 403, writable: true, configurable: true });
+        Object.defineProperty(xhr, 'responseText', { value: 'Access Denied', writable: true, configurable: true });
+        xhr.dispatchEvent(new Event('load'));
+      });
+
+      await expect(api.uploadSubmission(file, metadata, onProgress)).rejects.toThrow();
+    });
+  });
+
+  describe('getSubmissions — returns submissions array (Requirement 10.2)', () => {
+    let originalFetch;
+
+    beforeEach(() => {
+      originalFetch = global.fetch;
+      auth.getAccessToken.mockResolvedValue('test-access-token');
+    });
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+      vi.restoreAllMocks();
+    });
+
+    it('returns the submissions array from the API response', async () => {
+      const mockSubmissions = [
+        { id: 'sub-1', title: 'Talk 1', status: 'Completed' },
+        { id: 'sub-2', title: 'Talk 2', status: 'Pending' },
+      ];
+
+      global.fetch = vi.fn(async () => ({
+        status: 200,
+        ok: true,
+        text: async () => JSON.stringify({ submissions: mockSubmissions }),
+      }));
+
+      const result = await api.getSubmissions();
+
+      expect(result).toEqual(mockSubmissions);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      const [fetchUrl, fetchOptions] = global.fetch.mock.calls[0];
+      expect(fetchUrl).toBe(`${API_BASE_URL}/submissions`);
+      expect(fetchOptions.method).toBe('GET');
+    });
+
+    it('returns empty array when no submissions exist', async () => {
+      global.fetch = vi.fn(async () => ({
+        status: 200,
+        ok: true,
+        text: async () => JSON.stringify({ submissions: [] }),
+      }));
+
+      const result = await api.getSubmissions();
+
+      expect(result).toEqual([]);
     });
   });
 

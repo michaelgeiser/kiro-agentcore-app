@@ -64,6 +64,64 @@ The service provisions and owns the Cognito User Pool as part of its CDK stack. 
 - `CognitoDomain` — Full hosted UI domain URL
 - `ApiEndpoint` — HTTP API Gateway endpoint URL
 
+### Resource Naming Convention
+
+All AWS resources follow a consistent naming pattern to support multiple isolated deployments in a single account:
+
+```
+{appName}-{envName}-{instanceId}-{resourceName}
+```
+
+**Parameters (provided via CDK context):**
+
+| Parameter | Description | Constraints | Default |
+|-----------|-------------|-------------|---------|
+| `appName` | Application identifier | Lowercase, 3-15 chars | `prescoach` |
+| `envName` | Deployment environment | `dev`, `test`, `staging`, `prod`, or custom | Required |
+| `instanceId` | Instance/tenant identifier | Lowercase alphanumeric + hyphens, 2-20 chars | Required |
+
+**Validation:** The combined prefix `{appName}-{envName}-{instanceId}` must not exceed 40 characters, ensuring all resource name suffixes fit within AWS limits.
+
+**Resource naming matrix:**
+
+| Resource | Name Pattern | Example (`prescoach-prod-acme123`) |
+|----------|---|---|
+| CloudFormation Stack | `{prefix}` | `prescoach-prod-acme123` |
+| S3 Bucket | `{prefix}-uploads` | `prescoach-prod-acme123-uploads` |
+| DynamoDB Table | `{prefix}-submissions` | `prescoach-prod-acme123-submissions` |
+| DynamoDB GSI | `user-uploads-index` | `user-uploads-index` (table-scoped) |
+| Cognito User Pool | `{prefix}-users` | `prescoach-prod-acme123-users` |
+| Cognito Domain | `{prefix}` | `prescoach-prod-acme123` |
+| SQS Queue | `{prefix}-processing-queue` | `prescoach-prod-acme123-processing-queue` |
+| SQS DLQ | `{prefix}-processing-dlq` | `prescoach-prod-acme123-processing-dlq` |
+| SNS Topic | `{prefix}-errors` | `prescoach-prod-acme123-errors` |
+| HTTP API | `{prefix}-api` | `prescoach-prod-acme123-api` |
+| Lambda (upload) | `{prefix}-upload` | `prescoach-prod-acme123-upload` |
+| Lambda (get) | `{prefix}-get-submissions` | `prescoach-prod-acme123-get-submissions` |
+| Lambda (confirm) | `{prefix}-confirm-upload` | `prescoach-prod-acme123-confirm-upload` |
+
+**Tagging:** All resources are tagged with:
+```python
+tags = {
+    "app": app_name,      # e.g., "prescoach"
+    "env": env_name,      # e.g., "prod"
+    "instance": instance_id,  # e.g., "acme123"
+}
+```
+
+**CDK context usage:**
+```bash
+# Deploy a production instance for customer "acme123"
+cdk deploy -c appName=prescoach -c envName=prod -c instanceId=acme123
+
+# Deploy a dev instance for local testing
+cdk deploy -c appName=prescoach -c envName=dev -c instanceId=local01
+
+# Deploy two instances in the same account
+cdk deploy -c appName=prescoach -c envName=prod -c instanceId=customer1
+cdk deploy -c appName=prescoach -c envName=prod -c instanceId=customer2
+```
+
 ### WAF Considerations
 
 The CloudFront distribution (`https://kiro.geiserai.com`) has AWS WAF enabled with:
@@ -485,7 +543,7 @@ cors = apigwv2.CorsPreflightOptions(
 
 ### DynamoDB Table Design
 
-**Table Name:** `PresentationCoaching-Submissions`
+**Table Name:** `{appName}-{envName}-{instanceId}-submissions` (e.g., `prescoach-prod-acme123-submissions`)
 
 | Attribute | Type | Key | Description |
 |-----------|------|-----|-------------|
@@ -583,26 +641,74 @@ class ErrorNotification(BaseModel):
 
 #### Success Response (POST /submissions)
 
+The POST endpoint accepts metadata and returns a presigned S3 URL for the client to upload the file directly.
+
+**Request body (JSON):**
+```json
+{
+  "title": "Quarterly Business Review",
+  "description": "Optional description",
+  "fileName": "presentation.mp3",
+  "contentType": "audio/mpeg",
+  "fileSizeBytes": 15728640
+}
+```
+
+**Response (201 Created):**
 ```python
 from pydantic import BaseModel
 
 
 class UploadSuccessResponse(BaseModel):
-    submission_id: str
-    presigned_url: str
-    processing_status: str = "Pending"
+    submissionId: str       # Maps from submission_id internally
+    presignedUrl: str       # S3 presigned PUT URL
+    status: str = "Pending" # Processing status
+```
+
+```json
+{
+  "submissionId": "a1b2c3d4-...",
+  "presignedUrl": "https://s3.amazonaws.com/bucket/...",
+  "status": "Pending"
+}
 ```
 
 #### Success Response (GET /submissions)
 
+The GET endpoint returns submissions using camelCase field names matching the Frontend SPA's expected data model.
+
+**Response (200 OK):**
 ```python
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Optional
 
-from src.models.submission import SubmissionRecord
 
+class SubmissionResponse(BaseModel):
+    id: str = Field(alias="submission_id")
+    title: str = Field(alias="presentation_title")
+    fileName: str = Field(alias="original_file_name")
+    description: Optional[str] = None
+    dateUploaded: str = Field(alias="upload_date")
+    status: str = Field(alias="processing_status")
+    dateCompleted: Optional[str] = Field(None, alias="completion_date")
+    reportUrl: Optional[str] = Field(None, alias="report_link")
+```
 
-class GetSubmissionsResponse(BaseModel):
-    submissions: list[SubmissionRecord]
+```json
+{
+  "submissions": [
+    {
+      "id": "a1b2c3d4-...",
+      "title": "Quarterly Business Review",
+      "fileName": "presentation.mp3",
+      "description": "Optional description",
+      "dateUploaded": "2024-06-15T10:30:00Z",
+      "status": "Completed",
+      "dateCompleted": "2024-06-15T11:00:00Z",
+      "reportUrl": "https://reports.example.com/a1b2c3d4"
+    }
+  ]
+}
 ```
 
 #### Error Response (all endpoints)
@@ -620,6 +726,46 @@ class ErrorDetail(BaseModel):
 class ApiErrorResponse(BaseModel):
     error: ErrorDetail
 ```
+
+### Frontend Integration Contract
+
+The Frontend SPA upload flow uses a **two-step presigned URL process**:
+
+```mermaid
+sequenceDiagram
+    participant SPA as Frontend SPA
+    participant API as POST /submissions
+    participant S3 as S3 Bucket
+
+    SPA->>API: POST /submissions (JSON metadata + JWT)
+    API->>SPA: 201 { submissionId, presignedUrl, status }
+    SPA->>S3: PUT file to presignedUrl (with progress tracking)
+    S3->>SPA: 200 OK
+    Note over SPA: Navigate to List View
+```
+
+**Frontend configuration (`webapp/js/config.js`):**
+```javascript
+// Generated from CDK stack outputs after deployment
+export const CONFIG = {
+  cognitoDomain: 'https://presentation-coaching.auth.us-east-1.amazoncognito.com',
+  clientId: '<from CfnOutput CognitoAppClientId>',
+  apiBaseUrl: '<from CfnOutput ApiEndpoint>',
+};
+```
+
+**Field name mapping (internal → API response):**
+
+| DynamoDB Field | API Response Field | Frontend Expects |
+|---|---|---|
+| `submission_id` | `id` | `submission.id` |
+| `presentation_title` | `title` | `submission.title` |
+| `original_file_name` | `fileName` | `submission.fileName` |
+| `description` | `description` | `submission.description` |
+| `upload_date` | `dateUploaded` | `submission.dateUploaded` |
+| `processing_status` | `status` | `submission.status` |
+| `completion_date` | `dateCompleted` | `submission.dateCompleted` |
+| `report_link` | `reportUrl` | `submission.reportUrl` |
 
 ### Accepted File Types
 

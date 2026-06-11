@@ -90,13 +90,13 @@ The Upload and Storage service is the backend component of the Presentation Coac
 
 ### Requirement 6: Upload Response
 
-**User Story:** As a frontend application, I want a clear success or failure response after submitting a file, so that the user interface can display appropriate feedback.
+**User Story:** As a frontend application, I want a clear success or failure response after submitting metadata, so that the user interface can proceed with the file upload using the presigned URL.
 
 #### Acceptance Criteria
 
-1. WHEN the file is stored, metadata is persisted, and the SQS message is published successfully, THE Upload_Service SHALL return a 201 Created response containing the submission_id and processing_status of Pending
+1. WHEN metadata is validated and a presigned URL is generated successfully, THE Upload_Service SHALL return a 201 Created response containing `submissionId`, `presignedUrl`, and `status` (set to "Pending") using camelCase field names
 2. THE Upload_Service SHALL return all error responses in a consistent JSON format containing an error code, a human-readable message, and a correlation identifier for troubleshooting
-3. WHEN the Upload_Service returns a successful response, THE response SHALL include the submission_id that the Frontend SPA can use to track processing status
+3. WHEN the Upload_Service returns a successful response, THE Frontend SPA SHALL use the `presignedUrl` to upload the file directly to S3 with progress tracking, and use `submissionId` to track processing status
 
 ### Requirement 7: Submission Retrieval
 
@@ -106,9 +106,9 @@ The Upload and Storage service is the backend component of the Presentation Coac
 
 1. THE Upload_Service SHALL expose a GET endpoint through the API_Gateway for retrieving submissions belonging to the authenticated user
 2. WHEN the GET endpoint is called, THE Upload_Service SHALL query the DynamoDB_Table for all Submission_Records matching the authenticated user_id
-3. THE Upload_Service SHALL return each Submission_Record with the following fields: submission_id, original_file_name, presentation_title, description, upload_date, processing_status, completion_date, and report_link
+3. THE Upload_Service SHALL return each Submission_Record mapped to the Frontend SPA's expected field names: `id`, `title`, `fileName`, `description`, `dateUploaded`, `status`, `dateCompleted`, and `reportUrl`
 4. THE Upload_Service SHALL return submissions sorted by upload_date in descending order (most recent first)
-5. IF no submissions exist for the authenticated user, THEN THE Upload_Service SHALL return a 200 OK response with an empty array
+5. IF no submissions exist for the authenticated user, THEN THE Upload_Service SHALL return a 200 OK response with an empty submissions array
 
 ### Requirement 8: Error Notification
 
@@ -130,3 +130,44 @@ The Upload and Storage service is the backend component of the Presentation Coac
 2. THE Upload_Service SHALL use DynamoDB on-demand capacity mode to scale read and write throughput automatically with traffic
 3. THE Upload_Service SHALL use S3 standard storage class for uploaded files to balance cost and durability
 4. THE Upload_Service SHALL decouple file processing from file upload by using the SQS_Queue as the sole trigger for the Preparation_Workflow
+
+### Requirement 10: Frontend SPA Integration
+
+**User Story:** As a developer, I want the backend and frontend to use a consistent API contract and shared configuration, so that the full platform works end-to-end after deployment.
+
+#### Acceptance Criteria
+
+1. THE Upload_Service GET /submissions endpoint SHALL return submission records using field names that the Frontend SPA List View expects: `id`, `title`, `fileName`, `description`, `dateUploaded`, `status`, `dateCompleted`, and `reportUrl`
+2. THE Upload_Service POST /submissions endpoint SHALL accept a JSON body containing `title` (required), `description` (optional), `fileName` (required), `contentType` (required), and `fileSizeBytes` (required), and SHALL return a JSON response containing `submissionId`, `presignedUrl`, and `status`
+3. THE Frontend SPA upload flow SHALL use a two-step process: first POST metadata to /submissions to receive a presigned S3 URL, then PUT the file directly to S3 using the presigned URL with upload progress tracking
+4. THE Frontend SPA SHALL read the Cognito User Pool domain, App Client ID, and API Gateway endpoint URL from a configuration file (`webapp/js/config.js`) that is populated from CDK stack outputs after deployment
+5. THE Upload_Service CDK stack SHALL output the API Gateway endpoint URL in addition to the Cognito outputs, so the frontend configuration can be generated from a single `cdk deploy` output
+6. THE Frontend SPA SHALL NOT use a separate `GET /submissions/{id}/report` endpoint; the report URL SHALL be provided as the `reportUrl` field in the submissions list response
+
+### Requirement 11: Resource Naming Convention and Multi-Instance Deployment
+
+**User Story:** As a platform operator, I want to deploy multiple isolated instances of the platform in a single AWS account (e.g., per-customer or per-environment), with all related resources clearly identifiable by a consistent naming convention.
+
+#### Acceptance Criteria
+
+1. ALL AWS resources provisioned by the CDK stack SHALL follow the naming convention `{appName}-{envName}-{instanceId}-{resourceName}` where:
+   - `appName` is a short application identifier (default: `prescoach`)
+   - `envName` is the deployment environment (e.g., `dev`, `test`, `prod`)
+   - `instanceId` is an alphanumeric identifier for the deployment instance (e.g., a customer ID or tenant ID)
+   - `resourceName` is a descriptive name indicating the resource's purpose
+2. THE CDK stack SHALL accept `appName`, `envName`, and `instanceId` as deployment parameters (via CDK context), enabling multiple independent instances to coexist in a single AWS account without name collisions
+3. THE CloudFormation stack name SHALL follow the pattern `{appName}-{envName}-{instanceId}` (e.g., `prescoach-prod-acme123`)
+4. THE following resources SHALL use the naming convention:
+   - S3 Bucket: `{appName}-{envName}-{instanceId}-uploads`
+   - DynamoDB Table: `{appName}-{envName}-{instanceId}-submissions`
+   - Cognito User Pool: `{appName}-{envName}-{instanceId}-users`
+   - Cognito Hosted UI Domain prefix: `{appName}-{envName}-{instanceId}`
+   - SQS Queue: `{appName}-{envName}-{instanceId}-processing-queue`
+   - SQS Dead Letter Queue: `{appName}-{envName}-{instanceId}-processing-dlq`
+   - SNS Topic: `{appName}-{envName}-{instanceId}-errors`
+   - HTTP API Gateway: `{appName}-{envName}-{instanceId}-api`
+   - Lambda functions: `{appName}-{envName}-{instanceId}-upload`, `{appName}-{envName}-{instanceId}-get-submissions`, `{appName}-{envName}-{instanceId}-confirm-upload`
+5. THE naming convention SHALL ensure all resource names remain within AWS service limits (S3 bucket: max 63 characters, Cognito domain prefix: max 63 characters, Lambda function name: max 64 characters)
+6. THE CDK stack SHALL validate that the combined `{appName}-{envName}-{instanceId}` prefix does not exceed 40 characters, leaving room for resource name suffixes within AWS limits
+7. THE `instanceId` parameter SHALL accept lowercase alphanumeric characters and hyphens, with a minimum length of 2 and maximum length of 20 characters
+8. ALL resources within a single deployment instance SHALL be tagged with `app`, `env`, and `instance` tags matching their naming convention values, enabling cost allocation and resource grouping

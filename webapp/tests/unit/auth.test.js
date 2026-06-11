@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { auth, generateCodeVerifier, generateCodeChallenge, base64UrlEncode, CONFIG } from '../../js/auth.js';
+import { auth, generateCodeVerifier, generateCodeChallenge, base64UrlEncode, AUTH_CONFIG } from '../../js/auth.js';
 
 describe('auth module', () => {
   beforeEach(() => {
@@ -69,9 +69,9 @@ describe('auth module', () => {
 
       expect(hrefSetter).toHaveBeenCalledTimes(1);
       const url = hrefSetter.mock.calls[0][0];
-      expect(url).toContain(`${CONFIG.cognitoDomain}/oauth2/authorize`);
+      expect(url).toContain(`${AUTH_CONFIG.cognitoDomain}/oauth2/authorize`);
       expect(url).toContain('response_type=code');
-      expect(url).toContain(`client_id=${CONFIG.clientId}`);
+      expect(url).toContain(`client_id=${AUTH_CONFIG.clientId}`);
       expect(url).toContain('code_challenge_method=S256');
       expect(url).toContain('code_challenge=');
     });
@@ -112,7 +112,7 @@ describe('auth module', () => {
       expect(global.fetch).toHaveBeenCalledTimes(1);
 
       const [url, options] = global.fetch.mock.calls[0];
-      expect(url).toBe(`${CONFIG.cognitoDomain}/oauth2/token`);
+      expect(url).toBe(`${AUTH_CONFIG.cognitoDomain}/oauth2/token`);
       expect(options.method).toBe('POST');
       expect(options.headers['Content-Type']).toBe('application/x-www-form-urlencoded');
       expect(options.body).toContain('grant_type=authorization_code');
@@ -242,7 +242,7 @@ describe('auth module', () => {
       expect(state.accessToken).toBe('refreshed-token');
 
       const [url, options] = global.fetch.mock.calls[0];
-      expect(url).toBe(`${CONFIG.cognitoDomain}/oauth2/token`);
+      expect(url).toBe(`${AUTH_CONFIG.cognitoDomain}/oauth2/token`);
       expect(options.body).toContain('grant_type=refresh_token');
       expect(options.body).toContain('refresh_token=my-refresh-token');
     });
@@ -334,8 +334,8 @@ describe('auth module', () => {
 
       expect(hrefSetter).toHaveBeenCalledTimes(1);
       const url = hrefSetter.mock.calls[0][0];
-      expect(url).toContain(`${CONFIG.cognitoDomain}/logout`);
-      expect(url).toContain(`client_id=${CONFIG.clientId}`);
+      expect(url).toContain(`${AUTH_CONFIG.cognitoDomain}/logout`);
+      expect(url).toContain(`client_id=${AUTH_CONFIG.clientId}`);
       expect(url).toContain('logout_uri=');
     });
   });

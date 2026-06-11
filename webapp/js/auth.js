@@ -5,12 +5,13 @@
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
  */
 
-// --- Configuration (placeholder values, replace with real Cognito settings) ---
-const CONFIG = {
-  cognitoDomain: 'https://your-app.auth.us-east-1.amazoncognito.com',
-  clientId: 'your-cognito-client-id',
-  redirectUri: `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost'}`,
-  logoutUri: `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost'}`,
+import { CONFIG } from './config.js';
+
+// --- Auth Configuration (extends imported CONFIG with runtime-computed values) ---
+const AUTH_CONFIG = {
+  ...CONFIG,
+  redirectUri: typeof window !== 'undefined' ? window.location.origin : 'http://localhost',
+  logoutUri: typeof window !== 'undefined' ? window.location.origin : 'http://localhost',
   scopes: 'openid profile email',
 };
 
@@ -85,14 +86,14 @@ export const auth = {
 
     const params = new URLSearchParams({
       response_type: 'code',
-      client_id: CONFIG.clientId,
-      redirect_uri: CONFIG.redirectUri,
-      scope: CONFIG.scopes,
+      client_id: AUTH_CONFIG.clientId,
+      redirect_uri: AUTH_CONFIG.redirectUri,
+      scope: AUTH_CONFIG.scopes,
       code_challenge_method: 'S256',
       code_challenge: challenge,
     });
 
-    const loginUrl = `${CONFIG.cognitoDomain}/oauth2/authorize?${params.toString()}`;
+    const loginUrl = `${AUTH_CONFIG.cognitoDomain}/oauth2/authorize?${params.toString()}`;
     window.location.href = loginUrl;
   },
 
@@ -109,13 +110,13 @@ export const auth = {
 
     const params = new URLSearchParams({
       grant_type: 'authorization_code',
-      client_id: CONFIG.clientId,
-      redirect_uri: CONFIG.redirectUri,
+      client_id: AUTH_CONFIG.clientId,
+      redirect_uri: AUTH_CONFIG.redirectUri,
       code,
       code_verifier: codeVerifier,
     });
 
-    const response = await fetch(`${CONFIG.cognitoDomain}/oauth2/token`, {
+    const response = await fetch(`${AUTH_CONFIG.cognitoDomain}/oauth2/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params.toString(),
@@ -168,12 +169,12 @@ export const auth = {
 
     const params = new URLSearchParams({
       grant_type: 'refresh_token',
-      client_id: CONFIG.clientId,
+      client_id: AUTH_CONFIG.clientId,
       refresh_token: refreshToken,
     });
 
     try {
-      const response = await fetch(`${CONFIG.cognitoDomain}/oauth2/token`, {
+      const response = await fetch(`${AUTH_CONFIG.cognitoDomain}/oauth2/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: params.toString(),
@@ -202,11 +203,11 @@ export const auth = {
     clearTokens();
 
     const params = new URLSearchParams({
-      client_id: CONFIG.clientId,
-      logout_uri: CONFIG.logoutUri,
+      client_id: AUTH_CONFIG.clientId,
+      logout_uri: AUTH_CONFIG.logoutUri,
     });
 
-    window.location.href = `${CONFIG.cognitoDomain}/logout?${params.toString()}`;
+    window.location.href = `${AUTH_CONFIG.cognitoDomain}/logout?${params.toString()}`;
   },
 
   /**
@@ -285,4 +286,4 @@ function clearTokens() {
 }
 
 // --- Exported helpers for use by other modules ---
-export { generateCodeVerifier, generateCodeChallenge, base64UrlEncode, CONFIG };
+export { generateCodeVerifier, generateCodeChallenge, base64UrlEncode, AUTH_CONFIG };

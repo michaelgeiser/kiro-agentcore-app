@@ -2,15 +2,16 @@
  * Centralized HTTP client for API Gateway communication.
  * Automatically attaches Authorization header and handles errors.
  *
- * Requirements: 2.6, 2.7, 8.1, 8.2, 8.3, 8.4
+ * Requirements: 2.6, 2.7, 8.1, 8.2, 8.3, 8.4, 10.2, 10.3, 10.6
  */
 
 import { auth } from './auth.js';
+import { CONFIG } from './config.js';
 
 // --- Configuration ---
 
-/** Base URL for the API Gateway. Configure per environment. */
-export const API_BASE_URL = 'https://api.example.com';
+/** Base URL for the API Gateway. Sourced from deployment config. */
+export const API_BASE_URL = CONFIG.apiBaseUrl;
 
 // --- Error Messages (user-friendly, no raw technical details) ---
 
@@ -171,24 +172,43 @@ async function processResponse(response) {
 
 export const api = {
   /**
-   * Upload a file with metadata.
-   * Uses XMLHttpRequest for upload progress tracking (fetch doesn't support it natively).
+   * Upload a file with metadata using the two-step presigned URL flow.
+   * Requirement: 10.2 (POST metadata, receive presigned URL), 10.3 (PUT file to S3)
+   *
+   * Step 1: POST JSON metadata to /submissions to get a presigned S3 URL
+   * Step 2: PUT file directly to S3 using the presigned URL (with progress tracking)
    *
    * @param {File} file - The presentation file
    * @param {Object} metadata - { title: string, description?: string }
    * @param {Function} onProgress - Callback with upload percentage (0-100)
-   * @returns {Promise<Object>} API response
+   * @returns {Promise<Object>} API response containing { submissionId, presignedUrl, status }
    */
   async uploadSubmission(file, metadata, onProgress) {
-    const token = await auth.getAccessToken();
-    if (!token) {
-      auth.login();
-      throw new Error(ERROR_MESSAGES[401]);
-    }
-
+    // Step 1: POST metadata to /submissions to get presigned URL
     const url = `${API_BASE_URL}/submissions`;
+    const body = {
+      title: metadata.title,
+      description: metadata.description || '',
+      fileName: file.name,
+      contentType: file.type,
+      fileSizeBytes: file.size,
+    };
 
-    return new Promise((resolve, reject) => {
+    const response = await authenticatedFetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await processResponse(response);
+
+    // Step 2: PUT file to presigned URL using XMLHttpRequest for progress tracking
+    const { presignedUrl } = data;
+
+    await new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
 
       // Track upload progress
@@ -199,32 +219,9 @@ export const api = {
         }
       });
 
-      xhr.addEventListener('load', async () => {
-        if (xhr.status === 401) {
-          // Attempt token refresh and retry once
-          const refreshed = await auth.refreshAccessToken();
-          if (refreshed) {
-            // Retry the upload with new token
-            try {
-              const result = await retryUpload(file, metadata, onProgress);
-              resolve(result);
-            } catch (err) {
-              reject(err);
-            }
-          } else {
-            auth.login();
-            reject(createApiError(401));
-          }
-          return;
-        }
-
+      xhr.addEventListener('load', () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
-            resolve(data);
-          } catch {
-            resolve(null);
-          }
+          resolve();
         } else {
           reject(createApiError(xhr.status, xhr.responseText));
         }
@@ -238,21 +235,18 @@ export const api = {
         reject(new Error('Upload was cancelled.'));
       });
 
-      // Build FormData with file and metadata
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('metadata', JSON.stringify(metadata));
-
-      xhr.open('POST', url);
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-      // Note: Don't set Content-Type for FormData — browser sets it with boundary
-      xhr.send(formData);
+      xhr.open('PUT', presignedUrl);
+      xhr.setRequestHeader('Content-Type', file.type);
+      xhr.send(file);
     });
+
+    // Return the metadata response from step 1
+    return data;
   },
 
   /**
    * Retrieve list of user submissions.
-   * Requirement: 8.1 (RESTful endpoints), 8.2 (JSON content type)
+   * Requirement: 8.1 (RESTful endpoints), 8.2 (JSON content type), 10.6 (reportUrl in list)
    *
    * @returns {Promise<Array>} Array of submission objects
    */
@@ -264,86 +258,10 @@ export const api = {
         Accept: 'application/json',
       },
     });
-    return processResponse(response);
-  },
-
-  /**
-   * Get report URL for a completed submission.
-   * Requirement: 8.1 (RESTful endpoints)
-   *
-   * @param {string} submissionId - The submission ID
-   * @returns {Promise<string>} Report URL
-   */
-  async getReportUrl(submissionId) {
-    const url = `${API_BASE_URL}/submissions/${encodeURIComponent(submissionId)}/report`;
-    const response = await authenticatedFetch(url, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-      },
-    });
     const data = await processResponse(response);
-    return data?.url || data?.reportUrl || '';
+    return data.submissions;
   },
 };
-
-// --- Internal: Retry upload after token refresh ---
-
-/**
- * Retry upload with a fresh token (called after 401 + successful refresh).
- * @param {File} file
- * @param {Object} metadata
- * @param {Function} onProgress
- * @returns {Promise<Object>}
- */
-async function retryUpload(file, metadata, onProgress) {
-  const token = await auth.getAccessToken();
-  if (!token) {
-    auth.login();
-    throw new Error(ERROR_MESSAGES[401]);
-  }
-
-  const url = `${API_BASE_URL}/submissions`;
-
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-
-    xhr.upload.addEventListener('progress', (event) => {
-      if (event.lengthComputable && typeof onProgress === 'function') {
-        const percentage = Math.round((event.loaded / event.total) * 100);
-        onProgress(percentage);
-      }
-    });
-
-    xhr.addEventListener('load', () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const data = xhr.responseText ? JSON.parse(xhr.responseText) : null;
-          resolve(data);
-        } catch {
-          resolve(null);
-        }
-      } else if (xhr.status === 401) {
-        auth.login();
-        reject(createApiError(401));
-      } else {
-        reject(createApiError(xhr.status, xhr.responseText));
-      }
-    });
-
-    xhr.addEventListener('error', () => {
-      reject(createNetworkError());
-    });
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('metadata', JSON.stringify(metadata));
-
-    xhr.open('POST', url);
-    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-    xhr.send(formData);
-  });
-}
 
 // --- Exported helpers for testing ---
 

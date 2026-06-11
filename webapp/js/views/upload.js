@@ -2,7 +2,7 @@
  * Upload Page View
  * Provides file selection, metadata entry, and submission functionality.
  *
- * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2, 4.3, 4.4, 5.1, 5.2, 5.3, 5.4, 5.5, 10.5
+ * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2, 4.3, 4.4, 5.1, 5.2, 5.3, 5.4, 5.5, 10.3, 10.5
  */
 
 import { api } from '../api.js';

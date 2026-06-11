@@ -1,8 +1,8 @@
 /**
  * Integration tests for the Upload Flow.
- * Tests the complete workflow: file selection → metadata entry → submit → API call → success navigation.
+ * Tests the complete workflow: file selection → metadata entry → submit → API call (two-step presigned URL flow) → success navigation.
  *
- * Requirements: 3.1, 4.1, 5.1, 5.4
+ * Requirements: 3.1, 4.1, 5.1, 5.4, 10.2, 10.3
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -33,7 +33,7 @@ describe('Upload Flow Integration', () => {
     vi.useRealTimers();
   });
 
-  it('completes full upload flow: file selection → metadata entry → submit → API call → success navigation', async () => {
+  it('completes full upload flow: file selection → metadata entry → submit → two-step presigned URL → success navigation', async () => {
     // 1. Render the upload view
     render(outlet);
 
@@ -64,18 +64,22 @@ describe('Upload Flow Integration', () => {
     // Submit button should now be enabled
     expect(submitBtn.hasAttribute('disabled')).toBe(false);
 
-    // 4. Mock the API to capture the call and simulate progress
+    // 4. Mock the API to capture the call and simulate the two-step presigned URL flow
     let capturedFile, capturedMetadata, capturedOnProgress;
     api.uploadSubmission.mockImplementation((f, metadata, onProgress) => {
       capturedFile = f;
       capturedMetadata = metadata;
       capturedOnProgress = onProgress;
-      // Simulate progress updates
+      // Simulate progress updates (from S3 PUT via presigned URL)
       onProgress(25);
       onProgress(50);
       onProgress(75);
       onProgress(100);
-      return Promise.resolve({ id: 'submission-001', status: 'Pending' });
+      return Promise.resolve({
+        submissionId: 'submission-001',
+        presignedUrl: 'https://s3.amazonaws.com/bucket/uploads/user/submission-001/my-presentation.mp3?signed=xyz',
+        status: 'Pending',
+      });
     });
 
     // Click submit (Requirement 5.1)
@@ -124,8 +128,12 @@ describe('Upload Flow Integration', () => {
     descInput.value = 'A walkthrough of the new feature set';
     descInput.dispatchEvent(new Event('input'));
 
-    // Mock the API
-    api.uploadSubmission.mockResolvedValue({ id: 'submission-002' });
+    // Mock the API with presigned URL response
+    api.uploadSubmission.mockResolvedValue({
+      submissionId: 'submission-002',
+      presignedUrl: 'https://s3.amazonaws.com/bucket/uploads/user/submission-002/demo.mp4?signed=abc',
+      status: 'Pending',
+    });
 
     // Submit
     submitBtn.click();
@@ -176,8 +184,12 @@ describe('Upload Flow Integration', () => {
     // Submit button should be disabled during upload
     expect(submitBtn.hasAttribute('disabled')).toBe(true);
 
-    // Resolve the upload
-    resolveUpload({ id: 'submission-003' });
+    // Resolve the upload with presigned URL response
+    resolveUpload({
+      submissionId: 'submission-003',
+      presignedUrl: 'https://s3.amazonaws.com/bucket/uploads/user/submission-003/talk.wav?signed=def',
+      status: 'Pending',
+    });
     await vi.advanceTimersByTimeAsync(0);
 
     // Progress container should be hidden after success
@@ -198,7 +210,7 @@ describe('Upload Flow Integration', () => {
     titleInput.value = 'Keynote Speech';
     titleInput.dispatchEvent(new Event('input'));
 
-    // Mock a failed upload
+    // Mock a failed upload (could fail at metadata POST or S3 PUT step)
     api.uploadSubmission.mockRejectedValue(
       new Error('An unexpected server error occurred. Please try again later.'),
     );
@@ -218,8 +230,12 @@ describe('Upload Flow Integration', () => {
     // No navigation should occur
     expect(window.location.hash).not.toBe('#list');
 
-    // Retry: mock a successful upload this time
-    api.uploadSubmission.mockResolvedValue({ id: 'submission-004' });
+    // Retry: mock a successful upload this time with presigned URL response
+    api.uploadSubmission.mockResolvedValue({
+      submissionId: 'submission-004',
+      presignedUrl: 'https://s3.amazonaws.com/bucket/uploads/user/submission-004/speech.aac?signed=ghi',
+      status: 'Pending',
+    });
 
     submitBtn.click();
     await vi.advanceTimersByTimeAsync(0);

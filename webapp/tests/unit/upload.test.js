@@ -130,10 +130,10 @@ describe('Upload Page', () => {
       titleInput.value = 'My Presentation';
       titleInput.dispatchEvent(new Event('input'));
 
-      // Mock uploadSubmission to call onProgress then resolve
+      // Mock uploadSubmission to call onProgress then resolve with presigned URL response
       api.uploadSubmission.mockImplementation((f, meta, onProgress) => {
         onProgress(50);
-        return Promise.resolve({ id: 'sub-123' });
+        return Promise.resolve({ submissionId: 'sub-123', presignedUrl: 'https://s3.amazonaws.com/bucket/file?signed=xyz', status: 'Pending' });
       });
 
       // Click submit
@@ -175,8 +175,8 @@ describe('Upload Page', () => {
       // Button should be disabled during upload
       expect(submitBtn.hasAttribute('disabled')).toBe(true);
 
-      // Resolve the upload
-      resolveUpload({ id: 'sub-123' });
+      // Resolve the upload with presigned URL response format
+      resolveUpload({ submissionId: 'sub-123', presignedUrl: 'https://s3.amazonaws.com/bucket/file?signed=xyz', status: 'Pending' });
     });
   });
 
@@ -195,8 +195,8 @@ describe('Upload Page', () => {
       titleInput.value = 'My Presentation';
       titleInput.dispatchEvent(new Event('input'));
 
-      // Mock successful upload
-      api.uploadSubmission.mockResolvedValue({ id: 'sub-123' });
+      // Mock successful upload with presigned URL response format
+      api.uploadSubmission.mockResolvedValue({ submissionId: 'sub-123', presignedUrl: 'https://s3.amazonaws.com/bucket/file?signed=xyz', status: 'Pending' });
 
       // Click submit
       submitBtn.click();
