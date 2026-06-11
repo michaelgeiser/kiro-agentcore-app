@@ -5,10 +5,10 @@ import logging
 import uuid
 from typing import Any
 
-from src.models.submission import SubmissionRecord
-from src.services.dynamo_service import DynamoService
-from src.types import CORS_HEADERS
-from src.utils.error_response import build_error_response
+from models.submission import SubmissionRecord
+from services.dynamo_service import DynamoService
+from shared_types import CORS_HEADERS
+from utils.error_response import build_error_response
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

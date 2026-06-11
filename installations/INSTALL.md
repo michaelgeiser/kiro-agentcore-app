@@ -380,14 +380,14 @@ pip install -r requirements.txt
 
 ### Step 4.5 — Install Lambda Dependencies
 
-The Lambda functions need their dependencies packaged at the `upload-service/` root (alongside `src/`):
+The Lambda functions need pydantic bundled (boto3 is already in the Lambda runtime):
 
 ```bash
 cd ../  # back to upload-service/
-pip install -r requirements.txt -t .
+pip install pydantic -t src/ --no-cache-dir
 ```
 
-> **Note:** This installs `boto3` and `pydantic` into the `upload-service/` directory root so they're at the top level of the Lambda zip alongside the `src/` package. In production you may want a Lambda Layer instead, but for initial deployment this works.
+> **Note:** Only `pydantic` needs bundling. `boto3` is pre-installed in the Lambda Python 3.12 runtime. This keeps the package small (~5 MB) and avoids CloudShell disk space issues.
 
 ### Step 4.6 — Bootstrap CDK (first time only)
 

@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from src.types import CORS_HEADERS
+from shared_types import CORS_HEADERS
 
 
 def build_error_response(

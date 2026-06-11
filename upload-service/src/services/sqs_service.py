@@ -5,7 +5,7 @@ import time
 
 import boto3
 
-from src.models.sqs_message import SqsMessageBody
+from models.sqs_message import SqsMessageBody
 
 
 class SqsService:

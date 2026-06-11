@@ -5,7 +5,7 @@ import os
 
 import boto3
 
-from src.models.submission import ErrorNotification
+from models.submission import ErrorNotification
 
 logger = logging.getLogger(__name__)
 

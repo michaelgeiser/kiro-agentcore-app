@@ -5,21 +5,21 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from src.models.submission import (
+from models.submission import (
     ErrorNotification,
     ErrorType,
     ProcessingStatus,
     SubmissionRecord,
 )
-from src.services.dynamo_service import DynamoService
-from src.services.s3_service import S3Service
-from src.services.sns_service import SnsService
-from src.types import CORS_HEADERS
-from src.utils.error_response import build_error_response
-from src.utils.file_key_generator import generate_file_key
-from src.utils.id_generator import generate_correlation_id, generate_submission_id
-from src.validation.file_validator import FileValidationInput, validate_file
-from src.validation.metadata_validator import MetadataInput, validate_metadata
+from services.dynamo_service import DynamoService
+from services.s3_service import S3Service
+from services.sns_service import SnsService
+from shared_types import CORS_HEADERS
+from utils.error_response import build_error_response
+from utils.file_key_generator import generate_file_key
+from utils.id_generator import generate_correlation_id, generate_submission_id
+from validation.file_validator import FileValidationInput, validate_file
+from validation.metadata_validator import MetadataInput, validate_metadata
 
 logger = logging.getLogger(__name__)
 

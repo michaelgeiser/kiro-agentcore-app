@@ -5,11 +5,11 @@ from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import unquote_plus
 
-from src.models.submission import ErrorNotification, ErrorType
-from src.models.sqs_message import SqsMessageBody
-from src.services.dynamo_service import DynamoService
-from src.services.sns_service import SnsService
-from src.services.sqs_service import SqsService
+from models.submission import ErrorNotification, ErrorType
+from models.sqs_message import SqsMessageBody
+from services.dynamo_service import DynamoService
+from services.sns_service import SnsService
+from services.sqs_service import SqsService
 
 logger = logging.getLogger(__name__)
 

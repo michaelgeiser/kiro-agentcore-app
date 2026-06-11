@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from src.types import ACCEPTED_CONTENT_TYPES, MAX_FILE_SIZE_BYTES
+from shared_types import ACCEPTED_CONTENT_TYPES, MAX_FILE_SIZE_BYTES
 
 
 @dataclass

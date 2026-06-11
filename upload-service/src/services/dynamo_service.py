@@ -6,7 +6,7 @@ from typing import Any
 import boto3
 from boto3.dynamodb.conditions import Key
 
-from src.models.submission import SubmissionRecord
+from models.submission import SubmissionRecord
 
 
 class DynamoService:
