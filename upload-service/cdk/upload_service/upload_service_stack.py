@@ -90,6 +90,14 @@ class UploadServiceStack(Stack):
             removal_policy=RemovalPolicy.RETAIN,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             encryption=s3.BucketEncryption.S3_MANAGED,
+            cors=[
+                s3.CorsRule(
+                    allowed_origins=["https://kiro.geiserai.com"],
+                    allowed_methods=[s3.HttpMethods.PUT, s3.HttpMethods.POST, s3.HttpMethods.GET],
+                    allowed_headers=["*"],
+                    max_age=3600,
+                )
+            ],
         )
 
         # --- DynamoDB Table ---
