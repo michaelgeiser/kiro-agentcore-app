@@ -76,6 +76,34 @@ Resources:
       DisplayName: Preparation Workflow Error Notifications
 
   # =========================================================================
+  # S3 Vector Store Bucket
+  # =========================================================================
+
+  VectorStoreBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AppName}-${EnvName}-vectors-${AWS::AccountId}-${AWS::Region}'
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionRule:
+              ServerSideEncryptionByDefault:
+                SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToIA
+            Status: Enabled
+            Transitions:
+              - StorageClass: STANDARD_IA
+                TransitionInDays: 90
+
+  # =========================================================================
   # SSM Parameters
   # =========================================================================
 
@@ -124,8 +152,8 @@ Resources:
     Properties:
       Name: !Sub '/prescoach/${EnvName}/preparation-workflow/vector-store-endpoint'
       Type: String
-      Value: 's3://prescoach-vectors'
-      Description: Vector store connection endpoint
+      Value: !Ref VectorStoreBucket
+      Description: Vector store S3 bucket name
 
   SSMVectorStoreType:
     Type: AWS::SSM::Parameter
@@ -283,7 +311,7 @@ Resources:
                 Action:
                   - s3:PutObject
                   - s3:GetObject
-                Resource: !Sub 'arn:aws:s3:::${AppName}-${EnvName}-*/*'
+                Resource: !Sub '${VectorStoreBucket.Arn}/*'
 
   PublishHandoffRole:
     Type: AWS::IAM::Role
@@ -863,3 +891,6 @@ Outputs:
   DLQHandoffUrl:
     Value: !Ref DLQHandoff
     Description: Handoff Dead Letter Queue URL (FIFO)
+  VectorStoreBucketName:
+    Value: !Ref VectorStoreBucket
+    Description: S3 bucket for vector embeddings storage
