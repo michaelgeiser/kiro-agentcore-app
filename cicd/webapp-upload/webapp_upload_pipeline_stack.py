@@ -1,8 +1,8 @@
-"""CDK Stack defining three CodePipeline pipelines for CI/CD.
+"""CDK Stack defining CI/CD pipelines for the Webapp and Upload Service.
 
-Pipeline 1 - Frontend: Syncs webapp/ to S3 and invalidates CloudFront
-Pipeline 2 - Backend: Installs deps, runs CDK deploy for upload-service
-Pipeline 3 - Full: Runs Frontend then Backend in sequence
+Pipeline 1 - Webapp: Syncs webapp/ to S3 and invalidates CloudFront
+Pipeline 2 - Upload Service: Installs deps, runs CDK deploy for upload-service
+Pipeline 3 - Full: Runs Upload Service first, then Webapp in sequence
 """
 
 from aws_cdk import (
@@ -19,7 +19,9 @@ from aws_cdk import (
 from constructs import Construct
 
 
-class PipelineStack(Stack):
+class WebappUploadPipelineStack(Stack):
+    """CI/CD pipelines for the Webapp (frontend SPA) and Upload Service (backend)."""
+
     def __init__(
         self,
         scope: Construct,
@@ -79,12 +81,12 @@ class PipelineStack(Stack):
         )
 
         # =====================================================================
-        # PIPELINE 1: Frontend (webapp)
+        # PIPELINE 1: Webapp (frontend SPA)
         # =====================================================================
-        frontend_build = codebuild.PipelineProject(
+        webapp_build = codebuild.PipelineProject(
             self,
-            "FrontendBuild",
-            project_name=f"{resource_prefix}-frontend-build",
+            "WebappBuild",
+            project_name=f"{resource_prefix}-webapp-build",
             environment=codebuild.BuildEnvironment(
                 build_image=codebuild.LinuxBuildImage.STANDARD_7_0,
                 compute_type=codebuild.ComputeType.SMALL,
@@ -118,7 +120,7 @@ class PipelineStack(Stack):
                     },
                     "build": {
                         "commands": [
-                            "echo 'Deploying frontend to S3...'",
+                            "echo 'Deploying webapp to S3...'",
                             "cd webapp",
                             "aws s3 sync . s3://$S3_BUCKET/ "
                             "--exclude 'node_modules/*' "
@@ -133,13 +135,13 @@ class PipelineStack(Stack):
                 },
             }),
         )
-        frontend_build.add_to_role_policy(deploy_policy)
+        webapp_build.add_to_role_policy(deploy_policy)
 
-        frontend_source_output = codepipeline.Artifact("FrontendSource")
-        frontend_pipeline = codepipeline.Pipeline(
+        webapp_source_output = codepipeline.Artifact("WebappSource")
+        webapp_pipeline = codepipeline.Pipeline(
             self,
-            "FrontendPipeline",
-            pipeline_name=f"{resource_prefix}-frontend",
+            "WebappPipeline",
+            pipeline_name=f"{resource_prefix}-webapp",
             stages=[
                 codepipeline.StageProps(
                     stage_name="Source",
@@ -150,8 +152,8 @@ class PipelineStack(Stack):
                             repo=github_repo.split("/")[1],
                             branch=github_branch,
                             oauth_token=github_token,
-                            output=frontend_source_output,
-                            trigger=actions.GitHubTrigger.NONE,  # Manual or invoked by orchestrator
+                            output=webapp_source_output,
+                            trigger=actions.GitHubTrigger.NONE,
                         ),
                     ],
                 ),
@@ -159,9 +161,9 @@ class PipelineStack(Stack):
                     stage_name="Deploy",
                     actions=[
                         actions.CodeBuildAction(
-                            action_name="DeployFrontend",
-                            project=frontend_build,
-                            input=frontend_source_output,
+                            action_name="DeployWebapp",
+                            project=webapp_build,
+                            input=webapp_source_output,
                         ),
                     ],
                 ),
@@ -169,12 +171,12 @@ class PipelineStack(Stack):
         )
 
         # =====================================================================
-        # PIPELINE 2: Backend (upload-service)
+        # PIPELINE 2: Upload Service (backend)
         # =====================================================================
-        backend_build = codebuild.PipelineProject(
+        upload_service_build = codebuild.PipelineProject(
             self,
-            "BackendBuild",
-            project_name=f"{resource_prefix}-backend-build",
+            "UploadServiceBuild",
+            project_name=f"{resource_prefix}-upload-service-build",
             environment=codebuild.BuildEnvironment(
                 build_image=codebuild.LinuxBuildImage.STANDARD_7_0,
                 compute_type=codebuild.ComputeType.MEDIUM,
@@ -202,7 +204,7 @@ class PipelineStack(Stack):
                     },
                     "build": {
                         "commands": [
-                            "echo 'Deploying backend via CDK...'",
+                            "echo 'Deploying upload-service via CDK...'",
                             "cdk deploy "
                             "-c appName=$APP_NAME "
                             "-c envName=$ENV_NAME "
@@ -213,13 +215,13 @@ class PipelineStack(Stack):
                 },
             }),
         )
-        backend_build.add_to_role_policy(deploy_policy)
+        upload_service_build.add_to_role_policy(deploy_policy)
 
-        backend_source_output = codepipeline.Artifact("BackendSource")
-        backend_pipeline = codepipeline.Pipeline(
+        upload_service_source_output = codepipeline.Artifact("UploadServiceSource")
+        upload_service_pipeline = codepipeline.Pipeline(
             self,
-            "BackendPipeline",
-            pipeline_name=f"{resource_prefix}-backend",
+            "UploadServicePipeline",
+            pipeline_name=f"{resource_prefix}-upload-service",
             stages=[
                 codepipeline.StageProps(
                     stage_name="Source",
@@ -230,7 +232,7 @@ class PipelineStack(Stack):
                             repo=github_repo.split("/")[1],
                             branch=github_branch,
                             oauth_token=github_token,
-                            output=backend_source_output,
+                            output=upload_service_source_output,
                             trigger=actions.GitHubTrigger.NONE,
                         ),
                     ],
@@ -239,9 +241,9 @@ class PipelineStack(Stack):
                     stage_name="Deploy",
                     actions=[
                         actions.CodeBuildAction(
-                            action_name="DeployBackend",
-                            project=backend_build,
-                            input=backend_source_output,
+                            action_name="DeployUploadService",
+                            project=upload_service_build,
+                            input=upload_service_source_output,
                         ),
                     ],
                 ),
@@ -249,13 +251,13 @@ class PipelineStack(Stack):
         )
 
         # =====================================================================
-        # PIPELINE 3: Full Deploy (Backend first, then Frontend)
+        # PIPELINE 3: Full Deploy (Upload Service first, then Webapp)
         # =====================================================================
         full_source_output = codepipeline.Artifact("FullSource")
         full_pipeline = codepipeline.Pipeline(
             self,
             "FullPipeline",
-            pipeline_name=f"{resource_prefix}-full-deploy",
+            pipeline_name=f"{resource_prefix}-webapp-upload-full-deploy",
             stages=[
                 codepipeline.StageProps(
                     stage_name="Source",
@@ -267,26 +269,26 @@ class PipelineStack(Stack):
                             branch=github_branch,
                             oauth_token=github_token,
                             output=full_source_output,
-                            trigger=actions.GitHubTrigger.NONE,  # Manual trigger only
+                            trigger=actions.GitHubTrigger.NONE,
                         ),
                     ],
                 ),
                 codepipeline.StageProps(
-                    stage_name="DeployBackend",
+                    stage_name="DeployUploadService",
                     actions=[
                         actions.CodeBuildAction(
-                            action_name="Backend",
-                            project=backend_build,
+                            action_name="UploadService",
+                            project=upload_service_build,
                             input=full_source_output,
                         ),
                     ],
                 ),
                 codepipeline.StageProps(
-                    stage_name="DeployFrontend",
+                    stage_name="DeployWebapp",
                     actions=[
                         actions.CodeBuildAction(
-                            action_name="Frontend",
-                            project=frontend_build,
+                            action_name="Webapp",
+                            project=webapp_build,
                             input=full_source_output,
                         ),
                     ],
@@ -295,6 +297,6 @@ class PipelineStack(Stack):
         )
 
         # --- Outputs ---
-        CfnOutput(self, "FrontendPipelineName", value=frontend_pipeline.pipeline_name)
-        CfnOutput(self, "BackendPipelineName", value=backend_pipeline.pipeline_name)
-        CfnOutput(self, "FullPipelineName", value=full_pipeline.pipeline_name)
+        CfnOutput(self, "WebappPipelineName", value=webapp_pipeline.pipeline_name)
+        CfnOutput(self, "UploadServicePipelineName", value=upload_service_pipeline.pipeline_name)
+        CfnOutput(self, "FullDeployPipelineName", value=full_pipeline.pipeline_name)

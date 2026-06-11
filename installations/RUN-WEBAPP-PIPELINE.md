@@ -1,8 +1,8 @@
-# Run Frontend Pipeline
+# Run Webapp Pipeline
 
 Deploys **only the webapp** (static files) to S3 and invalidates CloudFront.
 
-Use this when you've made changes to `webapp/` files (HTML, CSS, JS) and don't need to redeploy the backend.
+Use this when you've made changes to `webapp/` files (HTML, CSS, JS) and don't need to redeploy the upload-service.
 
 ---
 
@@ -22,7 +22,7 @@ Use this when you've made changes to `webapp/` files (HTML, CSS, JS) and don't n
    https://us-east-1.console.aws.amazon.com/codesuite/codepipeline/pipelines?region=us-east-1
    ```
 
-2. Click on **`prescoach-dev-kiro-frontend`**
+2. Click on **`prescoach-dev-kiro-webapp`**
 
 3. Click the **"Release change"** button (top right, orange)
 
@@ -40,7 +40,7 @@ Use this when you've made changes to `webapp/` files (HTML, CSS, JS) and don't n
 
 ```bash
 aws codepipeline start-pipeline-execution \
-  --name prescoach-dev-kiro-frontend \
+  --name prescoach-dev-kiro-webapp \
   --region us-east-1
 ```
 
@@ -49,7 +49,7 @@ aws codepipeline start-pipeline-execution \
 ```bash
 # Get current pipeline state
 aws codepipeline get-pipeline-state \
-  --name prescoach-dev-kiro-frontend \
+  --name prescoach-dev-kiro-webapp \
   --region us-east-1 \
   --query 'stageStates[*].{Stage:stageName,Status:latestExecution.status}' \
   --output table
@@ -60,7 +60,7 @@ aws codepipeline get-pipeline-state \
 ```bash
 # Find the latest build ID
 BUILD_ID=$(aws codebuild list-builds-for-project \
-  --project-name prescoach-dev-kiro-frontend-build \
+  --project-name prescoach-dev-kiro-webapp-build \
   --query 'ids[0]' --output text)
 
 # Tail the logs
@@ -77,32 +77,32 @@ Open the URL it prints to see full CloudWatch logs.
 ### Trigger the pipeline
 
 ```cmd
-aws codepipeline start-pipeline-execution --name prescoach-dev-kiro-frontend --region us-east-1
+aws codepipeline start-pipeline-execution --name prescoach-dev-kiro-webapp --region us-east-1
 ```
 
 ### Check status
 
 ```cmd
-aws codepipeline get-pipeline-state --name prescoach-dev-kiro-frontend --region us-east-1 --query "stageStates[*].{Stage:stageName,Status:latestExecution.status}" --output table
+aws codepipeline get-pipeline-state --name prescoach-dev-kiro-webapp --region us-east-1 --query "stageStates[*].{Stage:stageName,Status:latestExecution.status}" --output table
 ```
 
 ### Get build logs URL
 
 ```cmd
-for /f "tokens=*" %i in ('aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-frontend-build --query "ids[0]" --output text') do set BUILD_ID=%i
+for /f "tokens=*" %i in ('aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-webapp-build --query "ids[0]" --output text') do set BUILD_ID=%i
 aws codebuild batch-get-builds --ids %BUILD_ID% --query "builds[0].logs.deepLink" --output text
 ```
 
 **PowerShell version:**
 
 ```powershell
-aws codepipeline start-pipeline-execution --name prescoach-dev-kiro-frontend --region us-east-1
+aws codepipeline start-pipeline-execution --name prescoach-dev-kiro-webapp --region us-east-1
 
 # Check status
-aws codepipeline get-pipeline-state --name prescoach-dev-kiro-frontend --region us-east-1 --query "stageStates[*].{Stage:stageName,Status:latestExecution.status}" --output table
+aws codepipeline get-pipeline-state --name prescoach-dev-kiro-webapp --region us-east-1 --query "stageStates[*].{Stage:stageName,Status:latestExecution.status}" --output table
 
 # Get build logs URL
-$BuildId = aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-frontend-build --query "ids[0]" --output text
+$BuildId = aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-webapp-build --query "ids[0]" --output text
 aws codebuild batch-get-builds --ids $BuildId --query "builds[0].logs.deepLink" --output text
 ```
 
@@ -136,4 +136,4 @@ The CodeBuild role needs `s3:PutObject` and `s3:DeleteObject` on the target buck
 Check that `CLOUDFRONT_DIST_ID` environment variable is set correctly in the CodeBuild project. Verify in CodeBuild → Environment variables.
 
 ### Config generation fails ("Stack not found")
-The backend must be deployed first so the CloudFormation stack outputs exist. Run the backend pipeline first, or use the full-deploy pipeline.
+the upload-service must be deployed first so the CloudFormation stack outputs exist. Run the upload-service pipeline first, or use the webapp-upload-full-deploy pipeline.

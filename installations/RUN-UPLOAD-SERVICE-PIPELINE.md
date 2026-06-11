@@ -1,8 +1,8 @@
-# Run Backend Pipeline
+# Run Upload Service Pipeline
 
 Deploys **only the upload-service** backend (Lambda functions, API Gateway, DynamoDB, Cognito, etc.) via CDK.
 
-Use this when you've made changes to `upload-service/` files (handlers, services, models, CDK infrastructure) and don't need to redeploy the frontend.
+Use this when you've made changes to `upload-service/` files (handlers, services, models, CDK infrastructure) and don't need to redeploy the webapp.
 
 ---
 
@@ -24,7 +24,7 @@ Use this when you've made changes to `upload-service/` files (handlers, services
    https://us-east-1.console.aws.amazon.com/codesuite/codepipeline/pipelines?region=us-east-1
    ```
 
-2. Click on **`prescoach-dev-kiro-backend`**
+2. Click on **`prescoach-dev-kiro-upload-service`**
 
 3. Click the **"Release change"** button (top right, orange)
 
@@ -42,7 +42,7 @@ Use this when you've made changes to `upload-service/` files (handlers, services
 
 ```bash
 aws codepipeline start-pipeline-execution \
-  --name prescoach-dev-kiro-backend \
+  --name prescoach-dev-kiro-upload-service \
   --region us-east-1
 ```
 
@@ -50,7 +50,7 @@ aws codepipeline start-pipeline-execution \
 
 ```bash
 aws codepipeline get-pipeline-state \
-  --name prescoach-dev-kiro-backend \
+  --name prescoach-dev-kiro-upload-service \
   --region us-east-1 \
   --query 'stageStates[*].{Stage:stageName,Status:latestExecution.status}' \
   --output table
@@ -60,7 +60,7 @@ aws codepipeline get-pipeline-state \
 
 ```bash
 BUILD_ID=$(aws codebuild list-builds-for-project \
-  --project-name prescoach-dev-kiro-backend-build \
+  --project-name prescoach-dev-kiro-upload-service-build \
   --query 'ids[0]' --output text)
 
 aws codebuild batch-get-builds --ids $BUILD_ID \
@@ -76,32 +76,32 @@ Open the URL to see full CloudWatch logs.
 ### Trigger the pipeline
 
 ```cmd
-aws codepipeline start-pipeline-execution --name prescoach-dev-kiro-backend --region us-east-1
+aws codepipeline start-pipeline-execution --name prescoach-dev-kiro-upload-service --region us-east-1
 ```
 
 ### Check status
 
 ```cmd
-aws codepipeline get-pipeline-state --name prescoach-dev-kiro-backend --region us-east-1 --query "stageStates[*].{Stage:stageName,Status:latestExecution.status}" --output table
+aws codepipeline get-pipeline-state --name prescoach-dev-kiro-upload-service --region us-east-1 --query "stageStates[*].{Stage:stageName,Status:latestExecution.status}" --output table
 ```
 
 ### Get build logs URL
 
 ```cmd
-for /f "tokens=*" %i in ('aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-backend-build --query "ids[0]" --output text') do set BUILD_ID=%i
+for /f "tokens=*" %i in ('aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-upload-service-build --query "ids[0]" --output text') do set BUILD_ID=%i
 aws codebuild batch-get-builds --ids %BUILD_ID% --query "builds[0].logs.deepLink" --output text
 ```
 
 **PowerShell version:**
 
 ```powershell
-aws codepipeline start-pipeline-execution --name prescoach-dev-kiro-backend --region us-east-1
+aws codepipeline start-pipeline-execution --name prescoach-dev-kiro-upload-service --region us-east-1
 
 # Check status
-aws codepipeline get-pipeline-state --name prescoach-dev-kiro-backend --region us-east-1 --query "stageStates[*].{Stage:stageName,Status:latestExecution.status}" --output table
+aws codepipeline get-pipeline-state --name prescoach-dev-kiro-upload-service --region us-east-1 --query "stageStates[*].{Stage:stageName,Status:latestExecution.status}" --output table
 
 # Get build logs URL
-$BuildId = aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-backend-build --query "ids[0]" --output text
+$BuildId = aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-upload-service-build --query "ids[0]" --output text
 aws codebuild batch-get-builds --ids $BuildId --query "builds[0].logs.deepLink" --output text
 ```
 

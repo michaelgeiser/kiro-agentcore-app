@@ -1,14 +1,33 @@
 # CI/CD Pipelines
 
-Three AWS CodePipeline pipelines for deploying the Presentation Coaching Platform.
+AWS CodePipeline definitions for deploying the Presentation Coaching Platform components.
 
-## Pipelines
+## Directory Structure
+
+```
+cicd/
+├── README.md                          # This file
+├── webapp-upload/                     # Pipelines for Webapp (frontend) + Upload Service (backend)
+│   ├── app.py
+│   ├── cdk.json
+│   ├── requirements.txt
+│   └── webapp_upload_pipeline_stack.py
+└── preparation-workflow/              # Pipelines for Preparation Workflow (Step Functions, Lambdas)
+    ├── app.py
+    ├── cdk.json
+    ├── requirements.txt
+    └── preparation_workflow_pipeline_stack.py
+```
+
+## Webapp & Upload Service Pipelines
+
+Located in `cicd/webapp-upload/`. Defines three CodePipeline pipelines:
 
 | Pipeline | Name Pattern | Trigger | What It Does |
 |----------|-------------|---------|--------------|
-| **Frontend** | `{prefix}-frontend` | Manual / CLI | Generates config.js from CDK outputs, syncs webapp/ to S3, invalidates CloudFront |
-| **Backend** | `{prefix}-backend` | Manual / CLI | Installs Lambda deps, runs `cdk deploy` for upload-service |
-| **Full Deploy** | `{prefix}-full-deploy` | Push to `main` | Runs Backend first, then Frontend (in sequence) |
+| **Webapp** | `{prefix}-webapp` | Manual / CLI | Generates config.js from CDK outputs, syncs webapp/ to S3, invalidates CloudFront |
+| **Upload Service** | `{prefix}-upload-service` | Manual / CLI | Installs Lambda deps, runs `cdk deploy` for upload-service |
+| **Full Deploy** | `{prefix}-webapp-upload-full-deploy` | Manual / CLI | Runs Upload Service first, then Webapp (in sequence) |
 
 ## Prerequisites
 
@@ -35,10 +54,10 @@ export ENV_NAME="dev"
 export INSTANCE_ID="kiro"
 ```
 
-## Deploy the CI/CD Stack
+## Deploy the Webapp & Upload Service CI/CD Stack
 
 ```bash
-cd cicd/cdk
+cd cicd/webapp-upload
 
 # Create virtual environment
 python3 -m venv .venv
@@ -67,36 +86,34 @@ cdk deploy \
 
 ## Running Pipelines Manually
 
-### Deploy only Frontend
+### Deploy only Webapp
 ```bash
 aws codepipeline start-pipeline-execution \
-  --name prescoach-dev-kiro-frontend \
+  --name prescoach-dev-kiro-webapp \
   --region us-east-1
 ```
 
-### Deploy only Backend
+### Deploy only Upload Service
 ```bash
 aws codepipeline start-pipeline-execution \
-  --name prescoach-dev-kiro-backend \
+  --name prescoach-dev-kiro-upload-service \
   --region us-east-1
 ```
 
 ### Deploy both (Full)
 ```bash
 aws codepipeline start-pipeline-execution \
-  --name prescoach-dev-kiro-full-deploy \
+  --name prescoach-dev-kiro-webapp-upload-full-deploy \
   --region us-east-1
 ```
-
-Or just push to `main` — the full-deploy pipeline triggers automatically.
 
 ## Pipeline Execution Order (Full Deploy)
 
 ```
-Source (GitHub main) → Deploy Backend (CDK) → Deploy Frontend (S3 + CloudFront)
+Source (GitHub) → Deploy Upload Service (CDK) → Deploy Webapp (S3 + CloudFront)
 ```
 
-Backend deploys first so that any new API changes or Lambda updates are live before the frontend references them.
+Upload Service deploys first so that any new API changes or Lambda updates are live before the webapp references them.
 
 ## Configuration Parameters
 
@@ -115,3 +132,51 @@ All parameters are passed as CDK context (`-c`) flags during the CI/CD stack dep
 ## Updating Parameters
 
 To change any parameter (e.g., switch from `dev` to `prod`), re-run `cdk deploy` with the new `-c` values. The pipelines will update in place.
+
+---
+
+## Preparation Workflow Pipelines
+
+Located in `cicd/preparation-workflow/`. Defines three CodePipeline pipelines:
+
+| Pipeline | Name Pattern | Trigger | What It Does |
+|----------|-------------|---------|--------------|
+| **Test** | `{prefix}-prep-workflow-test` | Manual / CLI | Runs property, unit, and integration tests |
+| **Deploy** | `{prefix}-prep-workflow-deploy` | Manual / CLI | Runs `cdk deploy` for preparation-workflow (Step Functions, Lambda, SQS, etc.) |
+| **Full Deploy** | `{prefix}-prep-workflow-full-deploy` | Manual / CLI | Runs Tests first, then Deploy (recommended) |
+
+### Deploy the Preparation Workflow CI/CD Stack
+
+```bash
+cd cicd/preparation-workflow
+
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+cdk deploy \
+  -c appName=$APP_NAME \
+  -c envName=$ENV_NAME \
+  -c instanceId=$INSTANCE_ID \
+  -c githubRepo="michaelgeiser/kiro-agentcore-app" \
+  -c githubBranch="main"
+```
+
+### Running Preparation Workflow Pipelines
+
+```bash
+# Full deploy (test then deploy — recommended)
+aws codepipeline start-pipeline-execution \
+  --name prescoach-dev-kiro-prep-workflow-full-deploy \
+  --region us-east-1
+
+# Test only
+aws codepipeline start-pipeline-execution \
+  --name prescoach-dev-kiro-prep-workflow-test \
+  --region us-east-1
+
+# Deploy only (skip tests)
+aws codepipeline start-pipeline-execution \
+  --name prescoach-dev-kiro-prep-workflow-deploy \
+  --region us-east-1
+```

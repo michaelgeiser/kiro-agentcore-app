@@ -1,6 +1,6 @@
 # Run Full Deploy Pipeline
 
-Deploys **both backend and frontend** in the correct order: Backend first, then Frontend.
+Deploys **both upload-service and webapp** in the correct order: Upload Service first, then Frontend.
 
 This is the **recommended way to deploy** when you have changes to both `upload-service/` and `webapp/`, or when you want a complete, consistent deployment.
 
@@ -9,10 +9,10 @@ This is the **recommended way to deploy** when you have changes to both `upload-
 ## What It Does
 
 1. Pulls latest code from `main` branch on GitHub
-2. **Stage 2 — Deploy Backend**: Installs deps, runs `cdk deploy` (Lambda, API Gateway, DynamoDB, etc.)
-3. **Stage 3 — Deploy Frontend**: Generates config.js from CDK outputs, syncs to S3, invalidates CloudFront
+2. **Stage 2 — Deploy Upload Service**: Installs deps, runs `cdk deploy` (Lambda, API Gateway, DynamoDB, etc.)
+3. **Stage 3 — Deploy Webapp**: Generates config.js from CDK outputs, syncs to S3, invalidates CloudFront
 
-Backend deploys first so that any new API endpoints or Lambda changes are live before the frontend starts referencing them.
+Upload Service deploys first so that any new API endpoints or Lambda changes are live before the frontend starts referencing them.
 
 ---
 
@@ -37,7 +37,7 @@ The pipeline will start within 30 seconds of your push.
    https://us-east-1.console.aws.amazon.com/codesuite/codepipeline/pipelines?region=us-east-1
    ```
 
-2. Click on **`prescoach-dev-kiro-full-deploy`**
+2. Click on **`prescoach-dev-kiro-webapp-upload-full-deploy`**
 
 3. Click the **"Release change"** button (top right, orange)
 
@@ -45,10 +45,10 @@ The pipeline will start within 30 seconds of your push.
 
 5. Watch the stages turn green in order:
    - **Source** — Pulls from GitHub (30-60 seconds)
-   - **DeployBackend** — CDK deploy (3-5 minutes)
-   - **DeployFrontend** — S3 sync + CloudFront invalidation (1-2 minutes)
+   - **DeployUploadService** — CDK deploy (3-5 minutes)
+   - **DeployWebapp** — S3 sync + CloudFront invalidation (1-2 minutes)
 
-6. Done. Both backend and frontend are updated.
+6. Done. Both upload-service and webapp are updated.
 
 ---
 
@@ -56,7 +56,7 @@ The pipeline will start within 30 seconds of your push.
 
 ```bash
 aws codepipeline start-pipeline-execution \
-  --name prescoach-dev-kiro-full-deploy \
+  --name prescoach-dev-kiro-webapp-upload-full-deploy \
   --region us-east-1
 ```
 
@@ -64,7 +64,7 @@ aws codepipeline start-pipeline-execution \
 
 ```bash
 aws codepipeline get-pipeline-state \
-  --name prescoach-dev-kiro-full-deploy \
+  --name prescoach-dev-kiro-webapp-upload-full-deploy \
   --region us-east-1 \
   --query 'stageStates[*].{Stage:stageName,Status:latestExecution.status}' \
   --output table
@@ -79,8 +79,8 @@ Expected output during execution:
 |      Stage      |        Status         |
 +-----------------+-----------------------+
 |  Source         |  Succeeded            |
-|  DeployBackend  |  InProgress           |
-|  DeployFrontend |  (not yet started)    |
+|  DeployUploadService  |  InProgress           |
+|  DeployWebapp |  (not yet started)    |
 +-----------------+-----------------------+
 ```
 
@@ -89,7 +89,7 @@ Expected output during execution:
 ```bash
 # Backend build logs
 BUILD_ID=$(aws codebuild list-builds-for-project \
-  --project-name prescoach-dev-kiro-backend-build \
+  --project-name prescoach-dev-kiro-upload-service-build \
   --query 'ids[0]' --output text)
 echo "Backend logs:"
 aws codebuild batch-get-builds --ids $BUILD_ID \
@@ -97,7 +97,7 @@ aws codebuild batch-get-builds --ids $BUILD_ID \
 
 # Frontend build logs
 BUILD_ID=$(aws codebuild list-builds-for-project \
-  --project-name prescoach-dev-kiro-frontend-build \
+  --project-name prescoach-dev-kiro-webapp-build \
   --query 'ids[0]' --output text)
 echo "Frontend logs:"
 aws codebuild batch-get-builds --ids $BUILD_ID \
@@ -111,23 +111,23 @@ aws codebuild batch-get-builds --ids $BUILD_ID \
 ### Trigger the pipeline
 
 ```cmd
-aws codepipeline start-pipeline-execution --name prescoach-dev-kiro-full-deploy --region us-east-1
+aws codepipeline start-pipeline-execution --name prescoach-dev-kiro-webapp-upload-full-deploy --region us-east-1
 ```
 
 ### Check status
 
 ```cmd
-aws codepipeline get-pipeline-state --name prescoach-dev-kiro-full-deploy --region us-east-1 --query "stageStates[*].{Stage:stageName,Status:latestExecution.status}" --output table
+aws codepipeline get-pipeline-state --name prescoach-dev-kiro-webapp-upload-full-deploy --region us-east-1 --query "stageStates[*].{Stage:stageName,Status:latestExecution.status}" --output table
 ```
 
 ### Get build logs URLs
 
 ```cmd
-for /f "tokens=*" %i in ('aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-backend-build --query "ids[0]" --output text') do set BUILD_ID=%i
+for /f "tokens=*" %i in ('aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-upload-service-build --query "ids[0]" --output text') do set BUILD_ID=%i
 echo Backend logs:
 aws codebuild batch-get-builds --ids %BUILD_ID% --query "builds[0].logs.deepLink" --output text
 
-for /f "tokens=*" %i in ('aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-frontend-build --query "ids[0]" --output text') do set BUILD_ID=%i
+for /f "tokens=*" %i in ('aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-webapp-build --query "ids[0]" --output text') do set BUILD_ID=%i
 echo Frontend logs:
 aws codebuild batch-get-builds --ids %BUILD_ID% --query "builds[0].logs.deepLink" --output text
 ```
@@ -135,18 +135,18 @@ aws codebuild batch-get-builds --ids %BUILD_ID% --query "builds[0].logs.deepLink
 **PowerShell version:**
 
 ```powershell
-aws codepipeline start-pipeline-execution --name prescoach-dev-kiro-full-deploy --region us-east-1
+aws codepipeline start-pipeline-execution --name prescoach-dev-kiro-webapp-upload-full-deploy --region us-east-1
 
 # Check status
-aws codepipeline get-pipeline-state --name prescoach-dev-kiro-full-deploy --region us-east-1 --query "stageStates[*].{Stage:stageName,Status:latestExecution.status}" --output table
+aws codepipeline get-pipeline-state --name prescoach-dev-kiro-webapp-upload-full-deploy --region us-east-1 --query "stageStates[*].{Stage:stageName,Status:latestExecution.status}" --output table
 
 # Backend build logs
-$BuildId = aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-backend-build --query "ids[0]" --output text
+$BuildId = aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-upload-service-build --query "ids[0]" --output text
 Write-Host "Backend logs:"
 aws codebuild batch-get-builds --ids $BuildId --query "builds[0].logs.deepLink" --output text
 
 # Frontend build logs
-$BuildId = aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-frontend-build --query "ids[0]" --output text
+$BuildId = aws codebuild list-builds-for-project --project-name prescoach-dev-kiro-webapp-build --query "ids[0]" --output text
 Write-Host "Frontend logs:"
 aws codebuild batch-get-builds --ids $BuildId --query "builds[0].logs.deepLink" --output text
 ```
@@ -160,8 +160,8 @@ aws codebuild batch-get-builds --ids $BuildId --query "builds[0].logs.deepLink" 
 | Stage | Time |
 |-------|------|
 | Source (GitHub pull) | ~30 seconds |
-| Deploy Backend (CDK) | ~3-5 minutes |
-| Deploy Frontend (S3 + CF) | ~1-2 minutes |
+| Deploy Upload Service (CDK) | ~3-5 minutes |
+| Deploy Webapp (S3 + CF) | ~1-2 minutes |
 | **Total** | **~5-8 minutes** |
 
 ---
@@ -171,10 +171,10 @@ aws codebuild batch-get-builds --ids $BuildId --query "builds[0].logs.deepLink" 
 The stages execute **sequentially**, not in parallel:
 
 ```
-Source → DeployBackend → DeployFrontend
+Source → DeployUploadService → DeployWebapp
 ```
 
-If the Backend stage fails, the Frontend stage **will not run**. This prevents deploying a frontend that references an API endpoint or feature that doesn't exist yet.
+If the Upload Service stage fails, the Webapp stage **will not run**. This prevents deploying a frontend that references an API endpoint or feature that doesn't exist yet.
 
 ---
 
@@ -182,8 +182,8 @@ If the Backend stage fails, the Frontend stage **will not run**. This prevents d
 
 | Scenario | Pipeline to Use |
 |----------|----------------|
-| Changed only `webapp/` CSS or JS | Frontend pipeline |
-| Changed only `upload-service/` handler logic | Backend pipeline |
+| Changed only `webapp/` CSS or JS | Webapp pipeline |
+| Changed only `upload-service/` handler logic | Upload Service pipeline |
 | Changed both frontend and backend | **Full Deploy** (or just push to main) |
 | First deployment / not sure | **Full Deploy** |
 | Want to force a complete redeploy | **Full Deploy** |
@@ -196,9 +196,9 @@ If the Backend stage fails, the Frontend stage **will not run**. This prevents d
 1. Check the GitHub webhook exists: **GitHub repo → Settings → Webhooks**
 2. Look for a webhook URL pointing to `amazonaws.com`
 3. Check "Recent Deliveries" on the webhook — if status is not 200, the webhook may need re-registration
-4. Fix: Redeploy the CI/CD stack (`cd cicd/cdk && cdk deploy ...`)
+4. Fix: Redeploy the CI/CD stack (`cd cicd/webapp-upload && cdk deploy ...`)
 
-### Backend succeeded but Frontend failed
+### Upload Service succeeded but Webapp failed
 Most common cause: `generate-frontend-config.sh` couldn't find the stack outputs. Check that the stack name (`STACK_NAME` env var) matches the deployed CloudFormation stack name.
 
 ### Both stages failed

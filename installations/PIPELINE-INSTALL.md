@@ -1,13 +1,13 @@
-# CI/CD Pipeline Installation — Step by Step
+# CI/CD Pipeline Installation — Webapp & Upload Service
 
 ## Overview
 
-This document walks you through deploying the CI/CD pipelines (CodePipeline + CodeBuild) from CloudShell. These pipelines automate future deployments so you never need to manually run CDK from CloudShell again.
+This document walks you through deploying the CI/CD pipelines (CodePipeline + CodeBuild) for the **Webapp and Upload Service** from CloudShell. These pipelines automate future deployments so you never need to manually run CDK from CloudShell again.
 
 **What gets created:**
-- `prescoach-dev-kiro-frontend` — deploys only the webapp
-- `prescoach-dev-kiro-backend` — deploys only the upload-service via CDK
-- `prescoach-dev-kiro-full-deploy` — deploys backend then frontend (auto-triggers on push to `main`)
+- `prescoach-dev-kiro-webapp` — deploys only the webapp (frontend SPA)
+- `prescoach-dev-kiro-upload-service` — deploys only the upload-service via CDK
+- `prescoach-dev-kiro-webapp-upload-full-deploy` — deploys upload-service then webapp
 
 ---
 
@@ -139,7 +139,7 @@ cdk --version
 ## Step 7: Set Up the CI/CD CDK Virtual Environment
 
 ```bash
-cd ~/prescoach/cicd/cdk
+cd ~/prescoach/cicd/webapp-upload
 
 # Create and activate virtual environment
 python3 -m venv .venv
@@ -192,9 +192,9 @@ Type `y` when prompted to approve IAM changes.
 
 ```
 Outputs:
-prescoach-dev-kiro-cicd.FrontendPipelineName = prescoach-dev-kiro-frontend
-prescoach-dev-kiro-cicd.BackendPipelineName = prescoach-dev-kiro-backend
-prescoach-dev-kiro-cicd.FullPipelineName = prescoach-dev-kiro-full-deploy
+prescoach-dev-kiro-webapp-upload-cicd.WebappPipelineName = prescoach-dev-kiro-webapp
+prescoach-dev-kiro-webapp-upload-cicd.UploadServicePipelineName = prescoach-dev-kiro-upload-service
+prescoach-dev-kiro-webapp-upload-cicd.FullDeployPipelineName = prescoach-dev-kiro-webapp-upload-full-deploy
 ```
 
 ---
@@ -211,13 +211,13 @@ aws codepipeline list-pipelines \
 Should show:
 
 ```
------------------------------------------
-|            ListPipelines              |
-+---------------------------------------+
-|  prescoach-dev-kiro-frontend          |
-|  prescoach-dev-kiro-backend           |
-|  prescoach-dev-kiro-full-deploy       |
-+---------------------------------------+
+-------------------------------------------------------
+|                   ListPipelines                      |
++-----------------------------------------------------+
+|  prescoach-dev-kiro-webapp                          |
+|  prescoach-dev-kiro-upload-service                  |
+|  prescoach-dev-kiro-webapp-upload-full-deploy       |
++-----------------------------------------------------+
 ```
 
 ---
@@ -226,19 +226,17 @@ Should show:
 
 ```bash
 aws codepipeline start-pipeline-execution \
-  --name prescoach-dev-kiro-full-deploy \
+  --name prescoach-dev-kiro-webapp-upload-full-deploy \
   --region us-east-1
 ```
-
-Or just push a commit to `main` — the webhook will trigger it automatically.
 
 ---
 
 ## Step 13: Verify in AWS Console
 
 1. Go to: https://us-east-1.console.aws.amazon.com/codesuite/codepipeline/pipelines?region=us-east-1
-2. Click `prescoach-dev-kiro-full-deploy`
-3. Watch Source → DeployBackend → DeployFrontend stages turn green
+2. Click `prescoach-dev-kiro-webapp-upload-full-deploy`
+3. Watch Source → DeployUploadService → DeployWebapp stages turn green
 
 ---
 

@@ -1,35 +1,35 @@
-# CI/CD Pipeline Setup & Architecture
+# CI/CD Pipeline Setup & Architecture — Webapp & Upload Service
 
 ## Overview
 
-The project uses **AWS CodePipeline + CodeBuild** for CI/CD. There are three pipelines:
+The project uses **AWS CodePipeline + CodeBuild** for CI/CD. The Webapp & Upload Service pipelines are defined in `cicd/webapp-upload/`:
 
 | Pipeline | Purpose | Auto-Trigger |
 |----------|---------|--------------|
-| **Frontend** (`prescoach-dev-kiro-frontend`) | Deploys webapp to S3 + invalidates CloudFront | No — manual only |
-| **Backend** (`prescoach-dev-kiro-backend`) | Runs CDK deploy for upload-service (Lambdas, API Gateway, etc.) | No — manual only |
-| **Full Deploy** (`prescoach-dev-kiro-full-deploy`) | Runs Backend first, then Frontend | **Yes — on push to `main`** |
+| **Webapp** (`prescoach-dev-kiro-webapp`) | Deploys webapp to S3 + invalidates CloudFront | No — manual only |
+| **Upload Service** (`prescoach-dev-kiro-upload-service`) | Runs CDK deploy for upload-service (Lambdas, API Gateway, etc.) | No — manual only |
+| **Full Deploy** (`prescoach-dev-kiro-webapp-upload-full-deploy`) | Runs Upload Service first, then Webapp | No — manual only |
 
 ## Architecture Diagram
 
 ```
 GitHub (main branch)
         │
-        ▼ (webhook)
-┌─────────────────────────────────────┐
-│  Full Deploy Pipeline               │
-│                                     │
-│  Stage 1: Source (GitHub checkout)  │
-│  Stage 2: Deploy Backend (CDK)     │
-│  Stage 3: Deploy Frontend (S3)     │
-└─────────────────────────────────────┘
+        ▼ (manual or CLI trigger)
+┌─────────────────────────────────────────────┐
+│  Webapp & Upload Service Full Deploy        │
+│                                             │
+│  Stage 1: Source (GitHub checkout)          │
+│  Stage 2: Deploy Upload Service (CDK)      │
+│  Stage 3: Deploy Webapp (S3 + CloudFront)  │
+└─────────────────────────────────────────────┘
 
-┌─────────────────────────┐    ┌─────────────────────────┐
-│  Frontend Pipeline      │    │  Backend Pipeline       │
-│  (manual trigger only)  │    │  (manual trigger only)  │
-│                         │    │                         │
-│  Source → Deploy to S3  │    │  Source → CDK deploy    │
-└─────────────────────────┘    └─────────────────────────┘
+┌─────────────────────────┐    ┌──────────────────────────────┐
+│  Webapp Pipeline        │    │  Upload Service Pipeline     │
+│  (manual trigger only)  │    │  (manual trigger only)       │
+│                         │    │                              │
+│  Source → Deploy to S3  │    │  Source → CDK deploy         │
+└─────────────────────────┘    └──────────────────────────────┘
 ```
 
 ## Where to Find Pipelines in the AWS Console
@@ -43,9 +43,9 @@ GitHub (main branch)
    https://us-east-1.console.aws.amazon.com/codesuite/codepipeline/pipelines?region=us-east-1
    ```
 4. You will see three pipelines:
-   - `prescoach-dev-kiro-frontend`
-   - `prescoach-dev-kiro-backend`
-   - `prescoach-dev-kiro-full-deploy`
+   - `prescoach-dev-kiro-webapp`
+   - `prescoach-dev-kiro-upload-service`
+   - `prescoach-dev-kiro-webapp-upload-full-deploy`
 
 ### Viewing Pipeline Status
 
@@ -59,8 +59,8 @@ Click any pipeline name to see:
 1. Navigate to **Services → Developer Tools → CodeBuild**
 2. Or: `https://us-east-1.console.aws.amazon.com/codesuite/codebuild/projects?region=us-east-1`
 3. Build projects:
-   - `prescoach-dev-kiro-frontend-build` — Handles S3 sync and CloudFront invalidation
-   - `prescoach-dev-kiro-backend-build` — Handles CDK deploy
+   - `prescoach-dev-kiro-webapp-build` — Handles S3 sync and CloudFront invalidation
+   - `prescoach-dev-kiro-upload-service-build` — Handles CDK deploy for upload-service
 
 Click a build project → **Build history** to see past runs and their logs.
 
@@ -89,7 +89,7 @@ These were set when the CI/CD stack was deployed and are stored as CodeBuild env
 If you need to change any parameters (e.g., point to a different CloudFront distribution, change environment name):
 
 ```bash
-cd cicd/cdk
+cd cicd/webapp-upload
 source .venv/bin/activate
 
 cdk deploy \
