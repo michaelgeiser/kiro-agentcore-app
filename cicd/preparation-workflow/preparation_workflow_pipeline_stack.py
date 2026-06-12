@@ -192,7 +192,7 @@ class PreparationWorkflowPipelineStack(Stack):
                     "build": {
                         "commands": [
                             "echo 'Deploying preparation-workflow infrastructure via CDK...'",
-                            "cd preparation-workflow/infra",
+                            "cd infra",
                             "cdk deploy "
                             "-c appName=$APP_NAME "
                             "-c envName=$ENV_NAME "
