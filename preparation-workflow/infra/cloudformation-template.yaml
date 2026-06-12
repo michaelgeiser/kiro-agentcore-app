@@ -633,7 +633,7 @@ Resources:
               },
               "ResultPath": "$.config",
               "ResultSelector": {"value.$": "$.Payload"},
-              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3}],
               "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
               "Next": "ParseMessage"
             },
@@ -646,7 +646,7 @@ Resources:
               },
               "ResultPath": "$.parsed_message",
               "ResultSelector": {"value.$": "$.Payload"},
-              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3}],
               "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
               "Next": "UpdateStatusProcessing"
             },
@@ -660,7 +660,7 @@ Resources:
                 "ExpressionAttributeValues": {":status": {"S": "Processing"}}
               },
               "ResultPath": "$.dynamodb_update_processing",
-              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 1, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 1, "BackoffRate": 2.0, "MaxAttempts": 3}],
               "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
               "Next": "ValidateFileFormat"
             },
@@ -676,7 +676,7 @@ Resources:
               },
               "ResultPath": "$.validation_result",
               "ResultSelector": {"value.$": "$.Payload"},
-              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3}],
               "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
               "Next": "CheckVideoFlag"
             },
@@ -704,7 +704,7 @@ Resources:
               },
               "ResultPath": "$.extraction_result",
               "ResultSelector": {"value.$": "$.Payload"},
-              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 30, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 30, "BackoffRate": 2.0, "MaxAttempts": 3}],
               "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
               "Next": "ChunkAudio"
             },
@@ -724,7 +724,7 @@ Resources:
               },
               "ResultPath": "$.chunks",
               "ResultSelector": {"value.$": "$.Payload"},
-              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3}],
               "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
               "Next": "CreateEmbeddings"
             },
@@ -749,7 +749,7 @@ Resources:
                       "Payload.$": "$"
                     },
                     "ResultSelector": {"value.$": "$.Payload"},
-                    "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 5, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+                    "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 5, "BackoffRate": 2.0, "MaxAttempts": 3}],
                     "End": true
                   }
                 }
@@ -772,7 +772,7 @@ Resources:
               },
               "ResultPath": "$.store_result",
               "ResultSelector": {"value.$": "$.Payload"},
-              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3}],
               "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
               "Next": "PublishHandoff"
             },
@@ -793,7 +793,7 @@ Resources:
               },
               "ResultPath": "$.handoff_result",
               "ResultSelector": {"value.$": "$.Payload"},
-              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 2, "BackoffRate": 2.0, "MaxAttempts": 3}],
               "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
               "Next": "UpdateStatusCompleted"
             },
@@ -807,7 +807,7 @@ Resources:
                 "ExpressionAttributeValues": {":status": {"S": "Completed"}}
               },
               "ResultPath": "$.dynamodb_update_completed",
-              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 1, "BackoffRate": 2.0, "MaxAttempts": 3, "JitterStrategy": "FULL"}],
+              "Retry": [{"ErrorEquals": ["States.TaskFailed","States.Timeout"], "IntervalSeconds": 1, "BackoffRate": 2.0, "MaxAttempts": 3}],
               "Catch": [{"ErrorEquals": ["States.ALL"], "Next": "HandleFailure", "ResultPath": "$.error_info"}],
               "End": true
             },
@@ -866,7 +866,6 @@ Resources:
       SourceParameters:
         SqsQueueParameters:
           BatchSize: 1
-          MaximumBatchingWindowInSeconds: 0
       Target: !GetAtt PreparationWorkflowStateMachine.Arn
       TargetParameters:
         StepFunctionStateMachineParameters:
