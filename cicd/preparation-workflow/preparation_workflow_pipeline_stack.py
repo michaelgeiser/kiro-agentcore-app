@@ -100,7 +100,7 @@ class PreparationWorkflowPipelineStack(Stack):
                         "runtime-versions": {"python": "3.12"},
                         "commands": [
                             "echo 'Installing preparation-workflow dependencies...'",
-                            "cd preparation-workflow",
+                            "cd $CODEBUILD_SRC_DIR/preparation-workflow",
                             "pip install -r requirements.txt --no-cache-dir",
                             "pip install -r requirements-dev.txt --no-cache-dir",
                         ],
@@ -108,7 +108,7 @@ class PreparationWorkflowPipelineStack(Stack):
                     "build": {
                         "commands": [
                             "echo 'Running preparation-workflow tests...'",
-                            "cd preparation-workflow",
+                            "cd $CODEBUILD_SRC_DIR/preparation-workflow",
                             "python -m pytest tests/ -v --tb=short "
                             "--ignore=tests/cdk/ "
                             "--junitxml=test-results/results.xml",
@@ -183,7 +183,7 @@ class PreparationWorkflowPipelineStack(Stack):
                             "echo 'Installing CDK CLI...'",
                             "npm install -g aws-cdk@latest",
                             "echo 'Installing Lambda dependencies...'",
-                            "cd preparation-workflow",
+                            "cd $CODEBUILD_SRC_DIR/preparation-workflow",
                             "pip install -r requirements.txt -t src/ --no-cache-dir",
                             "echo 'Installing CDK dependencies...'",
                             "pip install aws-cdk-lib>=2.100.0 constructs>=10.0.0 --no-cache-dir",
@@ -192,7 +192,7 @@ class PreparationWorkflowPipelineStack(Stack):
                     "build": {
                         "commands": [
                             "echo 'Deploying preparation-workflow infrastructure via CDK...'",
-                            "cd infra",
+                            "cd $CODEBUILD_SRC_DIR/preparation-workflow/infra",
                             "cdk deploy "
                             "-c appName=$APP_NAME "
                             "-c envName=$ENV_NAME "
