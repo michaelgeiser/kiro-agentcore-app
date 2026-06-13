@@ -1,0 +1,91 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+env/
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# pytest
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Hypothesis (property-based testing)
+.hypothesis/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# CDK
+cdk.out/
+cdk.context.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Environment / secrets
+.env
+.env.local
+.env.production
+.env.*.local
+
+# AWS
+.aws-sam/
+samconfig.toml
+
+# Lambda bundled dependencies (generated during deploy)
+upload-service/src/pydantic*/
+upload-service/src/annotated_types*/
+upload-service/src/typing_extensions*/
+upload-service/src/*.dist-info/
+upload-service/src/boto3*/
+upload-service/src/botocore*/
+upload-service/src/s3transfer*/
+upload-service/src/urllib3*/
+upload-service/src/jmespath*/
+upload-service/src/six*/
+upload-service/src/python_dateutil*/
+upload-service/src/dateutil*/
+preparation-workflow/src/pydantic*/
+preparation-workflow/src/annotated_types*/
+preparation-workflow/src/typing_extensions*/
+preparation-workflow/src/*.dist-info/
+preparation-workflow/src/boto3*/
+preparation-workflow/src/botocore*/
+preparation-workflow/src/s3transfer*/
+preparation-workflow/src/urllib3*/
+preparation-workflow/src/jmespath*/
+preparation-workflow/src/six*/
+preparation-workflow/src/python_dateutil*/
+preparation-workflow/src/dateutil*/
+
+# Temporary files
+*.tmp
+*.temp
+/tmp/
