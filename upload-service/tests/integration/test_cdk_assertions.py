@@ -276,17 +276,31 @@ class TestNamingConvention:
         )
 
     def test_sqs_queue_naming(self, template):
-        """Assert SQS queue follows naming convention."""
+        """Assert Upload Lambda references the preparation-input queue URL."""
         template.has_resource_properties(
-            "AWS::SQS::Queue",
-            {"QueueName": "prescoach-dev-test01-processing-queue"},
+            "AWS::Lambda::Function",
+            Match.object_like({
+                "FunctionName": "prescoach-dev-test01-upload",
+                "Environment": Match.object_like({
+                    "Variables": Match.object_like({
+                        "SQS_QUEUE_URL": Match.any_value(),
+                    }),
+                }),
+            }),
         )
 
     def test_sqs_dlq_naming(self, template):
-        """Assert SQS DLQ follows naming convention."""
+        """Assert confirm-upload Lambda references the preparation-input queue URL."""
         template.has_resource_properties(
-            "AWS::SQS::Queue",
-            {"QueueName": "prescoach-dev-test01-processing-dlq"},
+            "AWS::Lambda::Function",
+            Match.object_like({
+                "FunctionName": "prescoach-dev-test01-confirm-upload",
+                "Environment": Match.object_like({
+                    "Variables": Match.object_like({
+                        "SQS_QUEUE_URL": Match.any_value(),
+                    }),
+                }),
+            }),
         )
 
     def test_sns_topic_naming(self, template):

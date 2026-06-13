@@ -126,21 +126,17 @@ class UploadServiceStack(Stack):
         )
 
         # --- SQS Queues ---
-        processing_dlq = sqs.Queue(
-            self,
-            "ProcessingDLQ",
-            queue_name=f"{resource_prefix}-processing-dlq",
-        )
-
-        processing_queue = sqs.Queue(
+        # The processing queue (prescoach-{env}-preparation-input) is owned by the
+        # Preparation Workflow stack. We import it here by name so the Upload Service
+        # Lambda functions can publish messages to it.
+        processing_queue = sqs.Queue.from_queue_attributes(
             self,
             "ProcessingQueue",
-            queue_name=f"{resource_prefix}-processing-queue",
-            dead_letter_queue=sqs.DeadLetterQueue(
-                max_receive_count=3,
-                queue=processing_dlq,
-            ),
+            queue_arn=f"arn:aws:sqs:{self.region}:{self.account}:{app_name}-{env_name}-preparation-input",
+            queue_url=f"https://sqs.{self.region}.amazonaws.com/{self.account}/{app_name}-{env_name}-preparation-input",
         )
+
+        # DLQ is also owned by Preparation Workflow stack — no need to create here
 
         # --- SNS Topic ---
         errors_topic = sns.Topic(
