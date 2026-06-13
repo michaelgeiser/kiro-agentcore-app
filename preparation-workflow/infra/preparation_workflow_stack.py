@@ -134,7 +134,7 @@ class PreparationWorkflowStack(Stack):
         # --- load_config Lambda ---
         self.load_config_fn = self._create_lambda(
             "LoadConfig",
-            handler="src.handlers.load_config.handler",
+            handler="handlers.load_config.handler",
             description="Fetch SSM parameters for workflow configuration",
         )
         # SSM read permissions
@@ -151,21 +151,21 @@ class PreparationWorkflowStack(Stack):
         # --- parse_message Lambda ---
         self.parse_message_fn = self._create_lambda(
             "ParseMessage",
-            handler="src.handlers.parse_message.handler",
+            handler="handlers.parse_message.handler",
             description="Parse and validate SQS message body",
         )
 
         # --- validate_format Lambda ---
         self.validate_format_fn = self._create_lambda(
             "ValidateFormat",
-            handler="src.handlers.validate_format.handler",
+            handler="handlers.validate_format.handler",
             description="Validate file format against accepted types",
         )
 
         # --- extract_audio Lambda ---
         self.extract_audio_fn = self._create_lambda(
             "ExtractAudio",
-            handler="src.services.audio_extraction.handler",
+            handler="services.audio_extraction.handler",
             description="Submit MediaConvert job for audio extraction",
             timeout=Duration.minutes(5),
         )
@@ -202,7 +202,7 @@ class PreparationWorkflowStack(Stack):
         # --- chunk_audio Lambda ---
         self.chunk_audio_fn = self._create_lambda(
             "ChunkAudio",
-            handler="src.services.chunking.handler",
+            handler="services.chunking.handler",
             description="Divide audio into chunks and upload to S3",
             timeout=Duration.minutes(5),
             memory_size=512,
@@ -219,7 +219,7 @@ class PreparationWorkflowStack(Stack):
         # --- create_embedding Lambda ---
         self.create_embedding_fn = self._create_lambda(
             "CreateEmbedding",
-            handler="src.services.embedding.handler",
+            handler="services.embedding.handler",
             description="Invoke Bedrock for embedding creation",
             timeout=Duration.minutes(5),
             memory_size=512,
@@ -246,7 +246,7 @@ class PreparationWorkflowStack(Stack):
         # --- store_vectors Lambda ---
         self.store_vectors_fn = self._create_lambda(
             "StoreVectors",
-            handler="src.services.vector_store.handler",
+            handler="services.vector_store.handler",
             description="Write embeddings to vector store",
             timeout=Duration.minutes(2),
         )
@@ -262,7 +262,7 @@ class PreparationWorkflowStack(Stack):
         # --- publish_handoff Lambda ---
         self.publish_handoff_fn = self._create_lambda(
             "PublishHandoff",
-            handler="src.handlers.publish_handoff.handler",
+            handler="handlers.publish_handoff.handler",
             description="Publish handoff message to FIFO SQS queue",
         )
         # SQS send permission to handoff queue
@@ -271,7 +271,7 @@ class PreparationWorkflowStack(Stack):
         # --- handle_failure Lambda ---
         self.handle_failure_fn = self._create_lambda(
             "HandleFailure",
-            handler="src.handlers.handle_failure.handler",
+            handler="handlers.handle_failure.handler",
             description="Handle workflow failures: update DynamoDB, publish SNS, route to DLQ",
         )
         # DynamoDB update permissions

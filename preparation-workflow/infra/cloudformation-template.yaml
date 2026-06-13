@@ -377,7 +377,7 @@ Resources:
     Properties:
       FunctionName: !Sub '${AppName}-${EnvName}-prep-loadconfig'
       Runtime: python3.12
-      Handler: src.handlers.load_config.handler
+      Handler: handlers.load_config.handler
       Role: !GetAtt LambdaBaseRole.Arn
       Timeout: 60
       MemorySize: 256
@@ -396,7 +396,7 @@ Resources:
     Properties:
       FunctionName: !Sub '${AppName}-${EnvName}-prep-parsemessage'
       Runtime: python3.12
-      Handler: src.handlers.parse_message.handler
+      Handler: handlers.parse_message.handler
       Role: !GetAtt LambdaBaseRole.Arn
       Timeout: 60
       MemorySize: 256
@@ -414,7 +414,7 @@ Resources:
     Properties:
       FunctionName: !Sub '${AppName}-${EnvName}-prep-validateformat'
       Runtime: python3.12
-      Handler: src.handlers.validate_format.handler
+      Handler: handlers.validate_format.handler
       Role: !GetAtt LambdaBaseRole.Arn
       Timeout: 60
       MemorySize: 256
@@ -432,7 +432,7 @@ Resources:
     Properties:
       FunctionName: !Sub '${AppName}-${EnvName}-prep-extractaudio'
       Runtime: python3.12
-      Handler: src.services.audio_extraction.handler
+      Handler: services.audio_extraction.handler
       Role: !GetAtt ExtractAudioRole.Arn
       Timeout: 300
       MemorySize: 256
@@ -450,7 +450,7 @@ Resources:
     Properties:
       FunctionName: !Sub '${AppName}-${EnvName}-prep-chunkaudio'
       Runtime: python3.12
-      Handler: src.services.chunking.handler
+      Handler: services.chunking.handler
       Role: !GetAtt ChunkAudioRole.Arn
       Timeout: 300
       MemorySize: 512
@@ -468,7 +468,7 @@ Resources:
     Properties:
       FunctionName: !Sub '${AppName}-${EnvName}-prep-createembedding'
       Runtime: python3.12
-      Handler: src.services.embedding.handler
+      Handler: services.embedding.handler
       Role: !GetAtt CreateEmbeddingRole.Arn
       Timeout: 300
       MemorySize: 512
@@ -486,7 +486,7 @@ Resources:
     Properties:
       FunctionName: !Sub '${AppName}-${EnvName}-prep-storevectors'
       Runtime: python3.12
-      Handler: src.services.vector_store.handler
+      Handler: services.vector_store.handler
       Role: !GetAtt StoreVectorsRole.Arn
       Timeout: 120
       MemorySize: 256
@@ -504,7 +504,7 @@ Resources:
     Properties:
       FunctionName: !Sub '${AppName}-${EnvName}-prep-publishhandoff'
       Runtime: python3.12
-      Handler: src.handlers.publish_handoff.handler
+      Handler: handlers.publish_handoff.handler
       Role: !GetAtt PublishHandoffRole.Arn
       Timeout: 60
       MemorySize: 256
@@ -522,7 +522,7 @@ Resources:
     Properties:
       FunctionName: !Sub '${AppName}-${EnvName}-prep-handlefailure'
       Runtime: python3.12
-      Handler: src.handlers.handle_failure.handler
+      Handler: handlers.handle_failure.handler
       Role: !GetAtt HandleFailureRole.Arn
       Timeout: 60
       MemorySize: 256
