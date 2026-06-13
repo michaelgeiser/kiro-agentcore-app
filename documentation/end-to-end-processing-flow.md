@@ -115,7 +115,7 @@ An EventBridge Pipe (`prescoach-dev-prep-input-to-sfn`) monitors the Input Queue
 | `chunk-overlap-seconds` | `5` |
 | `max-retry-attempts` | `3` |
 | `video-processing-enabled` | `false` |
-| `vector-store-endpoint` | `prescoach-dev-vectors-514917275675-us-east-1` |
+| `vector-store-endpoint` | `<YOUR_VECTORS_BUCKET>` |
 | `vector-store-type` | `s3` |
 | `batch-size` | `10` |
 | `batch-processing-enabled` | `false` |
@@ -215,7 +215,7 @@ s3://prescoach-dev-kiro-uploads/processed/abc123/sub-98765/chunks/chunk_0002.mp3
 
 **S3 objects created:**
 ```
-Bucket: prescoach-dev-vectors-514917275675-us-east-1
+Bucket: <YOUR_VECTORS_BUCKET>
 Keys:
   {submission_id}/embeddings/chunk_0000.json
   {submission_id}/embeddings/chunk_0001.json
@@ -254,7 +254,7 @@ Keys:
   "submission_id": "sub-98765",
   "user_id": "abc123",
   "s3_file_key": "uploads/abc123/sub-98765/my-presentation.mp3",
-  "vector_store_location": "s3://prescoach-dev-vectors-514917275675-us-east-1/sub-98765/embeddings",
+  "vector_store_location": "s3://<YOUR_VECTORS_BUCKET>/sub-98765/embeddings",
   "chunk_count": 3,
   "presentation_title": "Q4 Review"
 }
@@ -287,7 +287,7 @@ Keys:
 |------|--------|-------------|---------|
 | User upload | `prescoach-dev-kiro-uploads` | `uploads/{user_id}/{submission_id}/{filename}` | Original audio file |
 | Chunking | `prescoach-dev-kiro-uploads` | `processed/{user_id}/{submission_id}/chunks/chunk_{NNNN}.mp3` | Audio chunk segments |
-| Vector storage | `prescoach-dev-vectors-514917275675-us-east-1` | `{submission_id}/embeddings/chunk_{NNNN}.json` | Embedding vector + metadata |
+| Vector storage | `<YOUR_VECTORS_BUCKET>` | `{submission_id}/embeddings/chunk_{NNNN}.json` | Embedding vector + metadata |
 
 ---
 
@@ -412,7 +412,7 @@ Expected: `Completed`
 ### Check 2: Step Functions execution
 ```bash
 aws stepfunctions list-executions \
-  --state-machine-arn arn:aws:states:us-east-1:514917275675:stateMachine:prescoach-dev-preparation-workflow \
+  --state-machine-arn arn:aws:states:us-east-1:<YOUR_ACCOUNT_ID>:stateMachine:prescoach-dev-preparation-workflow \
   --max-results 5 \
   --query 'executions[*].[name,status,startDate]' \
   --output table \
@@ -422,14 +422,14 @@ Expected: Status = `SUCCEEDED`
 
 ### Check 3: Vector embeddings stored
 ```bash
-aws s3 ls s3://prescoach-dev-vectors-514917275675-us-east-1/YOUR_SUBMISSION_ID/embeddings/
+aws s3 ls s3://<YOUR_VECTORS_BUCKET>/YOUR_SUBMISSION_ID/embeddings/
 ```
 Expected: List of `chunk_NNNN.json` files
 
 ### Check 4: Handoff message on queue
 ```bash
 aws sqs get-queue-attributes \
-  --queue-url https://sqs.us-east-1.amazonaws.com/514917275675/prescoach-dev-preparation-handoff.fifo \
+  --queue-url https://sqs.us-east-1.amazonaws.com/<YOUR_ACCOUNT_ID>/prescoach-dev-preparation-handoff.fifo \
   --attribute-names ApproximateNumberOfMessages \
   --region us-east-1
 ```

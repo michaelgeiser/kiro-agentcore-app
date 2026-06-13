@@ -71,8 +71,8 @@ cdk bootstrap aws://$CDK_DEFAULT_ACCOUNT/$CDK_DEFAULT_REGION \
   -c instanceId=$INSTANCE_ID \
   -c githubRepo="michaelgeiser/kiro-agentcore-app" \
   -c githubBranch="main" \
-  -c cloudfrontDistId="E2TQOVHAA67VP5" \
-  -c s3Bucket="kiro-aiapp-514917275675-us-east-1-an"
+  -c cloudfrontDistId="<YOUR_CLOUDFRONT_DIST_ID>" \
+  -c s3Bucket="<YOUR_WEBAPP_S3_BUCKET>"
 
 cdk deploy \
   -c appName=$APP_NAME \
@@ -80,8 +80,8 @@ cdk deploy \
   -c instanceId=$INSTANCE_ID \
   -c githubRepo="michaelgeiser/kiro-agentcore-app" \
   -c githubBranch="main" \
-  -c cloudfrontDistId="E2TQOVHAA67VP5" \
-  -c s3Bucket="kiro-aiapp-514917275675-us-east-1-an"
+  -c cloudfrontDistId="<YOUR_CLOUDFRONT_DIST_ID>" \
+  -c s3Bucket="<YOUR_WEBAPP_S3_BUCKET>"
 ```
 
 ## Running Pipelines Manually

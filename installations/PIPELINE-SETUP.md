@@ -81,8 +81,8 @@ These were set when the CI/CD stack was deployed and are stored as CodeBuild env
 | `ENV_NAME` | `dev` | CDK deploy (`-c envName=...`) |
 | `INSTANCE_ID` | `kiro` | CDK deploy (`-c instanceId=...`) |
 | `STACK_NAME` | `prescoach-dev-kiro` | Derived from above |
-| `S3_BUCKET` | `kiro-aiapp-514917275675-us-east-1-an` | CDK deploy (`-c s3Bucket=...`) |
-| `CLOUDFRONT_DIST_ID` | `E2TQOVHAA67VP5` | CDK deploy (`-c cloudfrontDistId=...`) |
+| `S3_BUCKET` | `<YOUR_WEBAPP_S3_BUCKET>` | CDK deploy (`-c s3Bucket=...`) |
+| `CLOUDFRONT_DIST_ID` | `<YOUR_CLOUDFRONT_DIST_ID>` | CDK deploy (`-c cloudfrontDistId=...`) |
 
 ## Updating Pipeline Configuration
 
