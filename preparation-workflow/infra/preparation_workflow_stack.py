@@ -306,7 +306,7 @@ class PreparationWorkflowStack(Stack):
             function_name=f"prescoach-{self.env_name}-prep-{id.lower().replace(' ', '-')}",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler=handler,
-            code=lambda_.Code.from_asset("src"),
+            code=lambda_.Code.from_asset("../src"),
             timeout=timeout,
             memory_size=memory_size,
             description=description,
