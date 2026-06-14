@@ -431,7 +431,7 @@ class PreparationWorkflowStack(Stack):
                         "TableName": f"prescoach-{self.env_name}-submissions",
                         "Key": {
                             "submission_id": {
-                                "S.$": "$.parsed_message.value.submission_id",
+                                "S.$": "$.parsed_message.value.message.submission_id",
                             },
                         },
                         "UpdateExpression": "SET processing_status = :status",
@@ -450,7 +450,7 @@ class PreparationWorkflowStack(Stack):
                     "Parameters": {
                         "FunctionName": self.validate_format_fn.function_arn,
                         "Payload": {
-                            "original_file_name.$": "$.parsed_message.value.original_file_name",
+                            "original_file_name.$": "$.parsed_message.value.message.original_file_name",
                             "video_processing_enabled.$": "$.config.value.video_processing_enabled",
                         },
                     },
@@ -489,10 +489,10 @@ class PreparationWorkflowStack(Stack):
                     "Parameters": {
                         "FunctionName": self.extract_audio_fn.function_arn,
                         "Payload": {
-                            "s3_bucket.$": "$.parsed_message.value.s3_bucket",
-                            "s3_file_key.$": "$.parsed_message.value.s3_file_key",
-                            "user_id.$": "$.parsed_message.value.user_id",
-                            "submission_id.$": "$.parsed_message.value.submission_id",
+                            "s3_bucket.$": "$.parsed_message.value.message.s3_bucket",
+                            "s3_file_key.$": "$.parsed_message.value.message.s3_file_key",
+                            "user_id.$": "$.parsed_message.value.message.user_id",
+                            "submission_id.$": "$.parsed_message.value.message.submission_id",
                             "config.$": "$.config.value",
                         },
                     },
@@ -510,10 +510,10 @@ class PreparationWorkflowStack(Stack):
                     "Parameters": {
                         "FunctionName": self.chunk_audio_fn.function_arn,
                         "Payload": {
-                            "s3_bucket.$": "$.parsed_message.value.s3_bucket",
-                            "s3_file_key.$": "$.parsed_message.value.s3_file_key",
-                            "user_id.$": "$.parsed_message.value.user_id",
-                            "submission_id.$": "$.parsed_message.value.submission_id",
+                            "s3_bucket.$": "$.parsed_message.value.message.s3_bucket",
+                            "s3_file_key.$": "$.parsed_message.value.message.s3_file_key",
+                            "user_id.$": "$.parsed_message.value.message.user_id",
+                            "submission_id.$": "$.parsed_message.value.message.submission_id",
                             "config.$": "$.config.value",
                             "extraction_result.$": "$.extraction_result",
                         },
@@ -533,8 +533,8 @@ class PreparationWorkflowStack(Stack):
                     "Parameters": {
                         "chunk.$": "$$.Map.Item.Value",
                         "config.$": "$.config.value",
-                        "submission_id.$": "$.parsed_message.value.submission_id",
-                        "user_id.$": "$.parsed_message.value.user_id",
+                        "submission_id.$": "$.parsed_message.value.message.submission_id",
+                        "user_id.$": "$.parsed_message.value.message.user_id",
                     },
                     "Iterator": {
                         "StartAt": "ProcessChunkEmbedding",
@@ -565,8 +565,8 @@ class PreparationWorkflowStack(Stack):
                         "FunctionName": self.store_vectors_fn.function_arn,
                         "Payload": {
                             "embeddings.$": "$.embeddings",
-                            "submission_id.$": "$.parsed_message.value.submission_id",
-                            "user_id.$": "$.parsed_message.value.user_id",
+                            "submission_id.$": "$.parsed_message.value.message.submission_id",
+                            "user_id.$": "$.parsed_message.value.message.user_id",
                             "config.$": "$.config.value",
                         },
                     },
@@ -584,10 +584,10 @@ class PreparationWorkflowStack(Stack):
                     "Parameters": {
                         "FunctionName": self.publish_handoff_fn.function_arn,
                         "Payload": {
-                            "submission_id.$": "$.parsed_message.value.submission_id",
-                            "user_id.$": "$.parsed_message.value.user_id",
-                            "s3_file_key.$": "$.parsed_message.value.s3_file_key",
-                            "presentation_title.$": "$.parsed_message.value.presentation_title",
+                            "submission_id.$": "$.parsed_message.value.message.submission_id",
+                            "user_id.$": "$.parsed_message.value.message.user_id",
+                            "s3_file_key.$": "$.parsed_message.value.message.s3_file_key",
+                            "presentation_title.$": "$.parsed_message.value.message.presentation_title",
                             "store_result.$": "$.store_result.value",
                             "chunks.$": "$.chunks.value",
                             "config.$": "$.config.value",
@@ -608,7 +608,7 @@ class PreparationWorkflowStack(Stack):
                         "TableName": f"prescoach-{self.env_name}-submissions",
                         "Key": {
                             "submission_id": {
-                                "S.$": "$.parsed_message.value.submission_id",
+                                "S.$": "$.parsed_message.value.message.submission_id",
                             },
                         },
                         "UpdateExpression": "SET processing_status = :status",
