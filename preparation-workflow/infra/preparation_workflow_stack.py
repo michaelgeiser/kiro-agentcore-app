@@ -518,7 +518,6 @@ class PreparationWorkflowStack(Stack):
                             "user_id.$": "$.parsed_message.value.message.user_id",
                             "submission_id.$": "$.parsed_message.value.message.submission_id",
                             "config.$": "$.config.value",
-                            "extraction_result.$": "$.extraction_result",
                         },
                     },
                     "ResultPath": "$.chunks",
