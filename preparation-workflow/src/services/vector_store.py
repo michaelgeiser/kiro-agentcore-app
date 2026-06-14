@@ -13,8 +13,8 @@ from typing import Any
 
 import boto3
 
-from src.models.embedding_result import EmbeddingResult
-from src.models.vector_metadata import VectorMetadata
+from models.embedding_result import EmbeddingResult
+from models.vector_metadata import VectorMetadata
 
 logger = logging.getLogger(__name__)
 

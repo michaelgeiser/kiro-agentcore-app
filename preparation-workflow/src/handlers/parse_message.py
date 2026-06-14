@@ -8,7 +8,7 @@ import json
 
 from pydantic import ValidationError
 
-from src.models.input_message import InputMessage
+from models.input_message import InputMessage
 
 
 def parse_message(message_body: str) -> dict:

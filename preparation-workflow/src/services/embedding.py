@@ -12,9 +12,9 @@ from typing import Any
 
 import boto3
 
-from src.models.audio_chunk import AudioChunk
-from src.models.embedding_result import EmbeddingResult
-from src.services.batch_processor import group_into_batches, process_batches
+from models.audio_chunk import AudioChunk
+from models.embedding_result import EmbeddingResult
+from services.batch_processor import group_into_batches, process_batches
 
 logger = logging.getLogger(__name__)
 

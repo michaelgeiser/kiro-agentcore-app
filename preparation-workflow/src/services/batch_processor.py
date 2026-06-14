@@ -7,8 +7,8 @@ them sequentially, collecting results while maintaining original chunk order.
 import math
 from typing import Callable, List
 
-from src.models.audio_chunk import AudioChunk
-from src.models.embedding_result import EmbeddingResult
+from models.audio_chunk import AudioChunk
+from models.embedding_result import EmbeddingResult
 
 
 def group_into_batches(

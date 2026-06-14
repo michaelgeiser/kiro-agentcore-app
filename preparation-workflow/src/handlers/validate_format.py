@@ -4,7 +4,7 @@ Combines FileValidationResult with the Feature_Flag_Video_Processing
 configuration to determine the next processing step in the workflow.
 """
 
-from src.validation.format_validator import validate_format
+from validation.format_validator import validate_format
 
 
 def make_processing_decision(

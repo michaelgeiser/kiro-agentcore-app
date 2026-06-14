@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 import boto3
 
-from src.models.error_notification import WorkflowErrorNotification
+from models.error_notification import WorkflowErrorNotification
 
 logger = logging.getLogger(__name__)
 

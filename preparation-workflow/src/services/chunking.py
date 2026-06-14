@@ -1,6 +1,6 @@
 """Audio chunking service for dividing audio into overlapping segments."""
 
-from src.models.audio_chunk import AudioChunk
+from models.audio_chunk import AudioChunk
 
 
 def calculate_chunks(

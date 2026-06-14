@@ -6,7 +6,7 @@ from typing import Any
 
 import boto3
 
-from src.models.handoff_message import HandoffMessage
+from models.handoff_message import HandoffMessage
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

@@ -6,7 +6,7 @@ from typing import Any
 
 import boto3
 
-from src.models.workflow_config import WorkflowConfig
+from models.workflow_config import WorkflowConfig
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

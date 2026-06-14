@@ -2,7 +2,7 @@
 
 import os
 
-from src.models import FileValidationResult
+from models import FileValidationResult
 
 AUDIO_EXTENSIONS = {".mp3", ".wav", ".m4a", ".aac"}
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm"}

@@ -1,14 +1,14 @@
 """Lambda handlers for the Preparation Workflow."""
 
-from src.handlers.handle_failure import handle_failure
-from src.handlers.handle_failure import handler as handle_failure_handler
-from src.handlers.load_config import handler as load_config_handler
-from src.handlers.parse_message import handler as parse_message_handler
-from src.handlers.parse_message import parse_message
-from src.handlers.publish_handoff import handler as publish_handoff_handler
-from src.handlers.publish_handoff import publish_handoff
-from src.handlers.validate_format import handler as validate_format_handler
-from src.handlers.validate_format import make_processing_decision
+from .handle_failure import handle_failure
+from .handle_failure import handler as handle_failure_handler
+from .load_config import handler as load_config_handler
+from .parse_message import handler as parse_message_handler
+from .parse_message import parse_message
+from .publish_handoff import handler as publish_handoff_handler
+from .publish_handoff import publish_handoff
+from .validate_format import handler as validate_format_handler
+from .validate_format import make_processing_decision
 
 __all__ = [
     "handle_failure",
