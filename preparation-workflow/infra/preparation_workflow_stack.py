@@ -810,6 +810,10 @@ class PreparationWorkflowStack(Stack):
         )
 
         # EventBridge Pipe: SQS Input Queue → Step Functions
+        # With batch_size=1, the pipe processes one SQS message at a time.
+        # The input_template extracts the 'body' field (JSON string) from
+        # the SQS message and passes it as parsed JSON to Step Functions,
+        # so the state machine receives the message payload directly as an object.
         self.pipe = pipes.CfnPipe(
             self,
             "InputToStepFunctionsPipe",
@@ -824,6 +828,7 @@ class PreparationWorkflowStack(Stack):
             ),
             target=self.state_machine.attr_arn,
             target_parameters=pipes.CfnPipe.PipeTargetParametersProperty(
+                input_template='{"message_body": <$.body>}',
                 step_function_state_machine_parameters=pipes.CfnPipe.PipeTargetStateMachineParametersProperty(
                     invocation_type="FIRE_AND_FORGET",
                 ),
