@@ -237,7 +237,8 @@ class PreparationWorkflowStack(Stack):
                     "bedrock:GetAsyncInvoke",
                 ],
                 resources=[
-                    f"arn:aws:bedrock:{self.region}::foundation-model/*"
+                    f"arn:aws:bedrock:{self.region}::foundation-model/*",
+                    f"arn:aws:bedrock:{self.region}:{self.account}:async-invoke/*",
                 ],
             )
         )
