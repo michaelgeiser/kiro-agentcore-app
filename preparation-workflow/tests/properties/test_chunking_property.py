@@ -15,7 +15,7 @@ import pytest
 from hypothesis import given, settings, assume
 from hypothesis.strategies import floats, integers, composite
 
-from src.services.chunking import calculate_chunks
+from services.chunking import calculate_chunks
 
 
 @composite

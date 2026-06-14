@@ -12,9 +12,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from src.models.audio_chunk import AudioChunk
-from src.models.embedding_result import EmbeddingResult
-from src.services.embedding import (
+from models.audio_chunk import AudioChunk
+from models.embedding_result import EmbeddingResult
+from services.embedding import (
     _build_invoke_payload,
     _parse_embedding_response,
     create_embedding,

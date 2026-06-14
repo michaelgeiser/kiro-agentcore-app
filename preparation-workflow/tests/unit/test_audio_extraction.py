@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.services.audio_extraction import construct_output_key, extract_audio
+from services.audio_extraction import construct_output_key, extract_audio
 
 
 class TestConstructOutputKey:
@@ -49,7 +49,7 @@ class TestConstructOutputKey:
 class TestExtractAudio:
     """Tests for extract_audio with mocked MediaConvert client."""
 
-    @patch("src.services.audio_extraction._create_mediaconvert_client")
+    @patch("services.audio_extraction._create_mediaconvert_client")
     def test_success_scenario(self, mock_create_client):
         """MediaConvert job completes successfully."""
         mock_client = MagicMock()
@@ -79,7 +79,7 @@ class TestExtractAudio:
         assert result["output_s3_key"] == "processed/user1/sub1/audio.mp3"
         assert result["job_id"] == "job-12345"
 
-    @patch("src.services.audio_extraction._create_mediaconvert_client")
+    @patch("services.audio_extraction._create_mediaconvert_client")
     def test_failure_scenario(self, mock_create_client):
         """MediaConvert job returns ERROR status."""
         mock_client = MagicMock()
@@ -108,8 +108,8 @@ class TestExtractAudio:
         assert result["output_s3_key"] == "processed/user2/sub2/audio.mp3"
         assert result["job_id"] == "job-failed-99"
 
-    @patch("src.services.audio_extraction.time.sleep", return_value=None)
-    @patch("src.services.audio_extraction._create_mediaconvert_client")
+    @patch("services.audio_extraction.time.sleep", return_value=None)
+    @patch("services.audio_extraction._create_mediaconvert_client")
     def test_timeout_scenario(self, mock_create_client, mock_sleep):
         """MediaConvert job never completes within max polling attempts."""
         mock_client = MagicMock()
@@ -138,7 +138,7 @@ class TestExtractAudio:
         assert result["status"] == "ERROR"
         assert result["job_id"] == "job-timeout-01"
 
-    @patch("src.services.audio_extraction._create_mediaconvert_client")
+    @patch("services.audio_extraction._create_mediaconvert_client")
     def test_job_submission_failure(self, mock_create_client):
         """MediaConvert job submission raises an exception."""
         mock_client = MagicMock()
@@ -157,7 +157,7 @@ class TestExtractAudio:
                 mediaconvert_endpoint="https://mediaconvert.us-east-1.amazonaws.com",
             )
 
-    @patch("src.services.audio_extraction._create_mediaconvert_client")
+    @patch("services.audio_extraction._create_mediaconvert_client")
     def test_result_dict_structure(self, mock_create_client):
         """Verify the returned dict has the expected keys."""
         mock_client = MagicMock()

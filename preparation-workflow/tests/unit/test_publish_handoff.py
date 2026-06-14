@@ -6,13 +6,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from src.handlers.publish_handoff import handler, publish_handoff
+from handlers.publish_handoff import handler, publish_handoff
 
 
 class TestPublishHandoff:
     """Tests for the publish_handoff function."""
 
-    @patch("src.handlers.publish_handoff.boto3.client")
+    @patch("handlers.publish_handoff.boto3.client")
     def test_successful_publish_returns_message_id(self, mock_boto_client):
         mock_sqs = MagicMock()
         mock_sqs.send_message.return_value = {"MessageId": "msg-abc-123"}
@@ -30,7 +30,7 @@ class TestPublishHandoff:
 
         assert result == {"message_id": "msg-abc-123"}
 
-    @patch("src.handlers.publish_handoff.boto3.client")
+    @patch("handlers.publish_handoff.boto3.client")
     def test_send_message_uses_correct_queue_url(self, mock_boto_client):
         mock_sqs = MagicMock()
         mock_sqs.send_message.return_value = {"MessageId": "msg-123"}
@@ -50,7 +50,7 @@ class TestPublishHandoff:
         call_kwargs = mock_sqs.send_message.call_args[1]
         assert call_kwargs["QueueUrl"] == queue_url
 
-    @patch("src.handlers.publish_handoff.boto3.client")
+    @patch("handlers.publish_handoff.boto3.client")
     def test_message_group_id_is_submission_id(self, mock_boto_client):
         mock_sqs = MagicMock()
         mock_sqs.send_message.return_value = {"MessageId": "msg-123"}
@@ -69,7 +69,7 @@ class TestPublishHandoff:
         call_kwargs = mock_sqs.send_message.call_args[1]
         assert call_kwargs["MessageGroupId"] == "sub-xyz"
 
-    @patch("src.handlers.publish_handoff.boto3.client")
+    @patch("handlers.publish_handoff.boto3.client")
     def test_message_deduplication_id_format(self, mock_boto_client):
         mock_sqs = MagicMock()
         mock_sqs.send_message.return_value = {"MessageId": "msg-123"}
@@ -88,7 +88,7 @@ class TestPublishHandoff:
         call_kwargs = mock_sqs.send_message.call_args[1]
         assert call_kwargs["MessageDeduplicationId"] == "sub-456-handoff"
 
-    @patch("src.handlers.publish_handoff.boto3.client")
+    @patch("handlers.publish_handoff.boto3.client")
     def test_message_body_is_valid_handoff_json(self, mock_boto_client):
         mock_sqs = MagicMock()
         mock_sqs.send_message.return_value = {"MessageId": "msg-123"}
@@ -137,7 +137,7 @@ class TestPublishHandoff:
                 queue_url="https://sqs.example.com/queue.fifo",
             )
 
-    @patch("src.handlers.publish_handoff.boto3.client")
+    @patch("handlers.publish_handoff.boto3.client")
     def test_sqs_failure_propagates_as_client_error(self, mock_boto_client):
         """SQS send_message failure propagates to the caller."""
         from botocore.exceptions import ClientError
@@ -166,7 +166,7 @@ class TestPublishHandoff:
 class TestHandler:
     """Tests for the Lambda handler wrapper."""
 
-    @patch("src.handlers.publish_handoff.boto3.client")
+    @patch("handlers.publish_handoff.boto3.client")
     def test_handler_extracts_fields_from_event(self, mock_boto_client):
         mock_sqs = MagicMock()
         mock_sqs.send_message.return_value = {"MessageId": "msg-handler-123"}

@@ -11,7 +11,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis.strategies import text
 
-from src.models.input_message import InputMessage
+from models.input_message import InputMessage
 
 # Strategy for generating non-empty strings (min_length=1 matches the model constraint)
 non_empty_text = text(min_size=1)

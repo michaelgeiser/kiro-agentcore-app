@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from src.models.error_notification import WorkflowErrorNotification
+from models.error_notification import WorkflowErrorNotification
 
 
 # Strategy: non-empty strings for required text fields

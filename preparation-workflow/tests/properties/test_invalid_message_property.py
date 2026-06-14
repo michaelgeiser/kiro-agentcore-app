@@ -13,7 +13,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis.strategies import composite, sets, sampled_from, text
 
-from src.handlers.parse_message import parse_message
+from handlers.parse_message import parse_message
 
 # All required fields for a valid InputMessage
 REQUIRED_FIELDS = [

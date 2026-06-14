@@ -7,7 +7,7 @@ import pytest
 from moto import mock_aws
 import boto3
 
-from src.handlers.load_config import (
+from handlers.load_config import (
     PARAMETER_NAME_MAP,
     _fetch_ssm_parameters,
     _parse_value,

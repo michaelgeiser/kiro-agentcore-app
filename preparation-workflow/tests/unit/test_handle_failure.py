@@ -14,7 +14,7 @@ import boto3
 import pytest
 from moto import mock_aws
 
-from src.handlers.handle_failure import handle_failure, handler
+from handlers.handle_failure import handle_failure, handler
 
 
 @pytest.fixture
@@ -196,7 +196,7 @@ class TestSNSBestEffort:
         assert result["sns_published"] is False
         assert result["dlq_routed"] is True
 
-    @patch("src.handlers.handle_failure.boto3.client")
+    @patch("handlers.handle_failure.boto3.client")
     def test_sns_exception_logged_and_swallowed(self, mock_boto_client):
         """SNS exception is logged but does not affect DLQ routing."""
         # Set up mock clients

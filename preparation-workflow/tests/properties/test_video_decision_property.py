@@ -14,7 +14,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis.strategies import sampled_from, booleans
 
-from src.handlers.validate_format import make_processing_decision
+from handlers.validate_format import make_processing_decision
 
 
 @pytest.mark.property

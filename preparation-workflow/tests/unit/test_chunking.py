@@ -12,8 +12,8 @@ Requirements: 4.2, 4.3
 
 import pytest
 
-from src.models.audio_chunk import AudioChunk
-from src.services.chunking import calculate_chunks, chunk_audio
+from models.audio_chunk import AudioChunk
+from services.chunking import calculate_chunks, chunk_audio
 
 
 class TestCalculateChunks:

@@ -11,7 +11,7 @@ SHALL contain all six fields with values matching the inputs exactly.
 from hypothesis import given, settings
 from hypothesis.strategies import floats, integers, text
 
-from src.models.vector_metadata import VectorMetadata
+from models.vector_metadata import VectorMetadata
 
 
 @settings(max_examples=100, deadline=500)

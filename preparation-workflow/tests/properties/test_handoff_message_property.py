@@ -6,7 +6,7 @@ Validates: Requirements 7.3
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from src.models.handoff_message import HandoffMessage
+from models.handoff_message import HandoffMessage
 
 # Strategies
 non_empty_text = st.text(min_size=1)

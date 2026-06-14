@@ -13,14 +13,14 @@ import boto3
 import pytest
 from moto import mock_aws
 
-from src.handlers.handle_failure import handle_failure
-from src.handlers.parse_message import parse_message
-from src.handlers.publish_handoff import publish_handoff
-from src.handlers.validate_format import handler as validate_format_handler
-from src.models.audio_chunk import AudioChunk
-from src.models.embedding_result import EmbeddingResult
-from src.services.chunking import chunk_audio
-from src.services.vector_store import store_vectors
+from handlers.handle_failure import handle_failure
+from handlers.parse_message import parse_message
+from handlers.publish_handoff import publish_handoff
+from handlers.validate_format import handler as validate_format_handler
+from models.audio_chunk import AudioChunk
+from models.embedding_result import EmbeddingResult
+from services.chunking import chunk_audio
+from services.vector_store import store_vectors
 
 
 # ---------------------------------------------------------------------------

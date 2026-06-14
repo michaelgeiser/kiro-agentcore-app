@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.validation.format_validator import validate_format
+from validation.format_validator import validate_format
 
 
 class TestValidateFormat:

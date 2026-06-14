@@ -15,8 +15,8 @@ import pytest
 from hypothesis import given, settings
 from hypothesis.strategies import integers, composite, lists
 
-from src.models.audio_chunk import AudioChunk
-from src.services.batch_processor import group_into_batches
+from models.audio_chunk import AudioChunk
+from services.batch_processor import group_into_batches
 
 
 def make_audio_chunk(index: int) -> AudioChunk:

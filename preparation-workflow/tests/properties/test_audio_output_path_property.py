@@ -12,7 +12,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis.strategies import text, sampled_from
 
-from src.services.audio_extraction import construct_output_key
+from services.audio_extraction import construct_output_key
 
 # Strategy for generating non-empty user_id and submission_id strings
 id_strategy = text(

@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from src.handlers.parse_message import handler, parse_message
+from handlers.parse_message import handler, parse_message
 
 
 class TestParseMessage:

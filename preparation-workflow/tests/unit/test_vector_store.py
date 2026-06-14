@@ -11,9 +11,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.models.embedding_result import EmbeddingResult
-from src.models.vector_metadata import VectorMetadata
-from src.services.vector_store import build_vector_metadata, store_vectors
+from models.embedding_result import EmbeddingResult
+from models.vector_metadata import VectorMetadata
+from services.vector_store import build_vector_metadata, store_vectors
 
 
 def _make_embedding_result(
@@ -87,14 +87,14 @@ class TestStoreVectors:
 
     def test_type_matching_is_case_insensitive(self):
         results = [_make_embedding_result()]
-        with patch("src.services.vector_store.boto3.client") as mock_boto:
+        with patch("services.vector_store.boto3.client") as mock_boto:
             mock_s3 = MagicMock()
             mock_boto.return_value = mock_s3
 
             result = store_vectors(results, "my-bucket", "S3")
             assert result["stored_count"] == 1
 
-    @patch("src.services.vector_store.boto3.client")
+    @patch("services.vector_store.boto3.client")
     def test_s3_stores_correct_number(self, mock_boto):
         mock_s3 = MagicMock()
         mock_boto.return_value = mock_s3
@@ -109,7 +109,7 @@ class TestStoreVectors:
         assert output["stored_count"] == 3
         assert mock_s3.put_object.call_count == 3
 
-    @patch("src.services.vector_store.boto3.client")
+    @patch("services.vector_store.boto3.client")
     def test_s3_key_format(self, mock_boto):
         mock_s3 = MagicMock()
         mock_boto.return_value = mock_s3
@@ -123,7 +123,7 @@ class TestStoreVectors:
         assert call_kwargs["Key"] == "sub-999/embeddings/chunk_0007.json"
         assert call_kwargs["ContentType"] == "application/json"
 
-    @patch("src.services.vector_store.boto3.client")
+    @patch("services.vector_store.boto3.client")
     def test_s3_document_contains_vector_and_metadata(self, mock_boto):
         mock_s3 = MagicMock()
         mock_boto.return_value = mock_s3
@@ -139,7 +139,7 @@ class TestStoreVectors:
         assert body["metadata"]["submission_id"] == "sub-001"
         assert body["metadata"]["user_id"] == "user-123"
 
-    @patch("src.services.vector_store.boto3.client")
+    @patch("services.vector_store.boto3.client")
     def test_s3_location_format(self, mock_boto):
         mock_s3 = MagicMock()
         mock_boto.return_value = mock_s3
@@ -149,7 +149,7 @@ class TestStoreVectors:
         output = store_vectors(results, "test-bucket", "s3")
         assert output["vector_store_location"] == "s3://test-bucket/sub-loc/embeddings"
 
-    @patch("src.services.vector_store.boto3.client")
+    @patch("services.vector_store.boto3.client")
     def test_s3_put_object_failure_raises(self, mock_boto):
         mock_s3 = MagicMock()
         mock_boto.return_value = mock_s3

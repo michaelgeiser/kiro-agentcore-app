@@ -12,7 +12,7 @@ import pytest
 from hypothesis import given, settings, assume
 from hypothesis.strategies import text, sampled_from, composite
 
-from src.validation.format_validator import validate_format
+from validation.format_validator import validate_format
 
 AUDIO_EXTENSIONS = [".mp3", ".wav", ".m4a", ".aac"]
 VIDEO_EXTENSIONS = [".mp4", ".mov", ".webm"]
