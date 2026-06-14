@@ -268,6 +268,10 @@ class PreparationWorkflowStack(Stack):
             handler="handlers.publish_handoff.handler",
             description="Publish handoff message to FIFO SQS queue",
         )
+        # Add HANDOFF_QUEUE_URL environment variable
+        self.publish_handoff_fn.add_environment(
+            "HANDOFF_QUEUE_URL", self.handoff_queue.queue_url
+        )
         # SQS send permission to handoff queue
         self.handoff_queue.grant_send_messages(self.publish_handoff_fn)
 

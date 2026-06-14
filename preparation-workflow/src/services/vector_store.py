@@ -181,3 +181,35 @@ def store_vectors(
             f"Unsupported vector store type: '{vector_store_type}'. "
             f"Supported types: 's3', 'opensearch'."
         )
+
+
+def handler(event, context):
+    """AWS Lambda handler entry point for vector storage.
+
+    Expects event with: embeddings (list of dicts), submission_id, user_id, config.
+    Config should contain vector_store_endpoint and vector_store_type.
+    """
+    config = event.get("config", {})
+    vector_store_endpoint = config.get("vector_store_endpoint", "prescoach-vectors")
+    vector_store_type = config.get("vector_store_type", "s3")
+
+    # Strip s3:// prefix if present (endpoint should be just the bucket name for S3)
+    if vector_store_endpoint.startswith("s3://"):
+        vector_store_endpoint = vector_store_endpoint[5:]
+
+    # Reconstruct EmbeddingResult objects from the Map state output
+    embeddings_data = event.get("embeddings", [])
+    embedding_results = []
+
+    for item in embeddings_data:
+        # Each item from the Map state is {"value": {embedding_result_dict}}
+        data = item.get("value", item)
+        embedding_results.append(EmbeddingResult(**data))
+
+    result = store_vectors(
+        embedding_results=embedding_results,
+        vector_store_endpoint=vector_store_endpoint,
+        vector_store_type=vector_store_type,
+    )
+
+    return result

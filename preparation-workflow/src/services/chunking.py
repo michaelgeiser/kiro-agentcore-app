@@ -105,3 +105,43 @@ def chunk_audio(
         audio_chunks.append(chunk)
 
     return audio_chunks
+
+
+def handler(event, context):
+    """AWS Lambda handler entry point for audio chunking.
+
+    Expects event with: s3_bucket, s3_file_key, user_id, submission_id, config.
+    Config should contain chunk_size_seconds and chunk_overlap_seconds.
+
+    For MVP, we use a fixed duration estimate since we don't download/probe the file.
+    The actual audio duration would be determined by ffprobe in a production system.
+    """
+    config = event.get("config", {})
+    chunk_size_seconds = int(config.get("chunk_size_seconds", 30))
+    chunk_overlap_seconds = int(config.get("chunk_overlap_seconds", 5))
+
+    s3_bucket = event["s3_bucket"]
+    s3_file_key = event["s3_file_key"]
+    submission_id = event["submission_id"]
+    user_id = event["user_id"]
+
+    # For MVP: estimate duration or use a default.
+    # In production, download the file header and probe with ffprobe.
+    # Using a reasonable default that creates at least one chunk.
+    total_duration_seconds = float(config.get("total_duration_seconds", 60.0))
+
+    chunks = chunk_audio(
+        s3_bucket=s3_bucket,
+        s3_audio_key=s3_file_key,
+        submission_id=submission_id,
+        user_id=user_id,
+        chunk_size_seconds=chunk_size_seconds,
+        chunk_overlap_seconds=chunk_overlap_seconds,
+        total_duration_seconds=total_duration_seconds,
+    )
+
+    return {
+        "chunks": [chunk.model_dump() for chunk in chunks],
+        "chunk_count": len(chunks),
+        "s3_bucket": s3_bucket,
+    }

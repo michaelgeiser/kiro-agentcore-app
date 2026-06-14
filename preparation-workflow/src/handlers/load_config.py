@@ -102,7 +102,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     Raises:
         ValueError: If required parameters are missing or have invalid values.
     """
-    env = os.environ.get("ENVIRONMENT", "dev")
+    env = os.environ.get("ENV_NAME", os.environ.get("ENVIRONMENT", "dev"))
     path = f"/prescoach/{env}/preparation-workflow/"
 
     logger.info("Loading configuration from SSM path: %s", path)

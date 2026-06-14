@@ -132,36 +132,42 @@ def handle_failure(
 def handler(event, context):
     """Lambda handler entry point.
 
-    Extracts failure context from Step Functions error output.
-
-    Args:
-        event: Dict containing failure context:
-            - submission_id: The submission that failed
-            - step_name: The step where failure occurred
-            - error_type: Classification of the error
-            - error_message: Human-readable error description
-            - retry_count_exhausted: Number of retries attempted
-            - original_message: Original SQS message body
-            - failure_source: "input" or "handoff"
-            - dynamodb_table_name: DynamoDB table name
-            - sns_topic_arn: SNS topic ARN
-            - dlq_input_url: Input DLQ URL
-            - dlq_handoff_url: Handoff DLQ URL
-        context: Lambda context (unused).
-
-    Returns:
-        Result dict from handle_failure.
+    Extracts failure context from Step Functions Catch output.
+    The event arrives as {"execution_input": <full state>, "error_info": <error details>}.
+    We extract submission_id from the parsed message in the execution input.
     """
+    import os
+
+    execution_input = event.get("execution_input", event)
+    error_info = event.get("error_info", {})
+
+    # Try to extract submission_id from parsed_message in the execution state
+    parsed_message = execution_input.get("parsed_message", {}).get("value", {}).get("message", {})
+    submission_id = parsed_message.get("submission_id", "unknown")
+
+    # Extract error details
+    error_type = error_info.get("Error", error_info.get("error", "Unknown"))
+    error_message = error_info.get("Cause", error_info.get("cause", "Unknown error"))
+
+    env_name = os.environ.get("ENV_NAME", "dev")
+    resource_prefix = f"prescoach-{env_name}-kiro"
+
+    # Use environment-based defaults for infrastructure references
+    dynamodb_table_name = f"{resource_prefix}-submissions"
+    sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", f"arn:aws:sns:us-east-1:{os.environ.get('AWS_ACCOUNT_ID', '514917275675')}:prescoach-{env_name}-preparation-errors")
+    dlq_input_url = os.environ.get("DLQ_INPUT_URL", "")
+    dlq_handoff_url = os.environ.get("DLQ_HANDOFF_URL", "")
+
     return handle_failure(
-        submission_id=event["submission_id"],
-        step_name=event["step_name"],
-        error_type=event["error_type"],
-        error_message=event["error_message"],
-        retry_count_exhausted=event["retry_count_exhausted"],
-        original_message=event["original_message"],
-        failure_source=event["failure_source"],
-        dynamodb_table_name=event["dynamodb_table_name"],
-        sns_topic_arn=event["sns_topic_arn"],
-        dlq_input_url=event["dlq_input_url"],
-        dlq_handoff_url=event["dlq_handoff_url"],
+        submission_id=submission_id,
+        step_name="StepFunctions",
+        error_type=error_type,
+        error_message=error_message[:500] if len(error_message) > 500 else error_message,
+        retry_count_exhausted=3,
+        original_message=str(parsed_message),
+        failure_source="input",
+        dynamodb_table_name=dynamodb_table_name,
+        sns_topic_arn=sns_topic_arn,
+        dlq_input_url=dlq_input_url,
+        dlq_handoff_url=dlq_handoff_url,
     )

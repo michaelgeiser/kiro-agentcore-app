@@ -293,3 +293,20 @@ def extract_audio(
         "output_s3_key": output_s3_key,
         "job_id": job_id,
     }
+
+
+def handler(event, context):
+    """AWS Lambda handler entry point for audio extraction.
+
+    Expects event with: s3_bucket, s3_file_key, user_id, submission_id, config.
+    """
+    config = event.get("config", {})
+
+    return extract_audio(
+        s3_bucket=event["s3_bucket"],
+        s3_input_key=event["s3_file_key"],
+        user_id=event["user_id"],
+        submission_id=event["submission_id"],
+        mediaconvert_role_arn=config.get("mediaconvert_role_arn", ""),
+        mediaconvert_endpoint=config.get("mediaconvert_endpoint", ""),
+    )

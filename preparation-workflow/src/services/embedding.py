@@ -195,3 +195,34 @@ def create_embeddings_batch(
         )
         batches = group_into_batches(audio_chunks, batch_size)
         return process_batches(batches, _process_chunk)
+
+
+def handler(event, context):
+    """AWS Lambda handler entry point for embedding creation.
+
+    Called per-chunk by the Step Functions Map state.
+    Expects event with: chunk (dict), config (dict), submission_id, user_id.
+    """
+    chunk_data = event["chunk"]
+    config = event.get("config", {})
+
+    audio_chunk = AudioChunk(
+        chunk_index=chunk_data["chunk_index"],
+        s3_chunk_key=chunk_data["s3_chunk_key"],
+        timestamp_start_seconds=chunk_data["timestamp_start_seconds"],
+        timestamp_end_seconds=chunk_data["timestamp_end_seconds"],
+        submission_id=chunk_data.get("submission_id", event.get("submission_id", "")),
+        user_id=chunk_data.get("user_id", event.get("user_id", "")),
+    )
+
+    # Get the S3 bucket from the chunk key or config
+    s3_bucket = config.get("uploads_bucket", "prescoach-dev-kiro-uploads")
+    embedding_model_id = config.get("embedding_model_id", "amazon.nova-embed-multimodal-v1:0")
+
+    result = create_embedding(
+        audio_chunk=audio_chunk,
+        s3_bucket=s3_bucket,
+        embedding_model_id=embedding_model_id,
+    )
+
+    return result.model_dump()
