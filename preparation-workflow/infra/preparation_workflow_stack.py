@@ -223,30 +223,27 @@ class PreparationWorkflowStack(Stack):
         self.create_embedding_fn = self._create_lambda(
             "CreateEmbedding",
             handler="services.embedding.handler",
-            description="Invoke Bedrock async for embedding creation",
-            timeout=Duration.minutes(10),
+            description="Invoke Bedrock for embedding creation",
+            timeout=Duration.minutes(5),
             memory_size=512,
         )
-        # Bedrock async invoke permissions
+        # Bedrock invoke permissions
         self.create_embedding_fn.add_to_role_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 actions=[
                     "bedrock:InvokeModel",
-                    "bedrock:StartAsyncInvoke",
-                    "bedrock:GetAsyncInvoke",
                 ],
                 resources=[
                     f"arn:aws:bedrock:{self.region}::foundation-model/*",
-                    f"arn:aws:bedrock:{self.region}:{self.account}:async-invoke/*",
                 ],
             )
         )
-        # S3 read for audio chunks and write for embedding output
+        # S3 read for audio chunks
         self.create_embedding_fn.add_to_role_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
-                actions=["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
+                actions=["s3:GetObject", "s3:ListBucket"],
                 resources=[
                     f"arn:aws:s3:::prescoach-{self.env_name}-*",
                     f"arn:aws:s3:::prescoach-{self.env_name}-*/*",
