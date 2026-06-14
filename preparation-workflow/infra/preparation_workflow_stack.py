@@ -36,11 +36,14 @@ class PreparationWorkflowStack(Stack):
         scope: Construct,
         construct_id: str,
         env_name: str = "dev",
+        instance_id: str = "kiro",
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         self.env_name = env_name
+        self.instance_id = instance_id
+        self.resource_prefix = f"prescoach-{env_name}-{instance_id}"
         self.ssm_prefix = f"/prescoach/{env_name}/preparation-workflow"
 
         # --- SQS Queues ---
@@ -280,7 +283,7 @@ class PreparationWorkflowStack(Stack):
                 effect=iam.Effect.ALLOW,
                 actions=["dynamodb:UpdateItem"],
                 resources=[
-                    f"arn:aws:dynamodb:{self.region}:{self.account}:table/prescoach-{self.env_name}-submissions"
+                    f"arn:aws:dynamodb:{self.region}:{self.account}:table/{self.resource_prefix}-submissions"
                 ],
             )
         )
@@ -428,7 +431,7 @@ class PreparationWorkflowStack(Stack):
                     "Type": "Task",
                     "Resource": "arn:aws:states:::dynamodb:updateItem",
                     "Parameters": {
-                        "TableName": f"prescoach-{self.env_name}-submissions",
+                        "TableName": f"{self.resource_prefix}-submissions",
                         "Key": {
                             "submission_id": {
                                 "S.$": "$.parsed_message.value.message.submission_id",
@@ -605,7 +608,7 @@ class PreparationWorkflowStack(Stack):
                     "Type": "Task",
                     "Resource": "arn:aws:states:::dynamodb:updateItem",
                     "Parameters": {
-                        "TableName": f"prescoach-{self.env_name}-submissions",
+                        "TableName": f"{self.resource_prefix}-submissions",
                         "Key": {
                             "submission_id": {
                                 "S.$": "$.parsed_message.value.message.submission_id",
@@ -680,7 +683,7 @@ class PreparationWorkflowStack(Stack):
                 effect=iam.Effect.ALLOW,
                 actions=["dynamodb:UpdateItem"],
                 resources=[
-                    f"arn:aws:dynamodb:{self.region}:{self.account}:table/prescoach-{self.env_name}-submissions"
+                    f"arn:aws:dynamodb:{self.region}:{self.account}:table/{self.resource_prefix}-submissions"
                 ],
             )
         )

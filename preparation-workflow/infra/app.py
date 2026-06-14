@@ -28,6 +28,7 @@ PreparationWorkflowStack(
     f"{app_name}-{env_name}-{instance_id}-preparation-workflow",
     env=env,
     env_name=env_name,
+    instance_id=instance_id,
 )
 
 app.synth()
