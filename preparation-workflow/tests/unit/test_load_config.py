@@ -125,7 +125,7 @@ class TestHandler:
 
     def test_handler_uses_environment_variable(self):
         self._setup_ssm_parameters(env="staging")
-        with patch.dict(os.environ, {"ENVIRONMENT": "staging"}):
+        with patch.dict(os.environ, {"ENV_NAME": "staging"}):
             result = handler({}, None)
 
         assert result["embedding_model_id"] == "amazon.nova-embed-v1"

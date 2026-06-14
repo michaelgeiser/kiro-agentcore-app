@@ -8,6 +8,7 @@ Tests cover:
 """
 
 import json
+import os
 from unittest.mock import MagicMock, patch
 
 import boto3
@@ -240,22 +241,37 @@ class TestLambdaHandler:
     """Tests for the Lambda handler entry point."""
 
     def test_handler_extracts_event_fields(self, aws_setup):
-        """Lambda handler correctly extracts fields from the event."""
+        """Lambda handler correctly extracts fields from the Step Functions error event."""
         event = {
-            "submission_id": "sub-123",
-            "step_name": "ValidateFileFormat",
-            "error_type": "ValidationError",
-            "error_message": "Invalid format",
-            "retry_count_exhausted": 0,
-            "original_message": '{"submission_id": "sub-123"}',
-            "failure_source": "input",
-            "dynamodb_table_name": aws_setup["dynamodb_table_name"],
-            "sns_topic_arn": aws_setup["sns_topic_arn"],
-            "dlq_input_url": aws_setup["dlq_input_url"],
-            "dlq_handoff_url": aws_setup["dlq_handoff_url"],
+            "execution_input": {
+                "parsed_message": {
+                    "value": {
+                        "message": {
+                            "submission_id": "sub-123",
+                        }
+                    }
+                }
+            },
+            "error_info": {
+                "Error": "ValidationError",
+                "Cause": "Invalid format",
+            },
         }
 
-        result = handler(event, None)
+        with patch.dict(os.environ, {
+            "ENV_NAME": "dev",
+            "DLQ_INPUT_URL": aws_setup["dlq_input_url"],
+            "DLQ_HANDOFF_URL": aws_setup["dlq_handoff_url"],
+            "SNS_TOPIC_ARN": aws_setup["sns_topic_arn"],
+        }):
+            with patch("handlers.handle_failure.handle_failure") as mock_hf:
+                mock_hf.return_value = {
+                    "dynamodb_updated": True,
+                    "sns_published": True,
+                    "dlq_routed": True,
+                    "dlq_used": "input",
+                }
+                result = handler(event, None)
 
         assert result["dynamodb_updated"] is True
         assert result["sns_published"] is True

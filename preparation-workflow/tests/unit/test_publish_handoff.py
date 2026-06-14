@@ -176,8 +176,8 @@ class TestHandler:
             "submission_id": "sub-handler",
             "user_id": "user-handler",
             "s3_file_key": "uploads/handler.mp3",
-            "vector_store_location": "s3://vectors/handler/",
-            "chunk_count": 4,
+            "store_result": {"vector_store_location": "s3://vectors/handler/"},
+            "chunks": {"chunk_count": 4},
             "presentation_title": "Handler Talk",
             "queue_url": "https://sqs.example.com/queue.fifo",
         }
