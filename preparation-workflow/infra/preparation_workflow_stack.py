@@ -223,26 +223,33 @@ class PreparationWorkflowStack(Stack):
         self.create_embedding_fn = self._create_lambda(
             "CreateEmbedding",
             handler="services.embedding.handler",
-            description="Invoke Bedrock for embedding creation",
-            timeout=Duration.minutes(5),
+            description="Invoke Bedrock async for embedding creation",
+            timeout=Duration.minutes(10),
             memory_size=512,
         )
-        # Bedrock invoke permissions
+        # Bedrock async invoke permissions
         self.create_embedding_fn.add_to_role_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
-                actions=["bedrock:InvokeModel"],
+                actions=[
+                    "bedrock:InvokeModel",
+                    "bedrock:StartAsyncInvoke",
+                    "bedrock:GetAsyncInvoke",
+                ],
                 resources=[
                     f"arn:aws:bedrock:{self.region}::foundation-model/*"
                 ],
             )
         )
-        # S3 read for audio chunks
+        # S3 read for audio chunks and write for embedding output
         self.create_embedding_fn.add_to_role_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
-                actions=["s3:GetObject"],
-                resources=[f"arn:aws:s3:::prescoach-{self.env_name}-*/*"],
+                actions=["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
+                resources=[
+                    f"arn:aws:s3:::prescoach-{self.env_name}-*",
+                    f"arn:aws:s3:::prescoach-{self.env_name}-*/*",
+                ],
             )
         )
 
@@ -280,6 +287,19 @@ class PreparationWorkflowStack(Stack):
             "HandleFailure",
             handler="handlers.handle_failure.handler",
             description="Handle workflow failures: update DynamoDB, publish SNS, route to DLQ",
+        )
+        # Add environment variables for DLQ URLs and SNS topic
+        self.handle_failure_fn.add_environment(
+            "DLQ_INPUT_URL", self.dlq_input.queue_url
+        )
+        self.handle_failure_fn.add_environment(
+            "DLQ_HANDOFF_URL", self.dlq_handoff.queue_url
+        )
+        self.handle_failure_fn.add_environment(
+            "SNS_TOPIC_ARN", self.error_topic.topic_arn
+        )
+        self.handle_failure_fn.add_environment(
+            "DYNAMODB_TABLE_NAME", f"{self.resource_prefix}-submissions"
         )
         # DynamoDB update permissions
         self.handle_failure_fn.add_to_role_policy(
@@ -337,9 +357,15 @@ class PreparationWorkflowStack(Stack):
         """
 
         # Common retry configuration for Lambda-invoked tasks
+        # Only retry recoverable errors (throttling, transient failures)
         lambda_retry = [
             {
-                "ErrorEquals": ["States.TaskFailed", "States.Timeout"],
+                "ErrorEquals": [
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.TooManyRequestsException",
+                    "States.Timeout",
+                ],
                 "IntervalSeconds": 2,
                 "BackoffRate": 2.0,
                 "MaxAttempts": 3,
@@ -347,10 +373,15 @@ class PreparationWorkflowStack(Stack):
             }
         ]
 
-        # Retry for MediaConvert (longer initial interval)
+        # Retry for MediaConvert (longer initial interval, only transient errors)
         mediaconvert_retry = [
             {
-                "ErrorEquals": ["States.TaskFailed", "States.Timeout"],
+                "ErrorEquals": [
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.TooManyRequestsException",
+                    "States.Timeout",
+                ],
                 "IntervalSeconds": 30,
                 "BackoffRate": 2.0,
                 "MaxAttempts": 3,
@@ -358,10 +389,15 @@ class PreparationWorkflowStack(Stack):
             }
         ]
 
-        # Retry for Bedrock embedding calls
+        # Retry for Bedrock embedding calls (only throttling/transient)
         bedrock_retry = [
             {
-                "ErrorEquals": ["States.TaskFailed", "States.Timeout"],
+                "ErrorEquals": [
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.TooManyRequestsException",
+                    "States.Timeout",
+                ],
                 "IntervalSeconds": 5,
                 "BackoffRate": 2.0,
                 "MaxAttempts": 3,
@@ -369,10 +405,15 @@ class PreparationWorkflowStack(Stack):
             }
         ]
 
-        # Retry for DynamoDB operations
+        # Retry for DynamoDB operations (only transient/throttling)
         dynamodb_retry = [
             {
-                "ErrorEquals": ["States.TaskFailed", "States.Timeout"],
+                "ErrorEquals": [
+                    "DynamoDB.ProvisionedThroughputExceededException",
+                    "DynamoDB.ThrottlingException",
+                    "DynamoDB.InternalServerError",
+                    "States.Timeout",
+                ],
                 "IntervalSeconds": 1,
                 "BackoffRate": 2.0,
                 "MaxAttempts": 3,
@@ -743,7 +784,7 @@ class PreparationWorkflowStack(Stack):
 
         parameters = {
             "embedding-model-id": {
-                "value": "amazon.nova-embed-multimodal-v1:0",
+                "value": "amazon.nova-2-multimodal-embeddings-v1:0",
                 "description": "Bedrock model identifier for embedding creation",
             },
             "chunk-size-seconds": {

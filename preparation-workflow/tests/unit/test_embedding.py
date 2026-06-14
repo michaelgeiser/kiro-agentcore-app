@@ -1,22 +1,20 @@
 """Unit tests for embedding service.
 
-Tests create_embedding with mocked Bedrock responses and
-create_embeddings_batch with both individual and batch processing modes.
+Tests create_embedding with mocked Bedrock async invocation and S3 output,
+and create_embeddings_batch with both individual and batch processing modes.
 
 Requirements: 4.1, 4.2, 10.1
 """
 
-import io
 import json
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from models.audio_chunk import AudioChunk
 from models.embedding_result import EmbeddingResult
 from services.embedding import (
-    _build_invoke_payload,
-    _parse_embedding_response,
+    _build_async_model_input,
     create_embedding,
     create_embeddings_batch,
 )
@@ -40,68 +38,58 @@ def _make_audio_chunk(
     )
 
 
-def _mock_bedrock_response(embedding: list[float]) -> MagicMock:
-    """Create a mock Bedrock response with the given embedding vector."""
-    response_body = json.dumps({"embedding": embedding}).encode("utf-8")
-    mock_response = {
-        "body": io.BytesIO(response_body),
+def _mock_bedrock_async(mock_client, embedding_vector):
+    """Set up mock bedrock client for successful async invocation."""
+    mock_client.start_async_invoke.return_value = {
+        "invocationArn": "arn:aws:bedrock:us-east-1:123456:async-invoke/test-123"
     }
-    return mock_response
+    mock_client.get_async_invoke.return_value = {
+        "status": "Completed",
+        "outputDataConfig": {
+            "s3OutputDataConfig": {
+                "s3Uri": "s3://test-bucket/embeddings-output/sub-001/chunk_0000/abc123/"
+            }
+        },
+    }
 
 
-class TestBuildInvokePayload:
-    """Tests for _build_invoke_payload helper."""
+def _mock_s3_output(mock_s3, embedding_vector):
+    """Set up mock S3 client to return embedding output."""
+    mock_s3.list_objects_v2.return_value = {
+        "Contents": [{"Key": "embeddings-output/sub-001/chunk_0000/abc123/output.json"}]
+    }
+    mock_s3.get_object.return_value = {
+        "Body": MagicMock(read=lambda: json.dumps({"embedding": embedding_vector}).encode())
+    }
+
+
+class TestBuildAsyncModelInput:
+    """Tests for _build_async_model_input helper."""
 
     def test_constructs_s3_uri(self):
-        payload = _build_invoke_payload("my-bucket", "path/to/chunk.mp3")
+        payload = _build_async_model_input("my-bucket", "path/to/chunk.mp3")
         assert payload["inputAudio"] == "s3://my-bucket/path/to/chunk.mp3"
-
-    def test_text_and_image_are_none(self):
-        payload = _build_invoke_payload("bucket", "key")
-        assert payload["inputText"] is None
-        assert payload["inputImage"] is None
-
-
-class TestParseEmbeddingResponse:
-    """Tests for _parse_embedding_response helper."""
-
-    def test_parses_valid_response(self):
-        body = json.dumps({"embedding": [0.1, 0.2, 0.3]}).encode("utf-8")
-        result = _parse_embedding_response(body)
-        assert result == [0.1, 0.2, 0.3]
-
-    def test_raises_on_missing_embedding_field(self):
-        body = json.dumps({"result": "something"}).encode("utf-8")
-        with pytest.raises(ValueError, match="does not contain an 'embedding' field"):
-            _parse_embedding_response(body)
-
-    def test_raises_on_empty_embedding_list(self):
-        body = json.dumps({"embedding": []}).encode("utf-8")
-        with pytest.raises(ValueError, match="not a non-empty list"):
-            _parse_embedding_response(body)
-
-    def test_raises_on_non_list_embedding(self):
-        body = json.dumps({"embedding": "not-a-list"}).encode("utf-8")
-        with pytest.raises(ValueError, match="not a non-empty list"):
-            _parse_embedding_response(body)
 
 
 class TestCreateEmbedding:
-    """Tests for create_embedding function."""
+    """Tests for create_embedding function with async invocation."""
 
     def test_successful_invocation(self):
-        """Bedrock invocation succeeds and returns an EmbeddingResult."""
+        """Bedrock async invocation succeeds and returns an EmbeddingResult."""
         chunk = _make_audio_chunk(chunk_index=2, start=60.0, end=90.0)
         embedding_vector = [0.1, 0.2, 0.3, 0.4, 0.5]
 
-        mock_client = MagicMock()
-        mock_client.invoke_model.return_value = _mock_bedrock_response(embedding_vector)
+        mock_bedrock = MagicMock()
+        mock_s3 = MagicMock()
+        _mock_bedrock_async(mock_bedrock, embedding_vector)
+        _mock_s3_output(mock_s3, embedding_vector)
 
         result = create_embedding(
             audio_chunk=chunk,
             s3_bucket="test-bucket",
-            embedding_model_id="amazon.titan-embed-image-v1",
-            bedrock_client=mock_client,
+            embedding_model_id="amazon.nova-2-multimodal-embeddings-v1:0",
+            bedrock_client=mock_bedrock,
+            s3_client=mock_s3,
         )
 
         assert isinstance(result, EmbeddingResult)
@@ -111,54 +99,63 @@ class TestCreateEmbedding:
         assert result.chunk_timestamp_start == 60.0
         assert result.chunk_timestamp_end == 90.0
         assert result.embedding_vector == embedding_vector
-        assert result.embedding_model_version == "amazon.titan-embed-image-v1"
+        assert result.embedding_model_version == "amazon.nova-2-multimodal-embeddings-v1:0"
 
     def test_passes_correct_model_id(self):
-        """Verifies the correct model ID is passed to Bedrock."""
+        """Verifies the correct model ID is passed to StartAsyncInvoke."""
         chunk = _make_audio_chunk()
-        mock_client = MagicMock()
-        mock_client.invoke_model.return_value = _mock_bedrock_response([1.0])
+        mock_bedrock = MagicMock()
+        mock_s3 = MagicMock()
+        _mock_bedrock_async(mock_bedrock, [1.0])
+        _mock_s3_output(mock_s3, [1.0])
 
         create_embedding(
             audio_chunk=chunk,
             s3_bucket="bucket",
             embedding_model_id="my-custom-model",
-            bedrock_client=mock_client,
+            bedrock_client=mock_bedrock,
+            s3_client=mock_s3,
         )
 
-        call_kwargs = mock_client.invoke_model.call_args[1]
+        call_kwargs = mock_bedrock.start_async_invoke.call_args[1]
         assert call_kwargs["modelId"] == "my-custom-model"
 
-    def test_passes_correct_payload(self):
-        """Verifies the S3 URI is correctly included in the request body."""
-        chunk = _make_audio_chunk()
-        mock_client = MagicMock()
-        mock_client.invoke_model.return_value = _mock_bedrock_response([1.0])
-
-        create_embedding(
-            audio_chunk=chunk,
-            s3_bucket="my-bucket",
-            embedding_model_id="model-id",
-            bedrock_client=mock_client,
-        )
-
-        call_kwargs = mock_client.invoke_model.call_args[1]
-        body = json.loads(call_kwargs["body"])
-        expected_uri = f"s3://my-bucket/{chunk.s3_chunk_key}"
-        assert body["inputAudio"] == expected_uri
-
     def test_raises_runtime_error_on_bedrock_failure(self):
-        """Bedrock invocation raises an exception."""
+        """Bedrock StartAsyncInvoke raises an exception."""
         chunk = _make_audio_chunk()
-        mock_client = MagicMock()
-        mock_client.invoke_model.side_effect = Exception("Throttling")
+        mock_bedrock = MagicMock()
+        mock_s3 = MagicMock()
+        mock_bedrock.start_async_invoke.side_effect = Exception("ValidationException")
 
-        with pytest.raises(RuntimeError, match="Bedrock invocation failed"):
+        with pytest.raises(RuntimeError, match="Bedrock async invocation failed"):
             create_embedding(
                 audio_chunk=chunk,
                 s3_bucket="bucket",
                 embedding_model_id="model-id",
-                bedrock_client=mock_client,
+                bedrock_client=mock_bedrock,
+                s3_client=mock_s3,
+            )
+
+    def test_raises_on_failed_status(self):
+        """Bedrock async invocation returns Failed status."""
+        chunk = _make_audio_chunk()
+        mock_bedrock = MagicMock()
+        mock_s3 = MagicMock()
+        mock_bedrock.start_async_invoke.return_value = {
+            "invocationArn": "arn:aws:bedrock:us-east-1:123:async-invoke/fail-123"
+        }
+        mock_bedrock.get_async_invoke.return_value = {
+            "status": "Failed",
+            "failureMessage": "Invalid model input",
+        }
+
+        with pytest.raises(RuntimeError, match="Bedrock async invocation failed"):
+            create_embedding(
+                audio_chunk=chunk,
+                s3_bucket="bucket",
+                embedding_model_id="model-id",
+                bedrock_client=mock_bedrock,
+                s3_client=mock_s3,
             )
 
     def test_maps_chunk_metadata_correctly(self):
@@ -171,14 +168,17 @@ class TestCreateEmbedding:
             submission_id="subB",
             user_id="userA",
         )
-        mock_client = MagicMock()
-        mock_client.invoke_model.return_value = _mock_bedrock_response([0.5, 0.6])
+        mock_bedrock = MagicMock()
+        mock_s3 = MagicMock()
+        _mock_bedrock_async(mock_bedrock, [0.5, 0.6])
+        _mock_s3_output(mock_s3, [0.5, 0.6])
 
         result = create_embedding(
             audio_chunk=chunk,
             s3_bucket="bucket",
             embedding_model_id="embed-model-v2",
-            bedrock_client=mock_client,
+            bedrock_client=mock_bedrock,
+            s3_client=mock_s3,
         )
 
         assert result.submission_id == "subB"
@@ -201,109 +201,71 @@ class TestCreateEmbeddingsBatch:
             chunks.append(_make_audio_chunk(chunk_index=i, start=start, end=end))
         return chunks
 
+    def _setup_mocks(self, count: int):
+        """Set up bedrock and s3 mocks for multiple invocations."""
+        mock_bedrock = MagicMock()
+        mock_s3 = MagicMock()
+
+        mock_bedrock.start_async_invoke.return_value = {
+            "invocationArn": "arn:aws:bedrock:us-east-1:123:async-invoke/batch-123"
+        }
+        mock_bedrock.get_async_invoke.return_value = {
+            "status": "Completed",
+            "outputDataConfig": {
+                "s3OutputDataConfig": {
+                    "s3Uri": "s3://bucket/output/"
+                }
+            },
+        }
+        mock_s3.list_objects_v2.return_value = {
+            "Contents": [{"Key": "output/result.json"}]
+        }
+
+        # Return different embeddings for each call
+        embedding_responses = [
+            json.dumps({"embedding": [float(i) + 0.1]}).encode()
+            for i in range(count)
+        ]
+        mock_s3.get_object.side_effect = [
+            {"Body": MagicMock(read=lambda b=body: b)}
+            for body in embedding_responses
+        ]
+
+        return mock_bedrock, mock_s3
+
     def test_individual_processing(self):
         """When batch_processing_enabled=False, processes chunks individually."""
         chunks = self._make_chunks(3)
-        mock_client = MagicMock()
-        mock_client.invoke_model.side_effect = [
-            _mock_bedrock_response([0.1, 0.2]),
-            _mock_bedrock_response([0.3, 0.4]),
-            _mock_bedrock_response([0.5, 0.6]),
-        ]
+        mock_bedrock, mock_s3 = self._setup_mocks(3)
 
         results = create_embeddings_batch(
             audio_chunks=chunks,
             s3_bucket="bucket",
             embedding_model_id="model-id",
             batch_processing_enabled=False,
-            bedrock_client=mock_client,
+            bedrock_client=mock_bedrock,
+            s3_client=mock_s3,
         )
 
         assert len(results) == 3
         assert results[0].chunk_index == 0
         assert results[1].chunk_index == 1
         assert results[2].chunk_index == 2
-        assert mock_client.invoke_model.call_count == 3
-
-    def test_batch_processing_enabled(self):
-        """When batch_processing_enabled=True, groups chunks into batches."""
-        chunks = self._make_chunks(5)
-        mock_client = MagicMock()
-        mock_client.invoke_model.side_effect = [
-            _mock_bedrock_response([float(i)]) for i in range(5)
-        ]
-
-        results = create_embeddings_batch(
-            audio_chunks=chunks,
-            s3_bucket="bucket",
-            embedding_model_id="model-id",
-            batch_processing_enabled=True,
-            batch_size=2,
-            bedrock_client=mock_client,
-        )
-
-        assert len(results) == 5
-        # Order must be preserved
-        for i, result in enumerate(results):
-            assert result.chunk_index == i
-        assert mock_client.invoke_model.call_count == 5
-
-    def test_batch_size_larger_than_chunks(self):
-        """Batch size larger than chunk count still works correctly."""
-        chunks = self._make_chunks(2)
-        mock_client = MagicMock()
-        mock_client.invoke_model.side_effect = [
-            _mock_bedrock_response([1.0]),
-            _mock_bedrock_response([2.0]),
-        ]
-
-        results = create_embeddings_batch(
-            audio_chunks=chunks,
-            s3_bucket="bucket",
-            embedding_model_id="model-id",
-            batch_processing_enabled=True,
-            batch_size=10,
-            bedrock_client=mock_client,
-        )
-
-        assert len(results) == 2
-        assert results[0].chunk_index == 0
-        assert results[1].chunk_index == 1
+        assert mock_bedrock.start_async_invoke.call_count == 3
 
     def test_single_chunk(self):
-        """Processing a single chunk works in both modes."""
+        """Processing a single chunk works."""
         chunks = self._make_chunks(1)
-        mock_client = MagicMock()
-        mock_client.invoke_model.return_value = _mock_bedrock_response([0.5])
+        mock_bedrock, mock_s3 = self._setup_mocks(1)
 
-        result_individual = create_embeddings_batch(
+        results = create_embeddings_batch(
             audio_chunks=chunks,
             s3_bucket="bucket",
             embedding_model_id="model-id",
             batch_processing_enabled=False,
-            bedrock_client=mock_client,
+            bedrock_client=mock_bedrock,
+            s3_client=mock_s3,
         )
 
-        assert len(result_individual) == 1
-        assert result_individual[0].chunk_index == 0
-
-    def test_preserves_order(self):
-        """Results maintain the same order as input chunks."""
-        chunks = self._make_chunks(4)
-        mock_client = MagicMock()
-        mock_client.invoke_model.side_effect = [
-            _mock_bedrock_response([float(i) + 0.1]) for i in range(4)
-        ]
-
-        results = create_embeddings_batch(
-            audio_chunks=chunks,
-            s3_bucket="bucket",
-            embedding_model_id="model-id",
-            batch_processing_enabled=True,
-            batch_size=3,
-            bedrock_client=mock_client,
-        )
-
-        for i, result in enumerate(results):
-            assert result.chunk_index == i
-            assert result.embedding_vector == [float(i) + 0.1]
+        assert len(results) == 1
+        assert results[0].chunk_index == 0

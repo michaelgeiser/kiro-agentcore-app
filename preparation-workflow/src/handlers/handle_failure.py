@@ -153,8 +153,8 @@ def handler(event, context):
     resource_prefix = f"prescoach-{env_name}-kiro"
 
     # Use environment-based defaults for infrastructure references
-    dynamodb_table_name = f"{resource_prefix}-submissions"
-    sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", f"arn:aws:sns:us-east-1:{os.environ.get('AWS_ACCOUNT_ID', '514917275675')}:prescoach-{env_name}-preparation-errors")
+    dynamodb_table_name = os.environ.get("DYNAMODB_TABLE_NAME", f"{resource_prefix}-submissions")
+    sns_topic_arn = os.environ.get("SNS_TOPIC_ARN", "")
     dlq_input_url = os.environ.get("DLQ_INPUT_URL", "")
     dlq_handoff_url = os.environ.get("DLQ_HANDOFF_URL", "")
 
