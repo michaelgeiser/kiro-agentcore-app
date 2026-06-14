@@ -384,8 +384,14 @@ class PreparationWorkflowStack(Stack):
 
         definition = {
             "Comment": "Preparation Workflow - Standard Workflow for audio/video processing pipeline",
-            "StartAt": "LoadConfig",
+            "StartAt": "UnwrapInput",
             "States": {
+                "UnwrapInput": {
+                    "Type": "Pass",
+                    "Comment": "EventBridge Pipe sends SQS messages as an array. Extract the first element.",
+                    "InputPath": "$[0]",
+                    "Next": "LoadConfig",
+                },
                 "LoadConfig": {
                     "Type": "Task",
                     "Resource": "arn:aws:states:::lambda:invoke",
@@ -406,7 +412,9 @@ class PreparationWorkflowStack(Stack):
                     "Resource": "arn:aws:states:::lambda:invoke",
                     "Parameters": {
                         "FunctionName": self.parse_message_fn.function_arn,
-                        "Payload.$": "$",
+                        "Payload": {
+                            "message_body.$": "$.body",
+                        },
                     },
                     "ResultPath": "$.parsed_message",
                     "ResultSelector": {
@@ -810,10 +818,8 @@ class PreparationWorkflowStack(Stack):
         )
 
         # EventBridge Pipe: SQS Input Queue → Step Functions
-        # With batch_size=1, the pipe processes one SQS message at a time.
-        # The input_template extracts the 'body' field (JSON string) from
-        # the SQS message and passes it as parsed JSON to Step Functions,
-        # so the state machine receives the message payload directly as an object.
+        # The pipe sends SQS messages as an array to Step Functions.
+        # The state machine's first state (UnwrapInput) extracts the first element.
         self.pipe = pipes.CfnPipe(
             self,
             "InputToStepFunctionsPipe",
@@ -828,7 +834,6 @@ class PreparationWorkflowStack(Stack):
             ),
             target=self.state_machine.attr_arn,
             target_parameters=pipes.CfnPipe.PipeTargetParametersProperty(
-                input_template='{"message_body": <$.body>}',
                 step_function_state_machine_parameters=pipes.CfnPipe.PipeTargetStateMachineParametersProperty(
                     invocation_type="FIRE_AND_FORGET",
                 ),
