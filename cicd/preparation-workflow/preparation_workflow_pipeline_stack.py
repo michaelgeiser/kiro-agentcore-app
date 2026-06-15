@@ -187,6 +187,13 @@ class PreparationWorkflowPipelineStack(Stack):
                             "pip install -r requirements.txt -t src/ --no-cache-dir",
                             "echo 'Installing CDK dependencies...'",
                             "pip install aws-cdk-lib>=2.100.0 constructs>=10.0.0 --no-cache-dir",
+                            "echo 'Downloading ffmpeg static binary for Lambda layer...'",
+                            "mkdir -p ffmpeg-layer/bin",
+                            "curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz -o /tmp/ffmpeg.tar.xz",
+                            "tar -xf /tmp/ffmpeg.tar.xz -C /tmp/",
+                            "cp /tmp/ffmpeg-*-amd64-static/ffmpeg ffmpeg-layer/bin/ffmpeg",
+                            "cp /tmp/ffmpeg-*-amd64-static/ffprobe ffmpeg-layer/bin/ffprobe",
+                            "chmod 755 ffmpeg-layer/bin/ffmpeg ffmpeg-layer/bin/ffprobe",
                         ],
                     },
                     "build": {

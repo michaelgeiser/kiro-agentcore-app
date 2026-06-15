@@ -203,12 +203,27 @@ class PreparationWorkflowStack(Stack):
         )
 
         # --- chunk_audio Lambda ---
+        # Uses pydub + ffmpeg for actual audio splitting.
+        # ffmpeg static binary is bundled in a layer built during CDK deploy.
+        ffmpeg_layer = lambda_.LayerVersion(
+            self,
+            "FfmpegLayer",
+            code=lambda_.Code.from_asset("../ffmpeg-layer"),
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            description="Static ffmpeg/ffprobe binaries for audio processing",
+        )
+
         self.chunk_audio_fn = self._create_lambda(
             "ChunkAudio",
             handler="services.chunking.handler",
             description="Divide audio into chunks and upload to S3",
             timeout=Duration.minutes(5),
-            memory_size=512,
+            memory_size=1024,
+        )
+        self.chunk_audio_fn.add_layers(ffmpeg_layer)
+        # Add ffmpeg binary path to environment (layer extracts to /opt)
+        self.chunk_audio_fn.add_environment(
+            "PATH", "/opt/bin:/var/lang/bin:/usr/local/bin:/usr/bin:/bin"
         )
         # S3 read/write for audio chunks
         self.chunk_audio_fn.add_to_role_policy(
