@@ -817,8 +817,8 @@ class PreparationWorkflowStack(Stack):
                 "description": "Feature flag for video file processing",
             },
             "vector-store-endpoint": {
-                "value": "s3://prescoach-vectors",
-                "description": "Vector store connection endpoint",
+                "value": f"prescoach-{self.env_name}-kiro-uploads",
+                "description": "Vector store S3 bucket name",
             },
             "vector-store-type": {
                 "value": "s3",
