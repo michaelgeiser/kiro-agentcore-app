@@ -1,0 +1,8 @@
+infra/
+tests/
+.hypothesis/
+__pycache__/
+*.pyc
+.venv/
+cdk.out/
+.git/

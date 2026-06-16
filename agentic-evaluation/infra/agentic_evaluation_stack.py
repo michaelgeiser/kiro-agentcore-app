@@ -171,6 +171,7 @@ class AgenticEvaluationStack(Stack):
             "EvalDockerImage",
             directory=docker_context_path,
             platform=ecr_assets.Platform.LINUX_AMD64,
+            exclude=["infra", "cdk.out", "tests", ".hypothesis", "__pycache__", ".venv"],
         )
 
         # =====================================================================
