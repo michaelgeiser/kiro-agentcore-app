@@ -7,6 +7,11 @@ AWS CodePipeline definitions for deploying the Presentation Coaching Platform co
 ```
 cicd/
 ├── README.md                          # This file
+├── agentic-evaluation/                # Pipelines for Agentic Evaluation (agents, reports, queues)
+│   ├── app.py
+│   ├── cdk.json
+│   ├── requirements.txt
+│   └── agentic_evaluation_pipeline_stack.py
 ├── webapp-upload/                     # Pipelines for Webapp (frontend) + Upload Service (backend)
 │   ├── app.py
 │   ├── cdk.json
@@ -180,3 +185,71 @@ aws codepipeline start-pipeline-execution \
   --name prescoach-dev-kiro-prep-workflow-deploy \
   --region us-east-1
 ```
+
+
+---
+
+## Agentic Evaluation Pipelines
+
+Located in `cicd/agentic-evaluation/`. Defines three CodePipeline pipelines:
+
+| Pipeline | Name Pattern | Trigger | What It Does |
+|----------|-------------|---------|--------------|
+| **Test** | `{prefix}-eval-workflow-test` | Manual / CLI | Runs property, unit, and integration tests (238 tests) |
+| **Deploy** | `{prefix}-eval-workflow-deploy` | Manual / CLI | Runs `cdk deploy` for agentic-evaluation infrastructure |
+| **Full Deploy** | `{prefix}-eval-workflow-full-deploy` | Manual / CLI | Runs Tests first, then Deploy (recommended) |
+
+### Deploy the Agentic Evaluation CI/CD Stack
+
+```bash
+cd cicd/agentic-evaluation
+
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+cdk deploy \
+  -c appName=$APP_NAME \
+  -c envName=$ENV_NAME \
+  -c instanceId=$INSTANCE_ID \
+  -c githubRepo="michaelgeiser/kiro-agentcore-app" \
+  -c githubBranch="main"
+```
+
+### Running Agentic Evaluation Pipelines
+
+```bash
+# Full deploy (test then deploy — recommended)
+aws codepipeline start-pipeline-execution \
+  --name prescoach-dev-kiro-eval-workflow-full-deploy \
+  --region us-east-1
+
+# Test only
+aws codepipeline start-pipeline-execution \
+  --name prescoach-dev-kiro-eval-workflow-test \
+  --region us-east-1
+
+# Deploy only (skip tests)
+aws codepipeline start-pipeline-execution \
+  --name prescoach-dev-kiro-eval-workflow-deploy \
+  --region us-east-1
+```
+
+### What Gets Deployed
+
+| Resource | Description |
+|----------|-------------|
+| SQS FIFO Queue + DLQ | Handoff queue from Preparation Workflow (shared) |
+| S3 Bucket paths | `evaluations/{submission_id}/{dimension}/result.json`, `reports/{user_id}/{submission_id}/coaching_report.pdf` |
+| SNS Topic | Error notifications and DLQ threshold alerts |
+| SSM Parameters | Runtime configuration under `/prescoach/{env}/agentic-evaluation/` |
+| DynamoDB (shared) | Status updates to existing submissions table |
+| Bedrock AgentCore | Session Supervisor and Coaching Supervisor agent registration |
+
+### Pipeline Execution Order (Full Deploy)
+
+```
+Source → Test (property + unit + integration) → Deploy (CDK)
+```
+
+If tests fail, the Deploy stage **will not run**.
