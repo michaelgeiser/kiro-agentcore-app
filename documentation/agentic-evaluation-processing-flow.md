@@ -398,12 +398,172 @@ A `DLQMonitor` service periodically checks the DLQ message count:
 
 ---
 
-## 12. Technology Stack
+## 12. Agent Execution Modes: Local vs AgentCore
+
+### Current Deployment: Local Mode (ECS Fargate Spot)
+
+As deployed today, the agents run in **local mode** — `LOCAL_MODE=true` in the ECS task environment. This means:
+
+- Strands `Agent` objects are instantiated in-process inside the container
+- When the Coaching Supervisor calls `agent(prompt)`, Strands makes direct `bedrock:InvokeModel` API calls from the ECS task
+- No AgentCore registration, no managed endpoints, no AgentCore-managed memory
+- Session state lives in-memory for the duration of one evaluation (not persisted between tasks)
+
+**What you get today:**
+- Full multi-agent orchestration (Agents as Tools pattern) via Strands SDK
+- Claude Sonnet reasoning via direct Bedrock API calls
+- Concurrent evaluation of multiple submissions
+- Cost-optimized ECS Fargate Spot execution
+- Everything works end-to-end without AgentCore provisioning
+
+**What you don't get (vs AgentCore):**
+- No built-in session memory persistence across task launches
+- No managed auto-scaling of individual agents
+- No agent versioning or deployment management via AgentCore console
+- No session isolation at the AgentCore level (isolation is at the ECS task level instead)
+
+### When to Switch to AgentCore
+
+Consider migrating to AgentCore when:
+
+| Trigger | Reason |
+|---------|--------|
+| You need session memory across evaluation restarts | AgentCore persists session context; local mode loses it when the task exits |
+| You want per-agent scaling independently | AgentCore can scale each evaluation agent separately rather than the whole container |
+| AgentCore exits preview and pricing is favorable | Currently in preview; pricing/GA status may change |
+| You need agent versioning and A/B testing | AgentCore provides managed deployment slots for canary releases |
+| You're hitting Bedrock throttling from a single process | AgentCore distributes requests across managed endpoints |
+| Production workload exceeds 100+ evaluations/day | At scale, managed infrastructure reduces operational burden |
+
+**Don't switch if:**
+- Your workload is light (< 50 evaluations/day) — ECS Spot is far cheaper
+- You need fine-grained control over the execution environment
+- AgentCore doesn't yet support your region
+- You need to run fully offline/locally for development
+
+### How to Switch to AgentCore
+
+**Step 1: Register agents with AgentCore**
+
+```bash
+# Register the Session Supervisor agent
+aws bedrock-agentcore create-agent \
+  --agent-name "prescoach-eval-session-supervisor" \
+  --foundation-model-id "anthropic.claude-sonnet-4-20250514" \
+  --instruction "You are the Session Supervisor for a presentation evaluation platform..." \
+  --region us-east-1
+
+# Register the Coaching Supervisor agent
+aws bedrock-agentcore create-agent \
+  --agent-name "prescoach-eval-coaching-supervisor" \
+  --foundation-model-id "anthropic.claude-sonnet-4-20250514" \
+  --instruction "You orchestrate evaluation agents to assess presentations..." \
+  --region us-east-1
+```
+
+(Exact CLI/API may differ — check current AgentCore documentation)
+
+**Step 2: Configure memory**
+
+```bash
+# Enable session memory on the Coaching Supervisor
+aws bedrock-agentcore update-agent \
+  --agent-id <coaching-supervisor-agent-id> \
+  --memory-configuration '{"memoryType": "SESSION", "sessionTtlHours": 24}'
+```
+
+**Step 3: Update environment variable**
+
+Change `LOCAL_MODE` from `true` to `false` in the CDK stack:
+
+```python
+# In agentic-evaluation/infra/agentic_evaluation_stack.py
+environment={
+    ...
+    "LOCAL_MODE": "false",  # <-- Change this
+    "AGENTCORE_SESSION_SUPERVISOR_ID": "<agent-id>",
+    "AGENTCORE_COACHING_SUPERVISOR_ID": "<agent-id>",
+    ...
+}
+```
+
+**Step 4: Update the local_runner.py to use AgentCore endpoints**
+
+The `deployment/agentcore_config.py` already has the configuration structure. When `LOCAL_MODE=false`, the runner would:
+1. Create agents via AgentCore client instead of local Strands instantiation
+2. Use AgentCore's `invoke-agent` API instead of direct `InvokeModel`
+3. Leverage AgentCore session memory for context persistence
+
+**Step 5: Redeploy**
+
+```bash
+aws codepipeline start-pipeline-execution \
+  --name prescoach-dev-kiro-eval-workflow-deploy \
+  --region us-east-1
+```
+
+**Step 6: Verify**
+
+```bash
+# Check agent is registered
+aws bedrock-agentcore list-agents --region us-east-1
+
+# Check ECS task uses new config
+aws ecs describe-task-definition \
+  --task-definition prescoach-dev-kiro-eval-task \
+  --query 'taskDefinition.containerDefinitions[0].environment' \
+  --region us-east-1
+```
+
+### Architecture Comparison
+
+```
+LOCAL MODE (current):
+┌─────────────────────────────────────┐
+│  ECS Fargate Spot Container         │
+│                                     │
+│  SessionSupervisor                  │
+│    └─> CoachingSupervisor           │
+│          └─> Strands Agent          │
+│                └─> bedrock:InvokeModel (direct API calls)
+│                                     │
+│  All agents run in-process          │
+└─────────────────────────────────────┘
+
+AGENTCORE MODE (future):
+┌─────────────────────────────────────┐
+│  ECS Fargate Spot Container         │
+│                                     │
+│  SessionSupervisor                  │
+│    └─> AgentCore Client             │
+│          └─> agentcore:InvokeAgent  │
+└───────────────┬─────────────────────┘
+                │
+                ▼
+┌─────────────────────────────────────┐
+│  Bedrock AgentCore Runtime          │
+│                                     │
+│  CoachingSupervisor (managed)       │
+│    ├─> DeliveryEvaluator (tool)     │
+│    ├─> StructureEvaluator (tool)    │
+│    ├─> PacingEvaluator (tool)       │
+│    └─> ... (all 7 agents)           │
+│                                     │
+│  + Session Memory                   │
+│  + Auto-scaling                     │
+│  + Agent Versioning                 │
+└─────────────────────────────────────┘
+```
+
+---
+
+## 13. Technology Stack
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
 | Agent Framework | Strands Agents SDK | Multi-agent orchestration with Agents-as-Tools pattern |
-| Agent Runtime | Amazon Bedrock AgentCore | Managed deployment, session isolation, memory |
+| Agent Execution | Local mode (in-process) | Direct `bedrock:InvokeModel` calls from ECS container |
+| Agent Execution (future) | Amazon Bedrock AgentCore | Managed deployment, session memory, auto-scaling |
 | Foundation Model | Claude Sonnet (via Bedrock) | Evaluation reasoning and assessment |
 | Embedding Retrieval | S3 Vector Store | Presentation content for evaluation context |
 | PDF Generation | ReportLab | Coaching report production |
@@ -419,7 +579,7 @@ A `DLQMonitor` service periodically checks the DLQ message count:
 
 ---
 
-## 13. How to Verify End-to-End Processing
+## 14. How to Verify End-to-End Processing
 
 After a handoff message is consumed, check these in order:
 
@@ -463,7 +623,7 @@ Expected: `0` (no messages in DLQ)
 
 ---
 
-## 14. Module Structure
+## 15. Module Structure
 
 ```
 agentic-evaluation/
@@ -507,7 +667,7 @@ agentic-evaluation/
 
 ---
 
-## 15. CI/CD Pipeline
+## 16. CI/CD Pipeline
 
 Three CodePipeline pipelines automate testing and deployment:
 
@@ -531,7 +691,7 @@ See `installations/RUN-EVAL-WORKFLOW-PIPELINE.md` for detailed run instructions.
 
 ---
 
-## 16. Monitoring and Observability
+## 17. Monitoring and Observability
 
 ### CloudWatch Log Group
 
