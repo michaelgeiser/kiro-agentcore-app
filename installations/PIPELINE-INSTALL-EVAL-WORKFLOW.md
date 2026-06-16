@@ -151,7 +151,7 @@ Should show:
 
 ---
 
-## Step 7: Test — Trigger Full Deploy
+## Step 9: Test — Trigger Full Deploy
 
 ```bash
 aws codepipeline start-pipeline-execution \
@@ -161,7 +161,7 @@ aws codepipeline start-pipeline-execution \
 
 ---
 
-## Step 8: Monitor Progress
+## Step 10: Monitor Progress
 
 ```bash
 aws codepipeline get-pipeline-state \
