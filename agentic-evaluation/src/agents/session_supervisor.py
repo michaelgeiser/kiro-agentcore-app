@@ -1,0 +1,762 @@
+"""Session Supervisor Agent.
+
+Top-level orchestrator for the evaluation session lifecycle. Consumes
+messages from the SQS FIFO handoff queue, manages DynamoDB status
+transitions, delegates evaluation to the Coaching Supervisor, stores
+results in S3, and triggers report generation.
+"""
+
+import json
+import logging
+import time
+from typing import Any
+
+from pydantic import ValidationError
+
+from agents.coaching_supervisor import CoachingSupervisor
+from agents.registry import AgentRegistry
+from models.data_models import (
+    EvaluationInput,
+    EvaluationResult,
+    HandoffMessage,
+    ProcessingStatus,
+    RetryConfig,
+    SessionResult,
+    get_evaluation_result_path,
+)
+from services.error_notifier import ErrorNotifier
+from services.report_generator import ReportGenerator
+from services.retry import _compute_delay
+from services.sqs_consumer import SQSConsumer
+from services.status_manager import StatusManager
+
+logger = logging.getLogger(__name__)
+
+
+class SessionSupervisor:
+    """Top-level orchestrator for the evaluation session lifecycle.
+
+    Wires together SQSConsumer, StatusManager, CoachingSupervisor,
+    ReportGenerator, and ErrorNotifier to process handoff messages
+    through the full evaluation pipeline.
+
+    Args:
+        sqs_consumer: Consumer for the SQS FIFO handoff queue.
+        status_manager: Manager for DynamoDB status transitions.
+        coaching_supervisor: Orchestrator for evaluation agents.
+        report_generator: Generator for PDF coaching reports.
+        error_notifier: Best-effort SNS error notification publisher.
+        s3_client: Boto3 S3 client for storing evaluation results.
+        bucket_name: Name of the S3 bucket for evaluation results.
+        registry: Agent registry for determining available dimensions.
+    """
+
+    def __init__(
+        self,
+        sqs_consumer: SQSConsumer,
+        status_manager: StatusManager,
+        coaching_supervisor: CoachingSupervisor,
+        report_generator: ReportGenerator,
+        error_notifier: ErrorNotifier,
+        s3_client: Any,
+        bucket_name: str,
+        registry: AgentRegistry | None = None,
+        retry_config: RetryConfig | None = None,
+    ) -> None:
+        self._sqs_consumer = sqs_consumer
+        self._status_manager = status_manager
+        self._coaching_supervisor = coaching_supervisor
+        self._report_generator = report_generator
+        self._error_notifier = error_notifier
+        self._s3_client = s3_client
+        self._bucket_name = bucket_name
+        self._registry = registry
+        self._retry_config = retry_config or RetryConfig()
+
+    def handle_message(self, raw_message: dict) -> SessionResult:
+        """Process a single handoff message through the full evaluation pipeline.
+
+        Lifecycle:
+        1. Parse and validate as HandoffMessage (Pydantic validation)
+        2. Acknowledge the SQS message
+        3. Update status to Evaluating
+        4. Determine dimensions (all enabled agents from the registry)
+        5. Build EvaluationInput and delegate to CoachingSupervisor.evaluate()
+        6. Store each EvaluationResult as JSON in S3
+        7. Update status to Report_Generating
+        8. Generate report via ReportGenerator.generate()
+        9. Update status to Completed with report_path
+        10. Return SessionResult
+
+        Args:
+            raw_message: The raw message dict from SQS (includes _receipt_handle).
+
+        Returns:
+            A SessionResult summarizing the evaluation session outcome.
+        """
+        start_time = time.time()
+        receipt_handle = raw_message.get("_receipt_handle")
+
+        # Step 1: Parse and validate as HandoffMessage
+        logger.info("Parsing handoff message")
+        try:
+            # Remove internal SQS metadata keys before validation
+            message_data = {
+                k: v for k, v in raw_message.items() if not k.startswith("_")
+            }
+            handoff = HandoffMessage.model_validate(message_data)
+        except ValidationError as exc:
+            logger.error("Message validation failed: %s", exc)
+            # Route invalid message to DLQ
+            self._handle_validation_failure(raw_message, receipt_handle, str(exc))
+            duration = time.time() - start_time
+            submission_id = raw_message.get("submission_id") or "unknown"
+            return SessionResult(
+                submission_id=submission_id,
+                status=ProcessingStatus.FAILED,
+                failure_reason=f"Validation error: {exc}",
+            )
+
+        submission_id = handoff.submission_id
+        logger.info(
+            "Processing submission_id=%s, title=%s",
+            submission_id,
+            handoff.presentation_title,
+        )
+
+        # Step 2: Acknowledge the SQS message
+        try:
+            if receipt_handle:
+                self._sqs_consumer.acknowledge(receipt_handle)
+                logger.info(
+                    "Acknowledged SQS message for submission_id=%s",
+                    submission_id,
+                )
+        except Exception as exc:
+            logger.error(
+                "Failed to acknowledge message for submission_id=%s: %s",
+                submission_id,
+                exc,
+            )
+            # Continue processing even if acknowledge fails
+
+        # Step 3: Update status to Evaluating
+        try:
+            self._status_manager.update_status(
+                submission_id=submission_id,
+                status=ProcessingStatus.EVALUATING,
+            )
+        except Exception as exc:
+            logger.error(
+                "Failed to update status to Evaluating for submission_id=%s: %s",
+                submission_id,
+                exc,
+            )
+            # Continue processing — status update is best-effort at this stage
+
+        # Step 4: Determine dimensions (all enabled agents from registry)
+        dimensions = self._get_all_dimensions()
+        logger.info(
+            "Evaluating %d dimension(s) for submission_id=%s: %s",
+            len(dimensions),
+            submission_id,
+            dimensions,
+        )
+
+        # Step 5: Build EvaluationInput and delegate to CoachingSupervisor
+        evaluation_input = EvaluationInput(
+            submission_id=submission_id,
+            s3_bucket=self._bucket_name,
+            s3_key=handoff.s3_file_key,
+            dimension="all",
+            user_id=handoff.user_id,
+        )
+
+        try:
+            evaluation_results = self._coaching_supervisor.evaluate(
+                input=evaluation_input,
+                dimensions=dimensions,
+            )
+        except Exception as exc:
+            logger.error(
+                "CoachingSupervisor evaluation failed for submission_id=%s: %s",
+                submission_id,
+                exc,
+            )
+            return self._handle_failure(
+                submission_id=submission_id,
+                failure_reason=f"Evaluation failed: {exc}",
+                start_time=start_time,
+                evaluation_results=[],
+            )
+
+        # Collect agent failures for partial failure reporting
+        agent_failures = self._coaching_supervisor.get_last_failures()
+
+        # Step 6: Store each EvaluationResult as JSON in S3
+        stored_results = self._store_evaluation_results(
+            submission_id, evaluation_results
+        )
+
+        # Partial failure handling:
+        # - If NO results were obtained AND there were agent failures (all
+        #   agents that were invoked failed): mark as Failed, do NOT generate
+        #   a report.
+        # - If SOME results obtained but some agents failed: still generate
+        #   the report from whatever data we have.
+        # - If no results and no failures (e.g., no agents invoked): proceed
+        #   normally — report generation will handle zero-result case.
+        if not stored_results and agent_failures:
+            # All agents failed — cannot generate a report
+            failed_dims = [f.dimension for f in agent_failures]
+            failure_reason = (
+                "All evaluation agents failed — no results obtained. "
+                f"Failed dimensions: {failed_dims}. "
+                f"Agent failure details: "
+                + "; ".join(
+                    f"{f.agent_id} ({f.dimension}): {f.error}"
+                    for f in agent_failures
+                )
+            )
+            return self._handle_failure(
+                submission_id=submission_id,
+                failure_reason=failure_reason,
+                start_time=start_time,
+                evaluation_results=[],
+                agent_failures=agent_failures,
+            )
+
+        # Step 7: Update status to Report_Generating
+        try:
+            self._status_manager.update_status(
+                submission_id=submission_id,
+                status=ProcessingStatus.REPORT_GENERATING,
+            )
+        except Exception as exc:
+            logger.error(
+                "Failed to update status to Report_Generating for "
+                "submission_id=%s: %s",
+                submission_id,
+                exc,
+            )
+
+        # Step 8: Generate report via ReportGenerator
+        try:
+            report_path = self._report_generator.generate(
+                submission_id=submission_id,
+                user_id=handoff.user_id,
+                results=stored_results,
+            )
+        except Exception as exc:
+            logger.error(
+                "Report generation failed for submission_id=%s: %s",
+                submission_id,
+                exc,
+            )
+            return self._handle_failure(
+                submission_id=submission_id,
+                failure_reason=f"Report generation failed: {exc}",
+                start_time=start_time,
+                evaluation_results=stored_results,
+                agent_failures=agent_failures,
+                results_already_stored=True,
+            )
+
+        # Step 9: Update status to Completed with report_path
+        try:
+            self._status_manager.update_status(
+                submission_id=submission_id,
+                status=ProcessingStatus.COMPLETED,
+                report_path=report_path,
+            )
+        except Exception as exc:
+            logger.error(
+                "Failed to update status to Completed for submission_id=%s: %s",
+                submission_id,
+                exc,
+            )
+
+        # Log partial failure info if some agents failed but report was
+        # still generated (results were available)
+        if agent_failures:
+            logger.warning(
+                "Evaluation session for submission_id=%s completed with "
+                "partial failures. Report generated from %d result(s). "
+                "Failed agents: %s",
+                submission_id,
+                len(stored_results),
+                [
+                    f"{f.agent_id} ({f.dimension})" for f in agent_failures
+                ],
+            )
+
+        # Step 10: Return SessionResult
+        duration = time.time() - start_time
+        logger.info(
+            "Evaluation session completed for submission_id=%s in %.2fs. "
+            "Report stored at: %s",
+            submission_id,
+            duration,
+            report_path,
+        )
+
+        return SessionResult(
+            submission_id=submission_id,
+            status=ProcessingStatus.COMPLETED,
+            evaluation_results=stored_results,
+            report_path=report_path,
+            agent_failures=agent_failures,
+        )
+
+    def consume_queue(self) -> None:
+        """Continuously poll the SQS FIFO queue and process messages.
+
+        FIFO Ordering Guarantee (Requirements 8.1, 8.2):
+            This method guarantees that messages within a MessageGroupId are
+            processed in the exact order they were sent to the FIFO queue.
+            The guarantee is maintained through three mechanisms:
+
+            1. Single-message reception: SQSConsumer.receive_message() uses
+               MaxNumberOfMessages=1, so only one message is in-flight at a
+               time.
+
+            2. Sequential processing: This loop processes one message to
+               completion (via handle_message()) before polling for the next.
+               There is no parallelism or concurrent message handling.
+
+            3. Acknowledgment after initiation: handle_message() deletes
+               (acknowledges) the message from the queue after validation
+               succeeds and before evaluation begins. This prevents the
+               message from being redelivered during processing while
+               allowing failed-to-initiate messages to become visible again
+               after the visibility timeout expires (configured at 5 minutes
+               in the infrastructure stack).
+
+        Long-polls via sqs_consumer.receive_message() and calls
+        handle_message() for each received message. Runs indefinitely
+        until interrupted. Errors during message handling are caught,
+        logged, and reported via the error notifier.
+        """
+        logger.info("Starting queue consumption loop")
+
+        while True:
+            try:
+                raw_message = self._sqs_consumer.receive_message()
+            except Exception as exc:
+                logger.error("Error receiving message from SQS: %s", exc)
+                # Brief pause before retrying to avoid tight error loops
+                time.sleep(5)
+                continue
+
+            if raw_message is None:
+                # No message received during polling window — loop again
+                logger.debug("No messages received, continuing to poll")
+                continue
+
+            try:
+                self.handle_message(raw_message)
+            except Exception as exc:
+                # Catch any unhandled exception from handle_message
+                submission_id = raw_message.get("submission_id", "unknown")
+                logger.exception(
+                    "Unhandled error processing message for "
+                    "submission_id=%s: %s",
+                    submission_id,
+                    exc,
+                )
+                self._error_notifier.notify(
+                    submission_id=submission_id,
+                    component_name="SessionSupervisor",
+                    error_type="UnhandledError",
+                    error_message=str(exc),
+                    retry_count_exhausted=0,
+                )
+
+    # -----------------------------------------------------------------------
+    # Private helpers
+    # -----------------------------------------------------------------------
+
+    def _get_all_dimensions(self) -> list[str]:
+        """Get all enabled evaluation dimension names from the registry.
+
+        Returns:
+            A list of dimension strings. Returns a default set of 7 dimensions
+            if no registry is configured.
+        """
+        if self._registry is not None:
+            available = self._registry.get_available_agents()
+            return [agent.dimension for agent in available]
+
+        # Default set of all 7 dimensions if no registry is available
+        return [
+            "delivery",
+            "structure",
+            "executive_presence",
+            "technical_communication",
+            "audience_engagement",
+            "pacing",
+            "persuasion",
+        ]
+
+    def _store_evaluation_results(
+        self,
+        submission_id: str,
+        results: list[EvaluationResult],
+    ) -> list[EvaluationResult]:
+        """Store each evaluation result as JSON in S3 with retry logic.
+
+        Uses exponential backoff with jitter for transient S3 write failures.
+        On permanent failure (retries exhausted), notifies via SNS and
+        continues with remaining results.
+
+        Args:
+            submission_id: The submission identifier.
+            results: List of evaluation results to store.
+
+        Returns:
+            The list of results that were successfully stored.
+        """
+        stored: list[EvaluationResult] = []
+
+        for result in results:
+            s3_key = get_evaluation_result_path(submission_id, result.dimension)
+            success = self._put_object_with_retry(
+                submission_id=submission_id,
+                s3_key=s3_key,
+                body=result.model_dump_json(),
+                dimension=result.dimension,
+            )
+            if success:
+                stored.append(result)
+                logger.info(
+                    "Stored evaluation result for submission_id=%s, "
+                    "dimension=%s at s3://%s/%s",
+                    submission_id,
+                    result.dimension,
+                    self._bucket_name,
+                    s3_key,
+                )
+            else:
+                # Failure after retries exhausted — already notified via SNS
+                # Continue with remaining results per Requirement 5.5
+                logger.warning(
+                    "Skipping dimension=%s for submission_id=%s after "
+                    "S3 write failure (retries exhausted)",
+                    result.dimension,
+                    submission_id,
+                )
+
+        return stored
+
+    def _put_object_with_retry(
+        self,
+        submission_id: str,
+        s3_key: str,
+        body: str,
+        dimension: str,
+    ) -> bool:
+        """Write an object to S3 with exponential backoff and jitter.
+
+        Args:
+            submission_id: The submission identifier (for error reporting).
+            s3_key: The S3 key to write to.
+            body: The body content to store.
+            dimension: The evaluation dimension (for error reporting).
+
+        Returns:
+            True if the write succeeded, False if all retries were exhausted.
+        """
+        config = self._retry_config
+        last_exception: Exception | None = None
+
+        for attempt in range(1, config.max_attempts + 1):
+            try:
+                self._s3_client.put_object(
+                    Bucket=self._bucket_name,
+                    Key=s3_key,
+                    Body=body,
+                    ContentType="application/json",
+                )
+                return True
+            except Exception as exc:
+                last_exception = exc
+
+                if attempt >= config.max_attempts:
+                    logger.error(
+                        "Failed to store evaluation result for "
+                        "submission_id=%s, dimension=%s after %d attempts: %s",
+                        submission_id,
+                        dimension,
+                        config.max_attempts,
+                        exc,
+                    )
+                    # Notify via SNS on final failure
+                    self._error_notifier.notify(
+                        submission_id=submission_id,
+                        component_name=f"S3Storage-{dimension}",
+                        error_type="S3WriteError",
+                        error_message=str(exc),
+                        retry_count_exhausted=config.max_attempts,
+                    )
+                    return False
+
+                delay = _compute_delay(attempt, config)
+                logger.warning(
+                    "S3 write failed for submission_id=%s, dimension=%s "
+                    "on attempt %d/%d (%s). Retrying in %.2fs...",
+                    submission_id,
+                    dimension,
+                    attempt,
+                    config.max_attempts,
+                    exc,
+                    delay,
+                )
+                time.sleep(delay)
+
+        # Should not be reached, but satisfies type checkers
+        return False  # pragma: no cover
+
+    def verify_completeness(
+        self,
+        submission_id: str,
+        expected_dimensions: list[str],
+    ) -> bool:
+        """Verify that all expected evaluation result files exist in S3.
+
+        Checks that every expected dimension has a corresponding result
+        file present in S3 at the correct path. Used before proceeding
+        to report generation to ensure data completeness.
+
+        Args:
+            submission_id: The submission identifier.
+            expected_dimensions: List of dimension names that should have
+                corresponding result files in S3.
+
+        Returns:
+            True if all expected dimension files are present, False otherwise.
+        """
+        if not expected_dimensions:
+            return True
+
+        for dimension in expected_dimensions:
+            s3_key = get_evaluation_result_path(submission_id, dimension)
+            try:
+                self._s3_client.head_object(
+                    Bucket=self._bucket_name,
+                    Key=s3_key,
+                )
+            except Exception:
+                logger.warning(
+                    "Completeness check failed: missing result for "
+                    "submission_id=%s, dimension=%s (expected at s3://%s/%s)",
+                    submission_id,
+                    dimension,
+                    self._bucket_name,
+                    s3_key,
+                )
+                return False
+
+        logger.info(
+            "Completeness verification passed for submission_id=%s: "
+            "all %d expected dimensions present",
+            submission_id,
+            len(expected_dimensions),
+        )
+        return True
+
+    def _handle_validation_failure(
+        self,
+        raw_message: dict,
+        receipt_handle: str | None,
+        error_message: str,
+    ) -> None:
+        """Handle a message that fails validation.
+
+        Routes the message to the DLQ and sends an error notification.
+
+        Args:
+            raw_message: The raw message that failed validation.
+            receipt_handle: The SQS receipt handle for acknowledgment.
+            error_message: Description of the validation failure.
+        """
+        submission_id = raw_message.get("submission_id", "unknown")
+
+        # Route to DLQ
+        try:
+            message_body = json.dumps(raw_message, default=str)
+            self._sqs_consumer.send_to_dlq(message_body, error_message)
+        except Exception as exc:
+            logger.error(
+                "Failed to route invalid message to DLQ: %s", exc
+            )
+
+        # Acknowledge the original message to remove it from the queue
+        try:
+            if receipt_handle:
+                self._sqs_consumer.acknowledge(receipt_handle)
+        except Exception as exc:
+            logger.error(
+                "Failed to acknowledge invalid message: %s", exc
+            )
+
+        # Send error notification
+        self._error_notifier.notify(
+            submission_id=submission_id,
+            component_name="SessionSupervisor",
+            error_type="ValidationError",
+            error_message=error_message,
+            retry_count_exhausted=0,
+        )
+
+    def _handle_failure(
+        self,
+        submission_id: str,
+        failure_reason: str,
+        start_time: float,
+        evaluation_results: list[EvaluationResult],
+        agent_failures: list | None = None,
+        results_already_stored: bool = False,
+    ) -> SessionResult:
+        """Handle an unrecoverable failure during the evaluation session.
+
+        Updates DynamoDB status to Failed (always with a non-empty
+        failure_reason), stores any successfully obtained results to S3,
+        and publishes a detailed SNS notification including which agents
+        completed and which failed.
+
+        Does NOT generate a report from incomplete data.
+
+        Args:
+            submission_id: The submission identifier.
+            failure_reason: Human-readable description of the failure.
+            start_time: The time the session started (for duration calc).
+            evaluation_results: Any results successfully obtained.
+            agent_failures: List of agent failures for partial failure info.
+            results_already_stored: If True, skip storing results (already in S3).
+
+        Returns:
+            A SessionResult with Failed status.
+        """
+        failures = agent_failures or []
+
+        # Store whatever results were successfully obtained (partial results)
+        # Skip if results were already stored earlier in the pipeline
+        if evaluation_results and not results_already_stored:
+            self._store_evaluation_results(submission_id, evaluation_results)
+
+        # Build detailed failure reason including which agents completed/failed
+        completed_dimensions = [r.dimension for r in evaluation_results]
+        failed_dimensions = [f.dimension for f in failures]
+
+        detailed_reason = failure_reason
+        if failures or evaluation_results:
+            parts = [failure_reason]
+            if completed_dimensions:
+                parts.append(
+                    f"Completed dimensions: {completed_dimensions}"
+                )
+            if failed_dimensions:
+                parts.append(
+                    f"Failed dimensions: {failed_dimensions}"
+                )
+            for f in failures:
+                parts.append(f"  - {f.agent_id} ({f.dimension}): {f.error}")
+            detailed_reason = ". ".join(
+                p for p in parts if not p.startswith("  -")
+            )
+            if failures:
+                detailed_reason += ". Agent failure details: " + "; ".join(
+                    f"{f.agent_id} ({f.dimension}): {f.error}"
+                    for f in failures
+                )
+
+        # Ensure failure_reason is always non-empty
+        if not detailed_reason:
+            detailed_reason = "Unknown failure during evaluation session"
+
+        # Update status to Failed with non-empty failure_reason
+        try:
+            self._status_manager.update_status(
+                submission_id=submission_id,
+                status=ProcessingStatus.FAILED,
+                failure_reason=detailed_reason,
+            )
+        except Exception as exc:
+            logger.error(
+                "Failed to update status to Failed for submission_id=%s: %s",
+                submission_id,
+                exc,
+            )
+
+        # Build detailed SNS notification with partial failure info
+        notification_message = self._build_failure_notification_message(
+            failure_reason=failure_reason,
+            completed_dimensions=completed_dimensions,
+            failed_dimensions=failed_dimensions,
+            agent_failures=failures,
+        )
+
+        self._error_notifier.notify(
+            submission_id=submission_id,
+            component_name="SessionSupervisor",
+            error_type="EvaluationSessionFailed",
+            error_message=notification_message,
+            retry_count_exhausted=0,
+        )
+
+        duration = time.time() - start_time
+        logger.error(
+            "Evaluation session FAILED for submission_id=%s after %.2fs. "
+            "Reason: %s",
+            submission_id,
+            duration,
+            detailed_reason,
+        )
+
+        return SessionResult(
+            submission_id=submission_id,
+            status=ProcessingStatus.FAILED,
+            evaluation_results=evaluation_results,
+            failure_reason=detailed_reason,
+            agent_failures=failures,
+        )
+
+    def _build_failure_notification_message(
+        self,
+        failure_reason: str,
+        completed_dimensions: list[str],
+        failed_dimensions: list[str],
+        agent_failures: list,
+    ) -> str:
+        """Build a detailed error notification message for SNS.
+
+        Includes which dimensions were successfully evaluated and which
+        failed, along with agent-level failure details.
+
+        Args:
+            failure_reason: The primary failure reason.
+            completed_dimensions: List of dimensions that completed.
+            failed_dimensions: List of dimensions that failed.
+            agent_failures: List of AgentFailure objects with details.
+
+        Returns:
+            A detailed error message string for the SNS notification.
+        """
+        parts = [failure_reason]
+
+        if completed_dimensions:
+            parts.append(
+                f"Dimensions evaluated successfully: {completed_dimensions}"
+            )
+        if failed_dimensions:
+            parts.append(
+                f"Dimensions that failed: {failed_dimensions}"
+            )
+        if agent_failures:
+            failure_details = "; ".join(
+                f"{f.agent_id} ({f.dimension}): {f.error}"
+                for f in agent_failures
+            )
+            parts.append(f"Agent failure details: {failure_details}")
+
+        return " | ".join(parts)

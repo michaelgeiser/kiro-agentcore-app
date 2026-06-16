@@ -1,0 +1,67 @@
+{
+  "agents": [
+    {
+      "agent_id": "delivery-evaluator-v1",
+      "dimension": "delivery",
+      "display_name": "Delivery Evaluator",
+      "description": "Assesses vocal variety, pace, pauses, filler words, energy, and projection to evaluate presentation delivery effectiveness.",
+      "version": "1.0.0",
+      "enabled": true,
+      "tool_module": "src.agents.delivery_evaluator"
+    },
+    {
+      "agent_id": "structure-evaluator-v1",
+      "dimension": "structure",
+      "display_name": "Structure Evaluator",
+      "description": "Evaluates logical flow, organization, transitions, introduction clarity, and conclusion impact of the presentation structure.",
+      "version": "1.0.0",
+      "enabled": true,
+      "tool_module": "src.agents.structure_evaluator"
+    },
+    {
+      "agent_id": "executive-presence-evaluator-v1",
+      "dimension": "executive_presence",
+      "display_name": "Executive Presence Evaluator",
+      "description": "Assesses confidence, authority, gravitas, composure, and leadership demeanor conveyed during the presentation.",
+      "version": "1.0.0",
+      "enabled": true,
+      "tool_module": "src.agents.executive_presence_evaluator"
+    },
+    {
+      "agent_id": "technical-communication-evaluator-v1",
+      "dimension": "technical_communication",
+      "display_name": "Technical Communication Evaluator",
+      "description": "Evaluates clarity of technical explanations, appropriate use of jargon, visual aid effectiveness, and complexity management.",
+      "version": "1.0.0",
+      "enabled": true,
+      "tool_module": "src.agents.technical_communication_evaluator"
+    },
+    {
+      "agent_id": "audience-engagement-evaluator-v1",
+      "dimension": "audience_engagement",
+      "display_name": "Audience Engagement Evaluator",
+      "description": "Assesses audience interaction techniques, storytelling effectiveness, rhetorical questions, and attention-holding strategies.",
+      "version": "1.0.0",
+      "enabled": true,
+      "tool_module": "src.agents.audience_engagement_evaluator"
+    },
+    {
+      "agent_id": "pacing-evaluator-v1",
+      "dimension": "pacing",
+      "display_name": "Pacing Evaluator",
+      "description": "Evaluates time management, segment balance, content density, speed variation, and appropriate use of pauses throughout the presentation.",
+      "version": "1.0.0",
+      "enabled": true,
+      "tool_module": "src.agents.pacing_evaluator"
+    },
+    {
+      "agent_id": "persuasion-evaluator-v1",
+      "dimension": "persuasion",
+      "display_name": "Persuasion Evaluator",
+      "description": "Assesses argument strength, evidence usage, call-to-action clarity, emotional appeal, and overall persuasive impact of the presentation.",
+      "version": "1.0.0",
+      "enabled": true,
+      "tool_module": "src.agents.persuasion_evaluator"
+    }
+  ]
+}

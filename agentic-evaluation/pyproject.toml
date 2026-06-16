@@ -1,0 +1,25 @@
+[project]
+name = "agentic-evaluation"
+version = "0.1.0"
+description = "Agentic Evaluation and Report Generation for the Presentation Coaching Platform - orchestrates evaluation agents via Bedrock AgentCore and produces PDF coaching reports"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "--tb=short -q"
+
+[tool.hypothesis]
+max_examples = 100
+deadline = 500
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80
