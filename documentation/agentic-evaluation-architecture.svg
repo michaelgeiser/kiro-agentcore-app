@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1450 950" font-family="Amazon Ember, Helvetica Neue, Arial, sans-serif">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#545B64"/>
+    </marker>
+    <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#FF9900"/>
+    </marker>
+    <marker id="arrowhead-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#DD344C"/>
+    </marker>
+    <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#0972D3"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1450" height="950" fill="#FFFFFF"/>
+
+  <!-- Title -->
+  <text x="725" y="35" text-anchor="middle" font-size="18" font-weight="bold" fill="#232F3E">Agentic Evaluation &amp; Report Generation — Architecture Diagram</text>
+  <text x="725" y="55" text-anchor="middle" font-size="11" fill="#545B64">Amazon Bedrock AgentCore | Presentation Coaching Platform</text>
+
+  <!-- AWS Cloud boundary -->
+  <rect x="30" y="70" width="1390" height="850" rx="8" ry="8" fill="none" stroke="#232F3E" stroke-width="2" stroke-dasharray="8,4"/>
+  <rect x="30" y="70" width="140" height="24" rx="4" ry="4" fill="#232F3E"/>
+  <text x="100" y="86" text-anchor="middle" font-size="11" fill="#FFFFFF" font-weight="bold">AWS Cloud</text>
+
+  <!-- ==================== INPUT SECTION ==================== -->
+
+  <!-- SQS Handoff Queue (FIFO) -->
+  <rect x="50" y="300" width="150" height="80" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="2"/>
+  <rect x="50" y="300" width="150" height="22" rx="6" ry="0" fill="#FF4F8B"/>
+  <text x="125" y="315" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon SQS (FIFO)</text>
+  <text x="125" y="340" text-anchor="middle" font-size="9" fill="#232F3E">preparation-handoff</text>
+  <text x="125" y="355" text-anchor="middle" font-size="8" fill="#545B64">submission_id, user_id</text>
+  <text x="125" y="368" text-anchor="middle" font-size="8" fill="#545B64">vector_store_location</text>
+
+  <!-- DLQ Handoff Consumer -->
+  <rect x="50" y="440" width="150" height="55" rx="6" ry="6" fill="#FFF0F0" stroke="#DD344C" stroke-width="1.5"/>
+  <text x="125" y="462" text-anchor="middle" font-size="8" font-weight="bold" fill="#DD344C">SQS DLQ</text>
+  <text x="125" y="477" text-anchor="middle" font-size="8" fill="#545B64">dlq-handoff-consumer</text>
+  <text x="125" y="490" text-anchor="middle" font-size="7" fill="#545B64">Failed messages</text>
+
+  <!-- ==================== BEDROCK AGENTCORE BOUNDARY ==================== -->
+
+  <rect x="240" y="100" width="1150" height="580" rx="8" ry="8" fill="#F0F7FF" stroke="#0972D3" stroke-width="2"/>
+  <rect x="240" y="100" width="240" height="24" rx="4" ry="0" fill="#0972D3"/>
+  <text x="360" y="116" text-anchor="middle" font-size="10" fill="#FFFFFF" font-weight="bold">Amazon Bedrock AgentCore</text>
+
+  <!-- ==================== SESSION SUPERVISOR ==================== -->
+
+  <rect x="270" y="150" width="200" height="500" rx="6" ry="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="2"/>
+  <rect x="270" y="150" width="200" height="24" rx="6" ry="0" fill="#232F3E"/>
+  <text x="370" y="166" text-anchor="middle" font-size="10" fill="#FFFFFF" font-weight="bold">Session Supervisor</text>
+
+  <!-- Session Supervisor internals -->
+  <rect x="285" y="190" width="170" height="35" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="370" y="205" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Consume Message</text>
+  <text x="370" y="218" text-anchor="middle" font-size="7" fill="#545B64">Parse &amp; validate handoff</text>
+
+  <rect x="285" y="240" width="170" height="35" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="370" y="255" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Update Status</text>
+  <text x="370" y="268" text-anchor="middle" font-size="7" fill="#545B64">DDB: Evaluating</text>
+
+  <rect x="285" y="290" width="170" height="35" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="370" y="305" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Invoke Coaching Supervisor</text>
+  <text x="370" y="318" text-anchor="middle" font-size="7" fill="#545B64">Delegate evaluation</text>
+
+  <rect x="285" y="345" width="170" height="35" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="370" y="360" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Store Results → S3</text>
+  <text x="370" y="373" text-anchor="middle" font-size="7" fill="#545B64">evaluations/{sub_id}/{dim}.json</text>
+
+  <rect x="285" y="395" width="170" height="35" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="370" y="410" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Update Status</text>
+  <text x="370" y="423" text-anchor="middle" font-size="7" fill="#545B64">DDB: Report_Generating</text>
+
+  <rect x="285" y="445" width="170" height="35" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="370" y="460" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Invoke Report Generator</text>
+  <text x="370" y="473" text-anchor="middle" font-size="7" fill="#545B64">Aggregate → PDF</text>
+
+  <rect x="285" y="500" width="170" height="35" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="370" y="515" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Update Status</text>
+  <text x="370" y="528" text-anchor="middle" font-size="7" fill="#545B64">DDB: Completed</text>
+
+  <rect x="285" y="555" width="170" height="35" rx="4" ry="4" fill="#FFF0F0" stroke="#DD344C" stroke-width="1"/>
+  <text x="370" y="570" text-anchor="middle" font-size="8" font-weight="bold" fill="#DD344C">Handle Failure</text>
+  <text x="370" y="583" text-anchor="middle" font-size="7" fill="#545B64">DDB: Failed + SNS + DLQ</text>
+
+  <!-- AgentCore capabilities label -->
+  <text x="370" y="638" text-anchor="middle" font-size="7" fill="#0972D3" font-style="italic">Memory | Identity | API</text>
+
+  <!-- ==================== COACHING SUPERVISOR ==================== -->
+
+  <rect x="520" y="180" width="220" height="370" rx="6" ry="6" fill="#FFFFFF" stroke="#0972D3" stroke-width="2"/>
+  <rect x="520" y="180" width="220" height="24" rx="6" ry="0" fill="#0972D3"/>
+  <text x="630" y="196" text-anchor="middle" font-size="10" fill="#FFFFFF" font-weight="bold">Coaching Supervisor</text>
+
+  <!-- Coaching Supervisor internals -->
+  <rect x="535" y="220" width="190" height="40" rx="4" ry="4" fill="#F9FAFB" stroke="#0972D3" stroke-width="1"/>
+  <text x="630" y="237" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Analyze Context</text>
+  <text x="630" y="251" text-anchor="middle" font-size="7" fill="#545B64">Title, metadata, embeddings</text>
+
+  <rect x="535" y="275" width="190" height="40" rx="4" ry="4" fill="#F9FAFB" stroke="#0972D3" stroke-width="1"/>
+  <text x="630" y="292" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Select Evaluators</text>
+  <text x="630" y="306" text-anchor="middle" font-size="7" fill="#545B64">Reasoning-based selection</text>
+
+  <rect x="535" y="330" width="190" height="40" rx="4" ry="4" fill="#F9FAFB" stroke="#0972D3" stroke-width="1"/>
+  <text x="630" y="347" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Invoke Agents</text>
+  <text x="630" y="361" text-anchor="middle" font-size="7" fill="#545B64">Parallel / iterative execution</text>
+
+  <rect x="535" y="385" width="190" height="40" rx="4" ry="4" fill="#F9FAFB" stroke="#0972D3" stroke-width="1"/>
+  <text x="630" y="402" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Review Findings</text>
+  <text x="630" y="416" text-anchor="middle" font-size="7" fill="#545B64">Decide: more analysis?</text>
+
+  <rect x="535" y="440" width="190" height="40" rx="4" ry="4" fill="#F9FAFB" stroke="#0972D3" stroke-width="1"/>
+  <text x="630" y="457" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Signal Complete</text>
+  <text x="630" y="471" text-anchor="middle" font-size="7" fill="#545B64">All evaluations done</text>
+
+  <!-- Runtime discovery label -->
+  <text x="630" y="510" text-anchor="middle" font-size="7" fill="#0972D3" font-style="italic">Runtime agent discovery</text>
+  <text x="630" y="523" text-anchor="middle" font-size="7" fill="#0972D3" font-style="italic">Reasoning + Tool Orchestration</text>
+
+  <!-- ==================== EVALUATION AGENTS ==================== -->
+
+  <rect x="790" y="150" width="570" height="320" rx="6" ry="6" fill="#FFFFFF" stroke="#ED7100" stroke-width="2"/>
+  <rect x="790" y="150" width="570" height="24" rx="6" ry="0" fill="#ED7100"/>
+  <text x="1075" y="166" text-anchor="middle" font-size="10" fill="#FFFFFF" font-weight="bold">Evaluation Agents (Modular, Independent)</text>
+
+  <!-- Individual agents -->
+  <rect x="810" y="190" width="120" height="55" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
+  <text x="870" y="210" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Delivery</text>
+  <text x="870" y="224" text-anchor="middle" font-size="7" fill="#545B64">Vocal quality, clarity</text>
+  <text x="870" y="237" text-anchor="middle" font-size="7" fill="#545B64">tone, projection</text>
+
+  <rect x="945" y="190" width="120" height="55" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
+  <text x="1005" y="210" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Structure</text>
+  <text x="1005" y="224" text-anchor="middle" font-size="7" fill="#545B64">Organization, flow</text>
+  <text x="1005" y="237" text-anchor="middle" font-size="7" fill="#545B64">transitions, logic</text>
+
+  <rect x="1080" y="190" width="120" height="55" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
+  <text x="1140" y="210" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Executive</text>
+  <text x="1140" y="224" text-anchor="middle" font-size="7" fill="#545B64">Presence, authority</text>
+  <text x="1140" y="237" text-anchor="middle" font-size="7" fill="#545B64">confidence, gravitas</text>
+
+  <rect x="1215" y="190" width="120" height="55" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
+  <text x="1275" y="210" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Technical</text>
+  <text x="1275" y="224" text-anchor="middle" font-size="7" fill="#545B64">Communication</text>
+  <text x="1275" y="237" text-anchor="middle" font-size="7" fill="#545B64">clarity of concepts</text>
+
+  <rect x="810" y="265" width="120" height="55" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
+  <text x="870" y="285" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Engagement</text>
+  <text x="870" y="299" text-anchor="middle" font-size="7" fill="#545B64">Audience connection</text>
+  <text x="870" y="312" text-anchor="middle" font-size="7" fill="#545B64">interaction, energy</text>
+
+  <rect x="945" y="265" width="120" height="55" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
+  <text x="1005" y="285" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Pacing</text>
+  <text x="1005" y="299" text-anchor="middle" font-size="7" fill="#545B64">Speed, pauses</text>
+  <text x="1005" y="312" text-anchor="middle" font-size="7" fill="#545B64">rhythm, timing</text>
+
+  <rect x="1080" y="265" width="120" height="55" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
+  <text x="1140" y="285" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">Persuasion</text>
+  <text x="1140" y="299" text-anchor="middle" font-size="7" fill="#545B64">Argumentation</text>
+  <text x="1140" y="312" text-anchor="middle" font-size="7" fill="#545B64">credibility, influence</text>
+
+  <rect x="1215" y="265" width="120" height="55" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <text x="1275" y="285" text-anchor="middle" font-size="8" font-weight="bold" fill="#999">+ New Agent</text>
+  <text x="1275" y="299" text-anchor="middle" font-size="7" fill="#999">Extensible via</text>
+  <text x="1275" y="312" text-anchor="middle" font-size="7" fill="#999">configuration</text>
+
+  <!-- Standard interface label -->
+  <rect x="810" y="340" width="525" height="30" rx="4" ry="4" fill="#FDF7F0" stroke="#ED7100" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="1072" y="358" text-anchor="middle" font-size="8" fill="#ED7100">Standard Interface: input(vector_store_location, metadata) → output(dimension, findings, scores, feedback)</text>
+
+  <!-- Vector Store access -->
+  <rect x="810" y="390" width="525" height="35" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="1072" y="408" text-anchor="middle" font-size="8" fill="#232F3E">Each agent retrieves embeddings from Vector Store → Bedrock reasoning → structured evaluation result</text>
+  <text x="1072" y="420" text-anchor="middle" font-size="7" fill="#545B64">Bedrock AgentCore tools + prompts per dimension</text>
+
+  <!-- ==================== REPORT GENERATOR ==================== -->
+
+  <rect x="520" y="570" width="220" height="80" rx="6" ry="6" fill="#FFFFFF" stroke="#7D2293" stroke-width="2"/>
+  <rect x="520" y="570" width="220" height="22" rx="6" ry="0" fill="#7D2293"/>
+  <text x="630" y="585" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Report Generator</text>
+  <text x="630" y="608" text-anchor="middle" font-size="8" fill="#232F3E">Aggregate S3 evaluations → PDF</text>
+  <text x="630" y="622" text-anchor="middle" font-size="8" fill="#545B64">Executive summary + per-dimension</text>
+  <text x="630" y="636" text-anchor="middle" font-size="8" fill="#545B64">feedback + coaching assessment</text>
+
+  <!-- ==================== EXTERNAL SERVICES ==================== -->
+
+  <!-- S3 Evaluation Bucket -->
+  <rect x="850" y="510" width="160" height="70" rx="6" ry="6" fill="#FFFFFF" stroke="#3F8624" stroke-width="2"/>
+  <rect x="850" y="510" width="160" height="20" rx="6" ry="0" fill="#3F8624"/>
+  <text x="930" y="524" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon S3</text>
+  <text x="930" y="545" text-anchor="middle" font-size="8" fill="#232F3E">Evaluation Bucket</text>
+  <text x="930" y="558" text-anchor="middle" font-size="7" fill="#545B64">evaluations/{sub_id}/{dim}.json</text>
+  <text x="930" y="571" text-anchor="middle" font-size="7" fill="#545B64">reports/{user}/{sub}/report.pdf</text>
+
+  <!-- Vector Store (S3) -->
+  <rect x="1080" y="510" width="150" height="70" rx="6" ry="6" fill="#FFFFFF" stroke="#3F8624" stroke-width="2"/>
+  <rect x="1080" y="510" width="150" height="20" rx="6" ry="0" fill="#3F8624"/>
+  <text x="1155" y="524" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon S3</text>
+  <text x="1155" y="545" text-anchor="middle" font-size="8" fill="#232F3E">Vector Store</text>
+  <text x="1155" y="558" text-anchor="middle" font-size="7" fill="#545B64">{sub_id}/embeddings/</text>
+  <text x="1155" y="571" text-anchor="middle" font-size="7" fill="#545B64">chunk_NNNN.json</text>
+
+  <!-- DynamoDB -->
+  <rect x="50" y="150" width="150" height="65" rx="6" ry="6" fill="#FFFFFF" stroke="#3334B9" stroke-width="2"/>
+  <rect x="50" y="150" width="150" height="20" rx="6" ry="0" fill="#3334B9"/>
+  <text x="125" y="164" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon DynamoDB</text>
+  <text x="125" y="185" text-anchor="middle" font-size="8" fill="#232F3E">submissions</text>
+  <text x="125" y="198" text-anchor="middle" font-size="7" fill="#545B64">processing_status:</text>
+  <text x="125" y="209" text-anchor="middle" font-size="7" fill="#545B64">Evaluating → Report_Generating → Completed</text>
+
+  <!-- SNS Error Topic -->
+  <rect x="50" y="560" width="150" height="60" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="2"/>
+  <rect x="50" y="560" width="150" height="20" rx="6" ry="0" fill="#FF4F8B"/>
+  <text x="125" y="574" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon SNS</text>
+  <text x="125" y="596" text-anchor="middle" font-size="8" fill="#232F3E">preparation-errors</text>
+  <text x="125" y="610" text-anchor="middle" font-size="7" fill="#545B64">Error notifications</text>
+
+  <!-- ==================== FLOW ARROWS ==================== -->
+
+  <!-- SQS Handoff → Session Supervisor -->
+  <line x1="200" y1="335" x2="265" y2="205" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <text x="218" y="260" text-anchor="middle" font-size="7" fill="#545B64" transform="rotate(-55, 218, 260)">Consume</text>
+
+  <!-- Session Supervisor → DynamoDB (status updates) -->
+  <line x1="270" y1="255" x2="200" y2="195" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+
+  <!-- Session Supervisor → Coaching Supervisor -->
+  <line x1="470" y1="307" x2="515" y2="307" stroke="#0972D3" stroke-width="1.5" marker-end="url(#arrowhead-blue)"/>
+
+  <!-- Coaching Supervisor → Evaluation Agents -->
+  <line x1="740" y1="350" x2="785" y2="290" stroke="#ED7100" stroke-width="1.5" marker-end="url(#arrowhead-orange)"/>
+  <text x="770" y="310" text-anchor="middle" font-size="7" fill="#ED7100">invoke</text>
+
+  <!-- Evaluation Agents → Vector Store -->
+  <line x1="1155" y1="430" x2="1155" y2="505" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+  <text x="1170" y="470" text-anchor="start" font-size="7" fill="#545B64">retrieve</text>
+
+  <!-- Session Supervisor → S3 (store results) -->
+  <path d="M 455 365 Q 650 470, 845 540" fill="none" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+
+  <!-- Session Supervisor → Report Generator -->
+  <line x1="370" y1="480" x2="515" y2="600" stroke="#0972D3" stroke-width="1.5" marker-end="url(#arrowhead-blue)"/>
+
+  <!-- Report Generator → S3 (read results + write PDF) -->
+  <line x1="740" y1="610" x2="845" y2="555" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+  <text x="790" y="575" text-anchor="middle" font-size="7" fill="#545B64">read + write PDF</text>
+
+  <!-- Session Supervisor → DLQ (on failure) -->
+  <path d="M 285 572 Q 200 520, 175 500" fill="none" stroke="#DD344C" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead-red)"/>
+
+  <!-- Session Supervisor → SNS (on failure) -->
+  <path d="M 285 575 Q 200 580, 200 585" fill="none" stroke="#DD344C" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead-red)"/>
+
+  <!-- Coaching Supervisor feedback loop -->
+  <path d="M 630 425 Q 680 450, 680 380 Q 680 340, 640 330" fill="none" stroke="#0972D3" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead-blue)"/>
+  <text x="695" y="395" text-anchor="start" font-size="7" fill="#0972D3">iterative</text>
+
+  <!-- ==================== LEGEND ==================== -->
+  <rect x="50" y="720" width="400" height="100" rx="6" ry="6" fill="#F9FAFB" stroke="#D5DBDB" stroke-width="1"/>
+  <text x="70" y="740" font-size="10" font-weight="bold" fill="#232F3E">Legend</text>
+
+  <line x1="70" y1="758" x2="110" y2="758" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <text x="120" y="762" font-size="9" fill="#545B64">Data flow</text>
+
+  <line x1="70" y1="778" x2="110" y2="778" stroke="#0972D3" stroke-width="1.5" marker-end="url(#arrowhead-blue)"/>
+  <text x="120" y="782" font-size="9" fill="#0972D3">Agent orchestration</text>
+
+  <line x1="70" y1="798" x2="110" y2="798" stroke="#ED7100" stroke-width="1.5" marker-end="url(#arrowhead-orange)"/>
+  <text x="120" y="802" font-size="9" fill="#ED7100">Agent invocation</text>
+
+  <line x1="70" y1="818" x2="110" y2="818" stroke="#DD344C" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead-red)"/>
+  <text x="120" y="822" font-size="9" fill="#DD344C">Error / failure path</text>
+
+  <rect x="270" y="748" width="12" height="12" fill="#0972D3"/>
+  <text x="288" y="759" font-size="9" fill="#545B64">Bedrock AgentCore</text>
+
+  <rect x="270" y="765" width="12" height="12" fill="#ED7100"/>
+  <text x="288" y="776" font-size="9" fill="#545B64">Evaluation Agent</text>
+
+  <rect x="270" y="782" width="12" height="12" fill="#3F8624"/>
+  <text x="288" y="793" font-size="9" fill="#545B64">S3 Storage</text>
+
+  <rect x="270" y="799" width="12" height="12" fill="#FF4F8B"/>
+  <text x="288" y="810" font-size="9" fill="#545B64">SQS / SNS</text>
+
+  <rect x="270" y="816" width="12" height="12" fill="#7D2293"/>
+  <text x="288" y="827" font-size="9" fill="#545B64">Report Generator</text>
+
+  <!-- Flow summary -->
+  <rect x="480" y="720" width="900" height="100" rx="6" ry="6" fill="#F9FAFB" stroke="#D5DBDB" stroke-width="1"/>
+  <text x="500" y="740" font-size="10" font-weight="bold" fill="#232F3E">Evaluation Flow</text>
+  <text x="500" y="758" font-size="9" fill="#545B64">1. SQS FIFO handoff message → Session Supervisor consumes → DDB status: Evaluating</text>
+  <text x="500" y="773" font-size="9" fill="#545B64">2. Coaching Supervisor analyzes context → selects appropriate Evaluation Agents → invokes them (parallel/iterative)</text>
+  <text x="500" y="788" font-size="9" fill="#545B64">3. Each Evaluation Agent retrieves embeddings from Vector Store → Bedrock reasoning → structured findings</text>
+  <text x="500" y="803" font-size="9" fill="#545B64">4. Results stored in S3 → Report Generator aggregates → PDF coaching report → DDB status: Completed</text>
+  <text x="500" y="818" font-size="9" fill="#DD344C">Failures: DDB status: Failed + SNS notification + DLQ routing</text>
+</svg>
