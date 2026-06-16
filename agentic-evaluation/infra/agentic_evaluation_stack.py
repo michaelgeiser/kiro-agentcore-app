@@ -309,11 +309,20 @@ class AgenticEvaluationStack(Stack):
         # Lambda: eval-task-launcher (prevents duplicate ECS tasks)
         # =====================================================================
 
-        # Get public subnet IDs and default security group from VPC lookup
+        # Get public subnet IDs and create a security group for the tasks
         public_subnet_ids = ",".join(
             [subnet.subnet_id for subnet in vpc.public_subnets]
         )
-        default_sg_id = vpc.vpc_default_security_group
+
+        # Create a security group for the ECS tasks (allows all outbound)
+        eval_sg = ec2.SecurityGroup(
+            self,
+            "EvalTaskSG",
+            vpc=vpc,
+            security_group_name=f"{resource_prefix}-eval-task-sg",
+            description="Security group for agentic evaluation ECS tasks",
+            allow_all_outbound=True,
+        )
 
         launcher_lambda = _lambda.Function(
             self,
@@ -326,7 +335,7 @@ class AgenticEvaluationStack(Stack):
                 "ECS_CLUSTER_ARN": cluster.cluster_arn,
                 "TASK_DEFINITION_ARN": task_definition.task_definition_arn,
                 "SUBNETS": public_subnet_ids,
-                "SECURITY_GROUPS": default_sg_id,
+                "SECURITY_GROUPS": eval_sg.security_group_id,
                 "CONTAINER_NAME": "eval-container",
             },
             code=_lambda.Code.from_inline(
