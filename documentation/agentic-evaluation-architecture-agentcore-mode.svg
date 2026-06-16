@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1450 850" font-family="Amazon Ember, Helvetica Neue, Arial, sans-serif">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#545B64"/>
+    </marker>
+    <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#FF9900"/>
+    </marker>
+    <marker id="arrowhead-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#DD344C"/>
+    </marker>
+    <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#0972D3"/>
+    </marker>
+    <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3F8624"/>
+    </marker>
+    <marker id="arrowhead-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7D2293"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1450" height="850" fill="#FFFFFF"/>
+
+  <!-- Title -->
+  <text x="725" y="35" text-anchor="middle" font-size="18" font-weight="bold" fill="#232F3E">Agentic Evaluation — AGENTCORE MODE Architecture (Future Deployment)</text>
+  <text x="725" y="55" text-anchor="middle" font-size="11" fill="#545B64">Amazon Bedrock AgentCore Runtime | Managed Agents | Session Memory | Auto-Scaling</text>
+
+  <!-- AWS Cloud boundary -->
+  <rect x="30" y="70" width="1390" height="750" rx="8" ry="8" fill="none" stroke="#232F3E" stroke-width="2" stroke-dasharray="8,4"/>
+  <rect x="30" y="70" width="140" height="24" rx="4" ry="4" fill="#232F3E"/>
+  <text x="100" y="86" text-anchor="middle" font-size="11" fill="#FFFFFF" font-weight="bold">AWS Cloud</text>
+
+  <!-- ==================== TRIGGER SECTION (same as local) ==================== -->
+
+  <!-- SQS Handoff Queue -->
+  <rect x="50" y="250" width="160" height="80" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="2"/>
+  <rect x="50" y="250" width="160" height="22" rx="6" ry="0" fill="#FF4F8B"/>
+  <text x="130" y="265" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon SQS (FIFO)</text>
+  <text x="130" y="290" text-anchor="middle" font-size="9" fill="#232F3E">preparation-handoff.fifo</text>
+  <text x="130" y="305" text-anchor="middle" font-size="8" fill="#545B64">Messages from Prep Workflow</text>
+
+  <!-- Lambda Task Launcher -->
+  <rect x="50" y="380" width="160" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#ED7100" stroke-width="2"/>
+  <rect x="50" y="380" width="160" height="20" rx="6" ry="0" fill="#ED7100"/>
+  <text x="130" y="394" text-anchor="middle" font-size="8" fill="#FFFFFF" font-weight="bold">Lambda / EventBridge</text>
+  <text x="130" y="415" text-anchor="middle" font-size="8" fill="#232F3E">eval-task-launcher</text>
+  <text x="130" y="428" text-anchor="middle" font-size="7" fill="#545B64">Triggers ECS on messages</text>
+
+  <!-- Arrow: SQS → Lambda -->
+  <line x1="130" y1="330" x2="130" y2="376" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+
+  <!-- ==================== ECS (thin client) ==================== -->
+
+  <rect x="260" y="160" width="230" height="410" rx="8" ry="8" fill="#F0FFF4" stroke="#3F8624" stroke-width="2"/>
+  <rect x="260" y="160" width="230" height="24" rx="4" ry="0" fill="#3F8624"/>
+  <text x="375" y="176" text-anchor="middle" font-size="10" fill="#FFFFFF" font-weight="bold">ECS Fargate Spot (Thin Client)</text>
+
+  <!-- Session Supervisor (thin) -->
+  <rect x="280" y="200" width="190" height="350" rx="6" ry="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="2"/>
+  <rect x="280" y="200" width="190" height="24" rx="6" ry="0" fill="#232F3E"/>
+  <text x="375" y="216" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Session Supervisor</text>
+  <text x="375" y="237" text-anchor="middle" font-size="7" fill="#545B64">(Thin orchestrator — delegates to AgentCore)</text>
+
+  <rect x="295" y="255" width="160" height="28" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="375" y="273" text-anchor="middle" font-size="8" fill="#232F3E">Poll SQS → Validate</text>
+
+  <rect x="295" y="293" width="160" height="28" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="375" y="311" text-anchor="middle" font-size="8" fill="#232F3E">DDB → Evaluating</text>
+
+  <rect x="295" y="331" width="160" height="35" rx="4" ry="4" fill="#E8EAF6" stroke="#7D2293" stroke-width="1.5"/>
+  <text x="375" y="348" text-anchor="middle" font-size="8" font-weight="bold" fill="#7D2293">agentcore:InvokeAgent</text>
+  <text x="375" y="361" text-anchor="middle" font-size="7" fill="#545B64">→ Coaching Supervisor</text>
+
+  <rect x="295" y="376" width="160" height="28" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="375" y="394" text-anchor="middle" font-size="8" fill="#232F3E">Store Results → S3</text>
+
+  <rect x="295" y="414" width="160" height="28" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="375" y="432" text-anchor="middle" font-size="8" fill="#232F3E">DDB → Report_Generating</text>
+
+  <rect x="295" y="452" width="160" height="28" rx="4" ry="4" fill="#F3E5F5" stroke="#7D2293" stroke-width="1"/>
+  <text x="375" y="470" text-anchor="middle" font-size="8" fill="#7D2293">Generate PDF Report</text>
+
+  <rect x="295" y="490" width="160" height="28" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="375" y="508" text-anchor="middle" font-size="8" fill="#232F3E">DDB → Completed</text>
+
+  <!-- ==================== BEDROCK AGENTCORE RUNTIME ==================== -->
+
+  <rect x="540" y="100" width="850" height="480" rx="8" ry="8" fill="#F0F0FF" stroke="#7D2293" stroke-width="2.5"/>
+  <rect x="540" y="100" width="330" height="28" rx="4" ry="0" fill="#7D2293"/>
+  <text x="705" y="118" text-anchor="middle" font-size="11" fill="#FFFFFF" font-weight="bold">Amazon Bedrock AgentCore Runtime</text>
+  <text x="1050" y="118" text-anchor="middle" font-size="9" fill="#7D2293">Managed | Auto-scaling | Session Memory | Versioned</text>
+
+  <!-- Coaching Supervisor (managed agent) -->
+  <rect x="570" y="160" width="240" height="280" rx="6" ry="6" fill="#FFFFFF" stroke="#0972D3" stroke-width="2"/>
+  <rect x="570" y="160" width="240" height="28" rx="6" ry="0" fill="#0972D3"/>
+  <text x="690" y="178" text-anchor="middle" font-size="10" fill="#FFFFFF" font-weight="bold">Coaching Supervisor Agent</text>
+  <text x="690" y="202" text-anchor="middle" font-size="7" fill="#0972D3">Managed AgentCore endpoint</text>
+
+  <rect x="585" y="215" width="210" height="25" rx="4" ry="4" fill="#F9FAFB" stroke="#0972D3" stroke-width="1"/>
+  <text x="690" y="232" text-anchor="middle" font-size="8" fill="#232F3E">Analyze context + select evaluators</text>
+
+  <rect x="585" y="250" width="210" height="25" rx="4" ry="4" fill="#FFF3E0" stroke="#ED7100" stroke-width="1"/>
+  <text x="690" y="267" text-anchor="middle" font-size="8" font-weight="bold" fill="#ED7100">Invoke evaluation tools</text>
+
+  <rect x="585" y="285" width="210" height="25" rx="4" ry="4" fill="#F9FAFB" stroke="#0972D3" stroke-width="1"/>
+  <text x="690" y="302" text-anchor="middle" font-size="8" fill="#232F3E">Review → iterate if needed</text>
+
+  <rect x="585" y="320" width="210" height="25" rx="4" ry="4" fill="#F9FAFB" stroke="#0972D3" stroke-width="1"/>
+  <text x="690" y="337" text-anchor="middle" font-size="8" fill="#232F3E">Signal complete</text>
+
+  <!-- Session Memory box -->
+  <rect x="585" y="360" width="210" height="55" rx="4" ry="4" fill="#E8EAF6" stroke="#7D2293" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <text x="690" y="378" text-anchor="middle" font-size="8" font-weight="bold" fill="#7D2293">AgentCore Session Memory</text>
+  <text x="690" y="394" text-anchor="middle" font-size="7" fill="#545B64">Persists context across invocations</text>
+  <text x="690" y="408" text-anchor="middle" font-size="7" fill="#545B64">TTL: 24h | Max entries: 100</text>
+
+  <!-- Evaluation Agents (managed tools) -->
+  <rect x="860" y="160" width="500" height="260" rx="6" ry="6" fill="#FFFFFF" stroke="#ED7100" stroke-width="2"/>
+  <rect x="860" y="160" width="500" height="28" rx="6" ry="0" fill="#ED7100"/>
+  <text x="1110" y="178" text-anchor="middle" font-size="10" fill="#FFFFFF" font-weight="bold">Evaluation Agents (AgentCore Managed Tools)</text>
+
+  <!-- Agent boxes -->
+  <rect x="880" y="200" width="105" height="40" rx="4" ry="4" fill="#FFF3E0" stroke="#ED7100" stroke-width="1"/>
+  <text x="932" y="217" text-anchor="middle" font-size="7" font-weight="bold" fill="#232F3E">Delivery</text>
+  <text x="932" y="232" text-anchor="middle" font-size="6" fill="#545B64">vocal, clarity</text>
+
+  <rect x="995" y="200" width="105" height="40" rx="4" ry="4" fill="#FFF3E0" stroke="#ED7100" stroke-width="1"/>
+  <text x="1047" y="217" text-anchor="middle" font-size="7" font-weight="bold" fill="#232F3E">Structure</text>
+  <text x="1047" y="232" text-anchor="middle" font-size="6" fill="#545B64">flow, transitions</text>
+
+  <rect x="1110" y="200" width="105" height="40" rx="4" ry="4" fill="#FFF3E0" stroke="#ED7100" stroke-width="1"/>
+  <text x="1162" y="217" text-anchor="middle" font-size="7" font-weight="bold" fill="#232F3E">Exec Presence</text>
+  <text x="1162" y="232" text-anchor="middle" font-size="6" fill="#545B64">authority</text>
+
+  <rect x="1225" y="200" width="105" height="40" rx="4" ry="4" fill="#FFF3E0" stroke="#ED7100" stroke-width="1"/>
+  <text x="1277" y="217" text-anchor="middle" font-size="7" font-weight="bold" fill="#232F3E">Technical</text>
+  <text x="1277" y="232" text-anchor="middle" font-size="6" fill="#545B64">clarity</text>
+
+  <rect x="880" y="255" width="105" height="40" rx="4" ry="4" fill="#FFF3E0" stroke="#ED7100" stroke-width="1"/>
+  <text x="932" y="272" text-anchor="middle" font-size="7" font-weight="bold" fill="#232F3E">Engagement</text>
+  <text x="932" y="287" text-anchor="middle" font-size="6" fill="#545B64">audience</text>
+
+  <rect x="995" y="255" width="105" height="40" rx="4" ry="4" fill="#FFF3E0" stroke="#ED7100" stroke-width="1"/>
+  <text x="1047" y="272" text-anchor="middle" font-size="7" font-weight="bold" fill="#232F3E">Pacing</text>
+  <text x="1047" y="287" text-anchor="middle" font-size="6" fill="#545B64">timing, rhythm</text>
+
+  <rect x="1110" y="255" width="105" height="40" rx="4" ry="4" fill="#FFF3E0" stroke="#ED7100" stroke-width="1"/>
+  <text x="1162" y="272" text-anchor="middle" font-size="7" font-weight="bold" fill="#232F3E">Persuasion</text>
+  <text x="1162" y="287" text-anchor="middle" font-size="6" fill="#545B64">arguments</text>
+
+  <rect x="1225" y="255" width="105" height="40" rx="4" ry="4" fill="#FFF3E0" stroke="#ED7100" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="1277" y="272" text-anchor="middle" font-size="7" font-weight="bold" fill="#999">+ New Agent</text>
+  <text x="1277" y="287" text-anchor="middle" font-size="6" fill="#999">hot-deployable</text>
+
+  <!-- AgentCore features boxes -->
+  <rect x="880" y="310" width="460" height="30" rx="4" ry="4" fill="#E8EAF6" stroke="#7D2293" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="1110" y="329" text-anchor="middle" font-size="8" fill="#7D2293">Auto-scaling per agent | Versioned deployments | A/B testing | Session isolation</text>
+
+  <!-- Bedrock Model -->
+  <rect x="880" y="360" width="460" height="40" rx="4" ry="4" fill="#E3F2FD" stroke="#0972D3" stroke-width="1"/>
+  <text x="1110" y="380" text-anchor="middle" font-size="8" fill="#0972D3">Amazon Bedrock Foundation Models</text>
+  <text x="1110" y="394" text-anchor="middle" font-size="7" fill="#545B64">anthropic.claude-sonnet-4 — managed inference via AgentCore</text>
+
+  <!-- Vector Store access from AgentCore -->
+  <rect x="860" y="440" width="500" height="30" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="1110" y="460" text-anchor="middle" font-size="8" fill="#545B64">Retrieve embeddings from S3 Vector Store → AgentCore handles S3 access with IAM role</text>
+
+  <!-- ==================== ARROWS ==================== -->
+
+  <!-- Lambda → ECS -->
+  <line x1="210" y1="405" x2="255" y2="350" stroke="#3F8624" stroke-width="1.5" marker-end="url(#arrowhead-green)"/>
+  <text x="220" y="370" font-size="7" fill="#3F8624">RunTask</text>
+
+  <!-- SQS → Session Supervisor -->
+  <line x1="210" y1="280" x2="275" y2="270" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <text x="242" y="268" font-size="7" fill="#545B64">poll</text>
+
+  <!-- Session Supervisor → AgentCore (invoke agent) -->
+  <line x1="490" y1="348" x2="565" y2="280" stroke="#7D2293" stroke-width="2" marker-end="url(#arrowhead-purple)"/>
+  <text x="520" y="300" text-anchor="middle" font-size="8" font-weight="bold" fill="#7D2293">InvokeAgent</text>
+
+  <!-- Coaching Supervisor → Evaluation Agents -->
+  <line x1="810" y1="265" x2="855" y2="250" stroke="#ED7100" stroke-width="1.5" marker-end="url(#arrowhead-orange)"/>
+  <text x="838" y="250" font-size="7" fill="#ED7100">tools</text>
+
+  <!-- ==================== EXTERNAL SERVICES ==================== -->
+
+  <!-- S3 -->
+  <rect x="260" y="600" width="180" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#3F8624" stroke-width="2"/>
+  <rect x="260" y="600" width="180" height="20" rx="6" ry="0" fill="#3F8624"/>
+  <text x="350" y="614" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon S3</text>
+  <text x="350" y="636" text-anchor="middle" font-size="8" fill="#232F3E">evaluations/ + reports/</text>
+  <text x="350" y="649" text-anchor="middle" font-size="7" fill="#545B64">Result JSON + PDF reports</text>
+
+  <!-- DynamoDB -->
+  <rect x="480" y="600" width="180" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#3334B9" stroke-width="2"/>
+  <rect x="480" y="600" width="180" height="20" rx="6" ry="0" fill="#3334B9"/>
+  <text x="570" y="614" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon DynamoDB</text>
+  <text x="570" y="636" text-anchor="middle" font-size="8" fill="#232F3E">submissions table</text>
+  <text x="570" y="649" text-anchor="middle" font-size="7" fill="#545B64">Status transitions</text>
+
+  <!-- SNS -->
+  <rect x="700" y="600" width="180" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="2"/>
+  <rect x="700" y="600" width="180" height="20" rx="6" ry="0" fill="#FF4F8B"/>
+  <text x="790" y="614" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon SNS</text>
+  <text x="790" y="636" text-anchor="middle" font-size="8" fill="#232F3E">evaluation-errors</text>
+  <text x="790" y="649" text-anchor="middle" font-size="7" fill="#545B64">Error notifications</text>
+
+  <!-- Vector Store -->
+  <rect x="920" y="600" width="180" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#3F8624" stroke-width="2"/>
+  <rect x="920" y="600" width="180" height="20" rx="6" ry="0" fill="#3F8624"/>
+  <text x="1010" y="614" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon S3</text>
+  <text x="1010" y="636" text-anchor="middle" font-size="8" fill="#232F3E">Vector Store</text>
+  <text x="1010" y="649" text-anchor="middle" font-size="7" fill="#545B64">embeddings/chunk_N.json</text>
+
+  <!-- Arrows: ECS → External Services -->
+  <line x1="375" y1="540" x2="350" y2="596" stroke="#545B64" stroke-width="1" marker-end="url(#arrowhead)"/>
+  <line x1="375" y1="540" x2="530" y2="596" stroke="#545B64" stroke-width="1" marker-end="url(#arrowhead)"/>
+
+  <!-- ==================== LEGEND / COMPARISON ==================== -->
+
+  <rect x="50" y="680" width="1330" height="130" rx="6" ry="6" fill="#F9FAFB" stroke="#D5DBDB" stroke-width="1"/>
+  <text x="80" y="705" font-size="11" font-weight="bold" fill="#7D2293">AGENTCORE MODE — Key Differences from Local Mode</text>
+
+  <text x="80" y="730" font-size="9" fill="#232F3E">•</text>
+  <text x="95" y="730" font-size="9" fill="#545B64">ECS container is a thin client — only handles SQS polling, DDB updates, S3 storage. All AI reasoning happens in AgentCore.</text>
+
+  <text x="80" y="748" font-size="9" fill="#232F3E">•</text>
+  <text x="95" y="748" font-size="9" fill="#545B64">Session memory persists across task launches — context is maintained even if the ECS task exits and a new one starts.</text>
+
+  <text x="80" y="766" font-size="9" fill="#232F3E">•</text>
+  <text x="95" y="766" font-size="9" fill="#545B64">Each evaluation agent can scale independently — high-demand agents get more capacity without scaling the whole container.</text>
+
+  <text x="80" y="784" font-size="9" fill="#232F3E">•</text>
+  <text x="95" y="784" font-size="9" fill="#545B64">Agent versioning: deploy new evaluator versions with canary rollout, A/B test different prompts without code changes.</text>
+
+  <text x="80" y="802" font-size="9" fill="#232F3E">•</text>
+  <text x="95" y="802" font-size="9" fill="#545B64">Switch by setting LOCAL_MODE=false + registering agents with AgentCore. Application code stays identical (Strands handles both).</text>
+
+  <text x="730" y="705" font-size="11" font-weight="bold" fill="#7D2293">When to Use This Mode</text>
+  <text x="730" y="730" font-size="9" fill="#545B64">• Need persistent session memory across tasks</text>
+  <text x="730" y="748" font-size="9" fill="#545B64">• Workload exceeds 100+ evaluations/day</text>
+  <text x="730" y="766" font-size="9" fill="#545B64">• Want per-agent auto-scaling</text>
+  <text x="730" y="784" font-size="9" fill="#545B64">• Need agent versioning / A/B testing</text>
+  <text x="730" y="802" font-size="9" fill="#545B64">• AgentCore is GA with favorable pricing</text>
+</svg>
