@@ -91,7 +91,7 @@ class TechnicalCommunicationEvaluator(BaseEvaluator):
         content = self._retrieve_content(input)
 
         # Create a Strands Agent with the technical communication-specific system prompt
-        agent = Agent(system_prompt=SYSTEM_PROMPT, model_id=EVALUATION_MODEL_ID)
+        agent = Agent(system_prompt=SYSTEM_PROMPT, model=EVALUATION_MODEL_ID)
 
         # Invoke the agent with the retrieved content
         prompt = (

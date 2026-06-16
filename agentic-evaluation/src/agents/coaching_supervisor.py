@@ -124,7 +124,7 @@ class CoachingSupervisor:
         return Agent(
             system_prompt=SUPERVISOR_SYSTEM_PROMPT,
             tools=self._tools,
-            model_id=self._model_id,
+            model=self._model_id,
         )
 
     def evaluate(
