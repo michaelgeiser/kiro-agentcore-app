@@ -8,12 +8,19 @@ Creates the AWS resources needed by the evaluation module at runtime:
 - Lambda function to launch ECS tasks on demand (prevents duplicates)
 - EventBridge rule to trigger task launch when messages arrive on the queue
 - CloudWatch Log Group for ECS task output
+- Docker image built and pushed automatically during cdk deploy
 
 Resources created by OTHER stacks and referenced here (not recreated):
 - SQS FIFO Queue (prescoach-dev-preparation-handoff.fifo) — created by preparation-workflow
 - DynamoDB Table (prescoach-dev-kiro-submissions) — created by upload-service
 - S3 Bucket (prescoach-dev-kiro-uploads) — created by upload-service
+
+Networking: Uses the account's default VPC public subnets automatically.
+No manual subnet/security group configuration required.
 """
+
+import os
+from pathlib import Path
 
 from aws_cdk import (
     CfnOutput,
@@ -22,7 +29,7 @@ from aws_cdk import (
     aws_cloudwatch as cloudwatch,
     aws_cloudwatch_actions as cw_actions,
     aws_ec2 as ec2,
-    aws_ecr as ecr,
+    aws_ecr_assets as ecr_assets,
     aws_ecs as ecs,
     aws_events as events,
     aws_events_targets as targets,
@@ -141,19 +148,29 @@ class AgenticEvaluationStack(Stack):
         dlq_alarm.add_alarm_action(cw_actions.SnsAction(error_topic))
 
         # =====================================================================
-        # ECR Repository for evaluation container image
+        # VPC: Look up the default VPC (no manual subnet config needed)
         # =====================================================================
 
-        ecr_repo = ecr.Repository(
+        vpc = ec2.Vpc.from_lookup(
             self,
-            "EvalECRRepo",
-            repository_name=f"{resource_prefix}-agentic-evaluation",
-            lifecycle_rules=[
-                ecr.LifecycleRule(
-                    max_image_count=5,
-                    description="Keep only last 5 images",
-                ),
-            ],
+            "DefaultVPC",
+            is_default=True,
+        )
+
+        # =====================================================================
+        # Docker Image: Built and pushed automatically during cdk deploy
+        # =====================================================================
+
+        # Path to the agentic-evaluation directory containing the Dockerfile
+        docker_context_path = str(
+            Path(__file__).parent.parent.resolve()
+        )
+
+        docker_image_asset = ecr_assets.DockerImageAsset(
+            self,
+            "EvalDockerImage",
+            directory=docker_context_path,
+            platform=ecr_assets.Platform.LINUX_AMD64,
         )
 
         # =====================================================================
@@ -175,6 +192,7 @@ class AgenticEvaluationStack(Stack):
             self,
             "EvalCluster",
             cluster_name=f"{resource_prefix}-eval-cluster",
+            vpc=vpc,
             enable_fargate_capacity_providers=True,
         )
 
@@ -243,7 +261,7 @@ class AgenticEvaluationStack(Stack):
 
         task_definition.add_container(
             "eval-container",
-            image=ecs.ContainerImage.from_ecr_repository(ecr_repo, tag="latest"),
+            image=ecs.ContainerImage.from_docker_image_asset(docker_image_asset),
             logging=ecs.LogDrivers.aws_logs(
                 stream_prefix="eval",
                 log_group=ecs_log_group,
@@ -281,11 +299,20 @@ class AgenticEvaluationStack(Stack):
                 ),
             ],
             assign_public_ip=True,
+            vpc_subnets=ec2.SubnetSelection(
+                subnet_type=ec2.SubnetType.PUBLIC,
+            ),
         )
 
         # =====================================================================
         # Lambda: eval-task-launcher (prevents duplicate ECS tasks)
         # =====================================================================
+
+        # Get public subnet IDs and default security group from VPC lookup
+        public_subnet_ids = ",".join(
+            [subnet.subnet_id for subnet in vpc.public_subnets]
+        )
+        default_sg_id = vpc.vpc_default_security_group
 
         launcher_lambda = _lambda.Function(
             self,
@@ -297,8 +324,8 @@ class AgenticEvaluationStack(Stack):
             environment={
                 "ECS_CLUSTER_ARN": cluster.cluster_arn,
                 "TASK_DEFINITION_ARN": task_definition.task_definition_arn,
-                "SUBNETS": "",  # Populated at deploy time or via SSM
-                "SECURITY_GROUPS": "",
+                "SUBNETS": public_subnet_ids,
+                "SECURITY_GROUPS": default_sg_id,
                 "CONTAINER_NAME": "eval-container",
             },
             code=_lambda.Code.from_inline(
@@ -429,6 +456,8 @@ class AgenticEvaluationStack(Stack):
         CfnOutput(self, "SSMPrefix", value=ssm_prefix)
         CfnOutput(self, "ECSClusterArn", value=cluster.cluster_arn)
         CfnOutput(self, "TaskDefinitionArn", value=task_definition.task_definition_arn)
-        CfnOutput(self, "ECRRepoUri", value=ecr_repo.repository_uri)
+        CfnOutput(self, "DockerImageUri", value=docker_image_asset.image_uri)
         CfnOutput(self, "ECSLogGroup", value=ecs_log_group.log_group_name)
         CfnOutput(self, "LauncherLambdaArn", value=launcher_lambda.function_arn)
+        CfnOutput(self, "VpcId", value=vpc.vpc_id)
+        CfnOutput(self, "PublicSubnets", value=public_subnet_ids)

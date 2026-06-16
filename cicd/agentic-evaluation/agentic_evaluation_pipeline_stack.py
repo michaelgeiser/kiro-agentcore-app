@@ -189,32 +189,15 @@ class AgenticEvaluationPipelineStack(Stack):
                         "commands": [
                             "echo 'Installing CDK CLI...'",
                             "npm install -g aws-cdk@latest",
-                            "echo 'Installing runtime dependencies...'",
-                            "cd $CODEBUILD_SRC_DIR/agentic-evaluation",
-                            "pip install -r requirements.txt --no-cache-dir",
                             "echo 'Installing CDK dependencies...'",
-                            "pip install aws-cdk-lib>=2.100.0 constructs>=10.0.0 --no-cache-dir",
-                        ],
-                    },
-                    "pre_build": {
-                        "commands": [
-                            "echo 'Logging in to ECR...'",
-                            "aws ecr get-login-password --region $AWS_DEFAULT_REGION "
-                            "| docker login --username AWS --password-stdin "
-                            "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com",
-                            "echo 'Building Docker image...'",
-                            "cd $CODEBUILD_SRC_DIR/agentic-evaluation",
-                            "ECR_REPO=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/"
-                            "$APP_NAME-$ENV_NAME-$INSTANCE_ID-agentic-evaluation",
-                            "docker build -t $ECR_REPO:latest -t $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION .",
-                            "echo 'Pushing Docker image to ECR...'",
-                            "docker push $ECR_REPO:latest",
-                            "docker push $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION",
+                            "cd $CODEBUILD_SRC_DIR/agentic-evaluation/infra",
+                            "pip install -r requirements.txt --no-cache-dir",
                         ],
                     },
                     "build": {
                         "commands": [
                             "echo 'Deploying agentic-evaluation infrastructure via CDK...'",
+                            "echo 'CDK will build and push the Docker image automatically.'",
                             "cd $CODEBUILD_SRC_DIR/agentic-evaluation/infra",
                             "cdk deploy "
                             "-c appName=$APP_NAME "
