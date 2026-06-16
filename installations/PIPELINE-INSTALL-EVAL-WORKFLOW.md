@@ -45,7 +45,19 @@ aws sqs get-queue-url \
 
 ---
 
-## Step 2: Get the Latest Code
+## Step 2: Push Latest Code from Laptop
+
+The agentic-evaluation module was developed locally. Push it to GitHub first:
+
+```bash
+# From your local machine (laptop)
+cd c:\Users\mgeis\Downloads\Agentic-compare\Kiro\kiro-agentcore-app
+git push origin main
+```
+
+---
+
+## Step 3: Pull Latest Code on CloudShell
 
 ```bash
 cd ~/prescoach
@@ -53,9 +65,11 @@ git fetch origin
 git reset --hard origin/main
 ```
 
+This pulls the new `agentic-evaluation/` module and `cicd/agentic-evaluation/` pipeline definition.
+
 ---
 
-## Step 3: Set Up the Virtual Environment
+## Step 4: Set Up the Virtual Environment
 
 ```bash
 cd ~/prescoach/cicd/agentic-evaluation
@@ -70,7 +84,7 @@ pip install -r requirements.txt --no-cache-dir
 
 ---
 
-## Step 4: Set Environment Variables
+## Step 5: Set Environment Variables
 
 ```bash
 export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
@@ -79,9 +93,22 @@ export CDK_DEFAULT_REGION="us-east-1"
 
 ---
 
-## Step 5: Deploy the Pipeline Stack
+## Step 6: Install CDK CLI (if not already available)
 
 ```bash
+mkdir -p ~/.npm-global
+npm config set prefix '~/.npm-global'
+export PATH=~/.npm-global/bin:$PATH
+npm install -g aws-cdk@latest
+cdk --version
+```
+
+---
+
+## Step 7: Deploy the Pipeline Stack
+
+```bash
+cd ~/prescoach/cicd/agentic-evaluation
 cdk deploy \
   -c appName=prescoach \
   -c envName=dev \
@@ -103,7 +130,7 @@ prescoach-dev-kiro-agentic-evaluation-cicd.FullDeployPipelineName = prescoach-de
 
 ---
 
-## Step 6: Verify Pipelines Exist
+## Step 8: Verify Pipelines Exist
 
 ```bash
 aws codepipeline list-pipelines \
