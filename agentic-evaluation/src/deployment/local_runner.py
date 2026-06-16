@@ -124,7 +124,13 @@ def build_session_supervisor(config: AgentCoreConfig) -> SessionSupervisor:
     # Build agent registry and coaching supervisor
     registry = AgentRegistry()
 
-    coaching_supervisor = CoachingSupervisor(registry=registry)
+    coaching_model_id = os.environ.get(
+        "COACHING_SUPERVISOR_MODEL_ID", "anthropic.claude-sonnet-4-20250514"
+    )
+    coaching_supervisor = CoachingSupervisor(
+        registry=registry,
+        model_id=coaching_model_id,
+    )
 
     # Wire together the Session Supervisor
     session_supervisor = SessionSupervisor(

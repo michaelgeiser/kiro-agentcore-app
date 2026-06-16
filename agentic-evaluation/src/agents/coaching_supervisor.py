@@ -63,8 +63,10 @@ class CoachingSupervisor:
         self,
         registry: AgentRegistry,
         agent: Agent | None = None,
+        model_id: str = "anthropic.claude-sonnet-4-20250514",
     ) -> None:
         self._registry = registry
+        self._model_id = model_id
         self._tools = self._load_tools()
         self._agent = agent or self._create_agent()
         self._failures: list[AgentFailure] = []
@@ -122,6 +124,7 @@ class CoachingSupervisor:
         return Agent(
             system_prompt=SUPERVISOR_SYSTEM_PROMPT,
             tools=self._tools,
+            model_id=self._model_id,
         )
 
     def evaluate(

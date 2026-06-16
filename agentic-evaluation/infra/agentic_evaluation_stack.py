@@ -258,6 +258,8 @@ class AgenticEvaluationStack(Stack):
                 "LOCAL_MODE": "true",
                 "IDLE_TIMEOUT_MINUTES": "30",
                 "MAX_CONCURRENT_EVALUATIONS": "5",
+                "EVALUATION_MODEL_ID": "anthropic.claude-sonnet-4-20250514",
+                "COACHING_SUPERVISOR_MODEL_ID": "anthropic.claude-sonnet-4-20250514",
             },
         )
 

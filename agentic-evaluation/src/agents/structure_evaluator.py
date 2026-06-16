@@ -6,6 +6,7 @@ and conclusion impact of the presentation structure.
 
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any
 
@@ -16,6 +17,11 @@ from agents.base_evaluator import BaseEvaluator, create_evaluation_tool
 from models.data_models import EvaluationInput, EvaluationResult, Finding
 
 logger = logging.getLogger(__name__)
+
+# Model used by evaluation agents — configurable via EVALUATION_MODEL_ID env var
+EVALUATION_MODEL_ID = os.environ.get(
+    "EVALUATION_MODEL_ID", "anthropic.claude-sonnet-4-20250514"
+)
 
 SYSTEM_PROMPT = """You are an expert presentation structure evaluator. Your role is to assess
 how well a presentation is organized and how effectively its ideas flow from beginning to end.
@@ -84,7 +90,7 @@ class StructureEvaluator(BaseEvaluator):
         content = self._retrieve_content(input)
 
         # Create a Strands Agent with the structure-specific system prompt
-        agent = Agent(system_prompt=SYSTEM_PROMPT)
+        agent = Agent(system_prompt=SYSTEM_PROMPT, model_id=EVALUATION_MODEL_ID)
 
         # Invoke the agent with the retrieved content
         prompt = (
