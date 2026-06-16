@@ -4,11 +4,17 @@ Top-level orchestrator for the evaluation session lifecycle. Consumes
 messages from the SQS FIFO handoff queue, manages DynamoDB status
 transitions, delegates evaluation to the Coaching Supervisor, stores
 results in S3, and triggers report generation.
+
+Supports concurrent message processing (across different MessageGroupIds)
+with configurable idle timeout for ECS Fargate Spot deployments and
+graceful SIGTERM handling for Spot reclamation.
 """
 
 import json
 import logging
+import signal
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from pydantic import ValidationError
@@ -31,6 +37,10 @@ from services.sqs_consumer import SQSConsumer
 from services.status_manager import StatusManager
 
 logger = logging.getLogger(__name__)
+
+# Default configuration for ECS Fargate Spot deployment
+DEFAULT_IDLE_TIMEOUT_MINUTES = 30
+DEFAULT_MAX_CONCURRENT_EVALUATIONS = 5
 
 
 class SessionSupervisor:
@@ -308,69 +318,181 @@ class SessionSupervisor:
             agent_failures=agent_failures,
         )
 
-    def consume_queue(self) -> None:
-        """Continuously poll the SQS FIFO queue and process messages.
+    def consume_queue(
+        self,
+        idle_timeout_minutes: int = DEFAULT_IDLE_TIMEOUT_MINUTES,
+        max_concurrent: int = DEFAULT_MAX_CONCURRENT_EVALUATIONS,
+    ) -> None:
+        """Continuously poll the SQS FIFO queue and process messages concurrently.
 
-        FIFO Ordering Guarantee (Requirements 8.1, 8.2):
-            This method guarantees that messages within a MessageGroupId are
-            processed in the exact order they were sent to the FIFO queue.
-            The guarantee is maintained through three mechanisms:
+        Supports concurrent processing of messages from different MessageGroupIds
+        (each submission_id is its own group), idle timeout for ECS Fargate Spot
+        cost optimization, and graceful SIGTERM handling for Spot reclamation.
 
-            1. Single-message reception: SQSConsumer.receive_message() uses
-               MaxNumberOfMessages=1, so only one message is in-flight at a
-               time.
+        FIFO Ordering Guarantee:
+            Sequential ordering within a single MessageGroupId is preserved
+            naturally because each submission_id uses its own MessageGroupId.
+            Messages from different groups are processed concurrently in
+            separate threads.
 
-            2. Sequential processing: This loop processes one message to
-               completion (via handle_message()) before polling for the next.
-               There is no parallelism or concurrent message handling.
+        Idle Timeout:
+            If no messages are received for ``idle_timeout_minutes`` consecutive
+            minutes, the consumer exits gracefully. This allows ECS Fargate Spot
+            tasks to shut down when there is no work, minimizing cost.
 
-            3. Acknowledgment after initiation: handle_message() deletes
-               (acknowledges) the message from the queue after validation
-               succeeds and before evaluation begins. This prevents the
-               message from being redelivered during processing while
-               allowing failed-to-initiate messages to become visible again
-               after the visibility timeout expires (configured at 5 minutes
-               in the infrastructure stack).
+        SIGTERM Handling (Spot Reclamation):
+            When a SIGTERM signal is received (e.g., ECS Spot 2-minute warning),
+            the consumer stops accepting new messages, waits for in-progress
+            evaluations to complete, then exits cleanly.
 
-        Long-polls via sqs_consumer.receive_message() and calls
-        handle_message() for each received message. Runs indefinitely
-        until interrupted. Errors during message handling are caught,
-        logged, and reported via the error notifier.
+        Args:
+            idle_timeout_minutes: Minutes of inactivity before graceful exit.
+                Defaults to DEFAULT_IDLE_TIMEOUT_MINUTES (30).
+            max_concurrent: Maximum number of messages to process simultaneously.
+                Defaults to DEFAULT_MAX_CONCURRENT_EVALUATIONS (5).
         """
-        logger.info("Starting queue consumption loop")
+        idle_timeout_seconds = idle_timeout_minutes * 60
+        last_message_time = time.time()
+        shutting_down = False
 
-        while True:
-            try:
-                raw_message = self._sqs_consumer.receive_message()
-            except Exception as exc:
-                logger.error("Error receiving message from SQS: %s", exc)
-                # Brief pause before retrying to avoid tight error loops
-                time.sleep(5)
-                continue
+        logger.info(
+            "Starting queue consumption loop: idle_timeout=%d min, "
+            "max_concurrent=%d",
+            idle_timeout_minutes,
+            max_concurrent,
+        )
 
-            if raw_message is None:
-                # No message received during polling window — loop again
-                logger.debug("No messages received, continuing to poll")
-                continue
+        # --- SIGTERM handler for Spot reclamation ---
+        def _sigterm_handler(signum: int, frame: Any) -> None:
+            nonlocal shutting_down
+            shutting_down = True
+            logger.warning(
+                "SIGTERM received — initiating graceful shutdown. "
+                "No new messages will be accepted. Waiting for %d "
+                "in-progress evaluation(s) to complete...",
+                len(futures),
+            )
 
-            try:
-                self.handle_message(raw_message)
-            except Exception as exc:
-                # Catch any unhandled exception from handle_message
+        signal.signal(signal.SIGTERM, _sigterm_handler)
+
+        executor = ThreadPoolExecutor(
+            max_workers=max_concurrent,
+            thread_name_prefix="eval-worker",
+        )
+        futures: dict = {}  # future -> submission_id
+
+        try:
+            while not shutting_down:
+                # Check idle timeout
+                idle_elapsed = time.time() - last_message_time
+                if idle_elapsed >= idle_timeout_seconds:
+                    logger.info(
+                        "Idle timeout reached (%.1f min with no messages). "
+                        "Exiting gracefully.",
+                        idle_elapsed / 60,
+                    )
+                    break
+
+                # Clean up completed futures
+                done_futures = [f for f in futures if f.done()]
+                for f in done_futures:
+                    sub_id = futures.pop(f)
+                    try:
+                        f.result()  # Re-raise any exception for logging
+                    except Exception as exc:
+                        logger.exception(
+                            "Unhandled error in worker for submission_id=%s: %s",
+                            sub_id,
+                            exc,
+                        )
+
+                # If all slots are full, wait briefly before checking again
+                if len(futures) >= max_concurrent:
+                    time.sleep(1)
+                    continue
+
+                # Poll for a new message
+                try:
+                    raw_message = self._sqs_consumer.receive_message()
+                except Exception as exc:
+                    logger.error("Error receiving message from SQS: %s", exc)
+                    time.sleep(5)
+                    continue
+
+                if raw_message is None:
+                    logger.debug(
+                        "No messages received (idle %.0fs / %ds timeout), "
+                        "continuing to poll. Active workers: %d/%d",
+                        idle_elapsed,
+                        idle_timeout_seconds,
+                        len(futures),
+                        max_concurrent,
+                    )
+                    continue
+
+                # Reset idle timer on message receipt
+                last_message_time = time.time()
                 submission_id = raw_message.get("submission_id", "unknown")
-                logger.exception(
-                    "Unhandled error processing message for "
-                    "submission_id=%s: %s",
+
+                logger.info(
+                    "Dispatching message for submission_id=%s to worker "
+                    "(slot %d/%d)",
                     submission_id,
-                    exc,
+                    len(futures) + 1,
+                    max_concurrent,
                 )
-                self._error_notifier.notify(
-                    submission_id=submission_id,
-                    component_name="SessionSupervisor",
-                    error_type="UnhandledError",
-                    error_message=str(exc),
-                    retry_count_exhausted=0,
+
+                future = executor.submit(self._process_message_safe, raw_message)
+                futures[future] = submission_id
+
+        finally:
+            # Wait for in-progress evaluations to finish
+            if futures:
+                logger.info(
+                    "Waiting for %d in-progress evaluation(s) to complete "
+                    "before exit...",
+                    len(futures),
                 )
+                for f in as_completed(futures):
+                    sub_id = futures[f]
+                    try:
+                        f.result()
+                    except Exception as exc:
+                        logger.exception(
+                            "Worker error during shutdown for submission_id=%s: %s",
+                            sub_id,
+                            exc,
+                        )
+
+            executor.shutdown(wait=False)
+            logger.info("Queue consumption loop exited. Goodbye.")
+
+    def _process_message_safe(self, raw_message: dict) -> None:
+        """Process a single message, catching and reporting any unhandled errors.
+
+        This wrapper is used by the thread pool to ensure exceptions
+        don't crash the worker thread silently.
+
+        Args:
+            raw_message: The raw SQS message dict.
+        """
+        try:
+            self.handle_message(raw_message)
+        except Exception as exc:
+            submission_id = raw_message.get("submission_id", "unknown")
+            logger.exception(
+                "Unhandled error processing message for "
+                "submission_id=%s: %s",
+                submission_id,
+                exc,
+            )
+            self._error_notifier.notify(
+                submission_id=submission_id,
+                component_name="SessionSupervisor",
+                error_type="UnhandledError",
+                error_message=str(exc),
+                retry_count_exhausted=0,
+            )
 
     # -----------------------------------------------------------------------
     # Private helpers

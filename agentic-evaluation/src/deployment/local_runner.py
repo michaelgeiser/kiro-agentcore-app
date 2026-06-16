@@ -4,6 +4,8 @@ Entry point for running the SessionSupervisor in Strands local mode
 without needing Amazon Bedrock AgentCore deployed. Useful for
 development, testing, and rapid iteration.
 
+Also used as the entrypoint for ECS Fargate Spot tasks.
+
 Reads configuration from environment variables:
     SQS_QUEUE_URL: URL of the SQS FIFO handoff queue
     SQS_DLQ_URL: URL of the dead-letter queue
@@ -13,6 +15,8 @@ Reads configuration from environment variables:
     AWS_REGION: AWS region (default: us-east-1)
     LOCAL_MODE: Always "true" when using this runner
     DEPLOYMENT_ENV: Environment name (default: dev)
+    IDLE_TIMEOUT_MINUTES: Minutes of inactivity before graceful exit (default: 30)
+    MAX_CONCURRENT_EVALUATIONS: Max parallel message processing (default: 5)
 
 Requirements: 7.1, 7.2, 7.4, 7.5
 """
@@ -191,13 +195,29 @@ def main() -> None:
 
     session_supervisor = build_session_supervisor(config)
 
+    # Read concurrency and idle timeout from environment
+    idle_timeout_minutes = int(
+        os.environ.get("IDLE_TIMEOUT_MINUTES", "30")
+    )
+    max_concurrent_evaluations = int(
+        os.environ.get("MAX_CONCURRENT_EVALUATIONS", "5")
+    )
+
     logger.info(
         "Session Supervisor initialized. Starting queue consumption loop..."
+    )
+    logger.info(
+        "ECS config: idle_timeout=%d min, max_concurrent=%d",
+        idle_timeout_minutes,
+        max_concurrent_evaluations,
     )
     logger.info("Press Ctrl+C to stop.")
 
     try:
-        session_supervisor.consume_queue()
+        session_supervisor.consume_queue(
+            idle_timeout_minutes=idle_timeout_minutes,
+            max_concurrent=max_concurrent_evaluations,
+        )
     except KeyboardInterrupt:
         logger.info("Shutting down local runner (KeyboardInterrupt)")
     except Exception:

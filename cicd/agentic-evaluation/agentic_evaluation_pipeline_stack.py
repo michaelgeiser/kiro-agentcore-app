@@ -1,7 +1,7 @@
 """CDK Stack defining CI/CD pipelines for the Agentic Evaluation module.
 
 Pipeline 1 - Test: Runs property tests, unit tests, and integration tests
-Pipeline 2 - Deploy: Installs deps, runs CDK deploy for agentic-evaluation infrastructure
+Pipeline 2 - Deploy: Builds Docker image, pushes to ECR, runs CDK deploy
 Pipeline 3 - Full: Runs Tests first, then Deploy in sequence
 """
 
@@ -67,10 +67,16 @@ class AgenticEvaluationPipelineStack(Stack):
                 "logs:*",
                 # Bedrock (AgentCore, model access)
                 "bedrock:*",
-                # ECR (CDK bootstrap)
+                # ECR (Docker image push + CDK bootstrap)
                 "ecr:*",
-                # Lambda (if needed for future agent deployment)
+                # ECS (Fargate Spot task definitions, services, clusters)
+                "ecs:*",
+                # Lambda (eval-task-launcher)
                 "lambda:*",
+                # EventBridge (launch rules)
+                "events:*",
+                # EC2 (VPC/subnet lookups for ECS networking)
+                "ec2:Describe*",
             ],
             resources=["*"],
         )
@@ -165,11 +171,15 @@ class AgenticEvaluationPipelineStack(Stack):
             environment=codebuild.BuildEnvironment(
                 build_image=codebuild.LinuxBuildImage.STANDARD_7_0,
                 compute_type=codebuild.ComputeType.MEDIUM,
+                privileged=True,  # Required for Docker builds
             ),
             environment_variables={
                 "APP_NAME": codebuild.BuildEnvironmentVariable(value=app_name),
                 "ENV_NAME": codebuild.BuildEnvironmentVariable(value=env_name),
                 "INSTANCE_ID": codebuild.BuildEnvironmentVariable(value=instance_id),
+                "AWS_ACCOUNT_ID": codebuild.BuildEnvironmentVariable(
+                    value=self.account,
+                ),
             },
             build_spec=codebuild.BuildSpec.from_object({
                 "version": "0.2",
@@ -184,6 +194,22 @@ class AgenticEvaluationPipelineStack(Stack):
                             "pip install -r requirements.txt --no-cache-dir",
                             "echo 'Installing CDK dependencies...'",
                             "pip install aws-cdk-lib>=2.100.0 constructs>=10.0.0 --no-cache-dir",
+                        ],
+                    },
+                    "pre_build": {
+                        "commands": [
+                            "echo 'Logging in to ECR...'",
+                            "aws ecr get-login-password --region $AWS_DEFAULT_REGION "
+                            "| docker login --username AWS --password-stdin "
+                            "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com",
+                            "echo 'Building Docker image...'",
+                            "cd $CODEBUILD_SRC_DIR/agentic-evaluation",
+                            "ECR_REPO=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/"
+                            "$APP_NAME-$ENV_NAME-$INSTANCE_ID-agentic-evaluation",
+                            "docker build -t $ECR_REPO:latest -t $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION .",
+                            "echo 'Pushing Docker image to ECR...'",
+                            "docker push $ECR_REPO:latest",
+                            "docker push $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION",
                         ],
                     },
                     "build": {

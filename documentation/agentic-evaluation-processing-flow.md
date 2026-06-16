@@ -34,14 +34,46 @@ The Preparation Workflow publishes a handoff message to the FIFO queue after suc
 
 ## 2. Session Supervisor: Message Consumption and Lifecycle Management
 
-### 2.1 Queue Polling
+### 2.1 Queue Polling and Concurrent Processing
 
-The Session Supervisor continuously long-polls the FIFO queue using `WaitTimeSeconds=20` and `MaxNumberOfMessages=1`. Sequential single-message processing guarantees FIFO ordering within each MessageGroupId.
+The Session Supervisor runs as a containerized task on **ECS Fargate Spot**, consuming messages from the FIFO queue with concurrent processing support. Up to 5 messages (from different MessageGroupIds) are processed simultaneously using a thread pool.
 
-**FIFO ordering guarantee mechanisms:**
-1. `MaxNumberOfMessages=1` — only one message in-flight at a time
-2. Synchronous `consume_queue()` loop — processes one message to completion before polling the next
-3. Message deleted (acknowledged) after validation — unblocks the next message in the group
+**Concurrency model:**
+- A `ThreadPoolExecutor` with `max_concurrent` workers (default: 5) dispatches messages to worker threads
+- Each submission_id uses its own MessageGroupId, so ordering within a single submission is guaranteed naturally by SQS FIFO
+- Different submissions are processed in parallel across separate threads
+- The `MaxNumberOfMessages=1` per poll call ensures clean dispatching
+
+**Configuration (environment variables):**
+- `MAX_CONCURRENT_EVALUATIONS`: Max parallel messages (default: 5)
+- `IDLE_TIMEOUT_MINUTES`: Inactivity timeout before graceful exit (default: 30)
+
+### 2.1.1 Idle Timeout Behavior
+
+When no messages are received for the configured idle timeout period (default: 30 minutes), the Session Supervisor:
+1. Logs the idle timeout event
+2. Waits for any in-progress evaluations to complete
+3. Exits the process cleanly (exit code 0)
+
+This allows the ECS Fargate Spot task to terminate when there is no work, minimizing cost. The EventBridge rule will launch a new task when messages arrive again.
+
+### 2.1.2 SIGTERM Handling (Spot Reclamation)
+
+When ECS sends a SIGTERM signal (e.g., Fargate Spot 2-minute reclamation warning):
+1. The consumer stops accepting new messages immediately
+2. In-progress evaluations continue to completion
+3. Once all workers finish, the process exits cleanly
+4. Any unprocessed messages remain on the queue and will be picked up by the next task
+
+### 2.1.3 ECS Fargate Spot Architecture
+
+The evaluation consumer runs as an ECS Fargate Spot task:
+- **Capacity Provider:** FARGATE_SPOT (up to 70% cost savings vs on-demand)
+- **Task Size:** 0.5 vCPU, 1 GB memory
+- **Desired Count:** 0 (scaled on demand by EventBridge + Lambda)
+- **Launch Trigger:** EventBridge rule detects messages on the queue via CloudWatch alarm, invokes a Lambda that checks for already-running tasks before launching a new one
+- **Duplicate Prevention:** The `eval-task-launcher` Lambda calls `ecs:ListTasks` to verify no task is already running before calling `ecs:RunTask`
+- **Logs:** `/ecs/prescoach-dev-kiro-agentic-evaluation` CloudWatch Log Group
 
 ### 2.2 Message Validation
 
@@ -380,6 +412,10 @@ A `DLQMonitor` service periodically checks the DLQ message count:
 | Object Storage | S3 | Evaluation results and PDF reports |
 | Notifications | SNS | Error alerts and DLQ threshold warnings |
 | Configuration | SSM Parameter Store | Runtime configuration |
+| Compute | ECS Fargate Spot | Containerized evaluation task execution (cost-optimized) |
+| Container Registry | ECR | Docker image storage for evaluation container |
+| Scheduling | EventBridge + Lambda | On-demand task launch when messages arrive |
+| Logging | CloudWatch Logs | `/ecs/prescoach-dev-kiro-agentic-evaluation` task output |
 
 ---
 
@@ -431,6 +467,7 @@ Expected: `0` (no messages in DLQ)
 
 ```
 agentic-evaluation/
+├── Dockerfile                          # ECS Fargate Spot container image
 ├── src/
 │   ├── agents/
 │   │   ├── agents_manifest.json        # Agent registry configuration (7 dimensions)
@@ -444,10 +481,10 @@ agentic-evaluation/
 │   │   ├── pacing_evaluator.py
 │   │   ├── persuasion_evaluator.py
 │   │   ├── registry.py                 # Configuration-driven agent discovery
-│   │   └── session_supervisor.py       # Top-level lifecycle orchestrator
+│   │   └── session_supervisor.py       # Top-level lifecycle orchestrator (concurrent, idle timeout)
 │   ├── deployment/
 │   │   ├── agentcore_config.py         # Bedrock AgentCore configuration
-│   │   └── local_runner.py             # Local dev entry point
+│   │   └── local_runner.py             # Local dev + ECS Fargate entry point
 │   ├── models/
 │   │   └── data_models.py             # Pydantic models (HandoffMessage, EvaluationResult, etc.)
 │   └── services/
@@ -457,6 +494,8 @@ agentic-evaluation/
 │       ├── retry.py                    # Exponential backoff with jitter
 │       ├── sqs_consumer.py             # FIFO queue consumption
 │       └── status_manager.py           # DynamoDB status transitions
+├── infra/
+│   └── agentic_evaluation_stack.py     # CDK: ECS Fargate Spot, ECR, Lambda launcher, EventBridge
 ├── tests/
 │   ├── properties/                     # 30 Hypothesis property-based tests
 │   ├── unit/                           # 196 unit tests
@@ -475,9 +514,41 @@ Three CodePipeline pipelines automate testing and deployment:
 | Pipeline | What It Does | Duration |
 |----------|-------------|----------|
 | `prescoach-dev-kiro-eval-workflow-test` | Runs 238 tests | ~2-4 min |
-| `prescoach-dev-kiro-eval-workflow-deploy` | CDK deploy | ~3-5 min |
-| `prescoach-dev-kiro-eval-workflow-full-deploy` | Test → Deploy | ~6-10 min |
+| `prescoach-dev-kiro-eval-workflow-deploy` | Builds Docker image → pushes to ECR → CDK deploy | ~5-8 min |
+| `prescoach-dev-kiro-eval-workflow-full-deploy` | Test → Docker build → CDK Deploy | ~8-12 min |
+
+The deploy pipeline now includes a `pre_build` phase that:
+1. Authenticates to ECR
+2. Builds the Docker image from `agentic-evaluation/Dockerfile`
+3. Tags with `latest` and the git commit SHA
+4. Pushes both tags to ECR
+
+The CDK deploy phase then creates/updates the ECS task definition referencing the `latest` image tag.
 
 Trigger: Manual / CLI (`aws codepipeline start-pipeline-execution`)
 
 See `installations/RUN-EVAL-WORKFLOW-PIPELINE.md` for detailed run instructions.
+
+---
+
+## 16. Monitoring and Observability
+
+### CloudWatch Log Group
+
+All ECS task output is streamed to: `/ecs/prescoach-dev-kiro-agentic-evaluation`
+
+**Key log patterns to monitor:**
+- `"Starting queue consumption loop"` — task started successfully
+- `"Idle timeout reached"` — task exiting due to inactivity (normal behavior)
+- `"SIGTERM received"` — Spot reclamation in progress
+- `"Dispatching message for submission_id=..."` — message picked up for processing
+- `"Evaluation session completed"` — successful processing
+- `"Evaluation session FAILED"` — processing failure
+
+### Key Metrics
+
+| Metric | Source | Alert Condition |
+|--------|--------|----------------|
+| ApproximateNumberOfMessagesVisible | SQS/CloudWatch | > 0 triggers task launch |
+| DLQ message count | SQS/CloudWatch | > 10 triggers SNS alert |
+| Task running count | ECS/CloudWatch | Used by launcher Lambda to prevent duplicates |
