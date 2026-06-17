@@ -63,8 +63,9 @@ class AgenticEvaluationPipelineStack(Stack):
                 "ssm:*",
                 # IAM (CDK creates roles)
                 "iam:*",
-                # CloudWatch Logs
+                # CloudWatch Logs and Alarms
                 "logs:*",
+                "cloudwatch:*",
                 # Bedrock (AgentCore, model access)
                 "bedrock:*",
                 # ECR (Docker image push + CDK bootstrap)
@@ -204,6 +205,17 @@ class AgenticEvaluationPipelineStack(Stack):
                             "-c envName=$ENV_NAME "
                             "-c instanceId=$INSTANCE_ID "
                             "--require-approval never",
+                        ],
+                    },
+                    "post_build": {
+                        "commands": [
+                            "echo 'Resetting CloudWatch alarm to trigger task launch if messages are waiting...'",
+                            "aws cloudwatch set-alarm-state "
+                            "--alarm-name ${APP_NAME}-${ENV_NAME}-${INSTANCE_ID}-eval-queue-has-messages "
+                            "--state-value OK "
+                            "--state-reason 'Post-deploy reset to re-trigger EventBridge on pending messages' "
+                            "--region $AWS_DEFAULT_REGION",
+                            "echo 'Deploy complete. Alarm reset — task will auto-launch if queue has messages.'",
                         ],
                     },
                 },
