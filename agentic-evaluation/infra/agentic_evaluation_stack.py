@@ -67,7 +67,7 @@ class AgenticEvaluationStack(Stack):
 
         # The handoff FIFO queue created by the preparation-workflow stack
         handoff_queue_name = f"{app_name}-{env_name}-preparation-handoff.fifo"
-        handoff_dlq_name = f"{app_name}-{env_name}-preparation-handoff-dlq.fifo"
+        handoff_dlq_name = f"{app_name}-{env_name}-preparation-dlq-handoff.fifo"
 
         # DynamoDB table and S3 bucket created by upload-service
         submissions_table_name = f"{resource_prefix}-submissions"
