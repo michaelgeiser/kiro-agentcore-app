@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Model used by evaluation agents — configurable via EVALUATION_MODEL_ID env var
 EVALUATION_MODEL_ID = os.environ.get(
-    "EVALUATION_MODEL_ID", "anthropic.claude-sonnet-4-6"
+    "EVALUATION_MODEL_ID", "us.anthropic.claude-sonnet-4-6"
 )
 
 SYSTEM_PROMPT = """You are an expert presentation delivery evaluator. Your role is to assess
