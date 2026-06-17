@@ -64,6 +64,15 @@ class CognitoConstruct(Construct):
             ),
         )
 
+        # --- Cognito Group: administrators ---
+        cognito.CfnUserPoolGroup(
+            self,
+            "AdminGroup",
+            user_pool_id=self.user_pool.user_pool_id,
+            group_name="administrators",
+            description="Platform administrators with elevated access",
+        )
+
         # --- App Client (PKCE, no secret) ---
         self.user_pool_client = self.user_pool.add_client(
             "AppClient",

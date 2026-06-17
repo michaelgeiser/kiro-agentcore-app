@@ -71,6 +71,17 @@ function base64UrlEncode(buffer) {
 
 // --- Auth Module ---
 
+/** @type {boolean} */
+let isAdministrator = false;
+
+/**
+ * Check if the current user is in the administrators Cognito group.
+ * @returns {boolean}
+ */
+export function isAdmin() {
+  return isAdministrator;
+}
+
 export const auth = {
   /**
    * Redirect to Cognito hosted UI if no valid session.
@@ -276,6 +287,7 @@ export const auth = {
 
 /**
  * Store token data from Cognito response into module-scoped variables.
+ * Also decodes the access token JWT to check for administrator group membership.
  * @param {{ access_token: string, refresh_token?: string, expires_in: number }} data
  */
 function setTokens(data) {
@@ -285,6 +297,15 @@ function setTokens(data) {
   }
   // expires_in is in seconds; convert to ms timestamp
   expiresAt = Date.now() + data.expires_in * 1000;
+
+  // Decode JWT payload to check for cognito:groups
+  try {
+    const payload = JSON.parse(atob(accessToken.split('.')[1]));
+    const groups = payload['cognito:groups'] || [];
+    isAdministrator = groups.includes('administrators');
+  } catch {
+    isAdministrator = false;
+  }
 }
 
 /**
@@ -294,6 +315,7 @@ function clearTokens() {
   accessToken = null;
   refreshToken = null;
   expiresAt = null;
+  isAdministrator = false;
 }
 
 // --- Exported helpers for use by other modules ---

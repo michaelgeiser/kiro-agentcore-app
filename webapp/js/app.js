@@ -6,7 +6,7 @@
  */
 
 import { Router } from './router.js';
-import { auth } from './auth.js';
+import { auth, isAdmin } from './auth.js';
 import { render as renderUpload } from './views/upload.js';
 import { render as renderList } from './views/list.js';
 import { showToast } from './utils/dom.js';
@@ -52,6 +52,16 @@ async function init() {
     outlet
   );
   router.start();
+
+  // 3.5. Show Administrator label if user is in the administrators group
+  if (isAdmin()) {
+    const navLinks = document.querySelector('.nav-links');
+    if (navLinks) {
+      const adminLabel = document.createElement('li');
+      adminLabel.innerHTML = '<span style="color: red; font-weight: bold;">Administrator</span>';
+      navLinks.insertBefore(adminLabel, navLinks.firstChild);
+    }
+  }
 
   // 4. Wire logout button
   const logoutBtn = document.getElementById('logout-btn');
