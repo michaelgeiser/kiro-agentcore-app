@@ -5,7 +5,29 @@
  */
 
 import { api } from '../api.js';
-import { createElement, clearChildren } from '../utils/dom.js';
+import { createElement, clearChildren, showToast } from '../utils/dom.js';
+
+/**
+ * Show a confirmation dialog and delete the submission if confirmed.
+ * @param {string} submissionId
+ * @param {string} title
+ * @param {HTMLElement} cardElement - The card to remove from DOM on success
+ */
+async function _confirmAndDelete(submissionId, title, cardElement) {
+  const confirmed = window.confirm(
+    `Are you sure you want to delete "${title}"?\n\nThis will permanently remove all files, evaluations, and reports associated with this submission.`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await api.deleteSubmission(submissionId);
+    cardElement.remove();
+    showToast('Submission deleted successfully.', 'success');
+  } catch (error) {
+    showToast(error.message || 'Failed to delete submission.', 'error');
+  }
+}
 
 /**
  * Format an ISO 8601 date string to a human-readable format.
@@ -81,7 +103,7 @@ export function renderSubmissionCard(submission) {
 
   const body = createElement('div', { className: 'card-body' }, bodyChildren);
 
-  // Card footer: report link (only for Completed status)
+  // Card footer: report link (only for Completed status) + delete button
   const footerChildren = [];
 
   if (submission.status === 'Completed' && submission.reportUrl) {
@@ -96,15 +118,25 @@ export function renderSubmissionCard(submission) {
     footerChildren.push(reportLink);
   }
 
+  // Delete button (always shown)
+  const deleteBtn = createElement('button', {
+    className: 'btn btn-danger',
+    type: 'button',
+    textContent: 'Delete',
+    'aria-label': `Delete submission ${submission.title}`,
+  });
+  deleteBtn.addEventListener('click', () => {
+    _confirmAndDelete(submission.id, submission.title, card);
+  });
+  footerChildren.push(deleteBtn);
+
   const card = createElement('article', { className: 'card', 'aria-label': `Submission: ${submission.title}` }, [
     header,
     body,
   ]);
 
-  if (footerChildren.length > 0) {
-    const footer = createElement('div', { className: 'card-footer' }, footerChildren);
-    card.appendChild(footer);
-  }
+  const footer = createElement('div', { className: 'card-footer' }, footerChildren);
+  card.appendChild(footer);
 
   return card;
 }

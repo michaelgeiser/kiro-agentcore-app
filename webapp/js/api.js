@@ -261,6 +261,22 @@ export const api = {
     const data = await processResponse(response);
     return data.submissions;
   },
+
+  /**
+   * Delete a submission and all related S3/DynamoDB resources.
+   * @param {string} submissionId - The submission ID to delete
+   * @returns {Promise<Object>} Deletion result
+   */
+  async deleteSubmission(submissionId) {
+    const url = `${API_BASE_URL}/submissions/${submissionId}`;
+    const response = await authenticatedFetch(url, {
+      method: 'DELETE',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+    return processResponse(response);
+  },
 };
 
 // --- Exported helpers for testing ---

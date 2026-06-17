@@ -64,6 +64,21 @@
   background-color: rgba(26, 115, 232, 0.16);
 }
 
+/* Danger button — for destructive actions */
+.btn-danger {
+  background-color: transparent;
+  color: #d32f2f;
+  border: 1px solid #d32f2f;
+}
+
+.btn-danger:hover {
+  background-color: rgba(211, 47, 47, 0.08);
+}
+
+.btn-danger:active {
+  background-color: rgba(211, 47, 47, 0.16);
+}
+
 /* Disabled state */
 .btn:disabled,
 .btn[aria-disabled="true"] {

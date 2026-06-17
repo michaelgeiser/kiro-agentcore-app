@@ -71,3 +71,26 @@ class DynamoService:
             UpdateExpression=update_expression,
             ExpressionAttributeValues=expression_values,
         )
+
+    def get_submission(self, submission_id: str) -> SubmissionRecord | None:
+        """Retrieve a single submission record by submission_id.
+
+        Args:
+            submission_id: The partition key of the submission.
+
+        Returns:
+            A SubmissionRecord if found, or None if not found.
+        """
+        response = self._table.get_item(Key={"submission_id": submission_id})
+        item = response.get("Item")
+        if item is None:
+            return None
+        return SubmissionRecord(**item)
+
+    def delete_submission(self, submission_id: str) -> None:
+        """Delete a submission record from DynamoDB.
+
+        Args:
+            submission_id: The partition key of the submission to delete.
+        """
+        self._table.delete_item(Key={"submission_id": submission_id})

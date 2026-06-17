@@ -177,8 +177,24 @@ class UploadServiceStack(Stack):
             code=lambda_code,
             environment={
                 "DYNAMODB_TABLE_NAME": submissions_table.table_name,
+                "UPLOADS_BUCKET": uploads_bucket.bucket_name,
             },
             timeout=Duration.seconds(30),
+        )
+
+        # Delete Submission Lambda
+        delete_submission_lambda = _lambda.Function(
+            self,
+            "DeleteSubmissionLambda",
+            function_name=f"{resource_prefix}-delete-submission",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="handlers.delete_submission.handler",
+            code=lambda_code,
+            environment={
+                "DYNAMODB_TABLE_NAME": submissions_table.table_name,
+                "UPLOADS_BUCKET": uploads_bucket.bucket_name,
+            },
+            timeout=Duration.seconds(60),
         )
 
         # Confirm Upload Lambda
@@ -200,9 +216,12 @@ class UploadServiceStack(Stack):
         # --- IAM Permissions ---
         uploads_bucket.grant_read_write(upload_lambda)
         uploads_bucket.grant_read(confirm_upload_lambda)
+        uploads_bucket.grant_read(get_submissions_lambda)
+        uploads_bucket.grant_read_write(delete_submission_lambda)
         submissions_table.grant_read_write_data(upload_lambda)
         submissions_table.grant_read_data(get_submissions_lambda)
         submissions_table.grant_read_write_data(confirm_upload_lambda)
+        submissions_table.grant_read_write_data(delete_submission_lambda)
         processing_queue.grant_send_messages(upload_lambda)
         processing_queue.grant_send_messages(confirm_upload_lambda)
         errors_topic.grant_publish(upload_lambda)
@@ -223,7 +242,7 @@ class UploadServiceStack(Stack):
             protocol_type="HTTP",
             cors_configuration=apigwv2.CfnApi.CorsProperty(
                 allow_origins=["https://kiro.geiserai.com"],
-                allow_methods=["GET", "POST"],
+                allow_methods=["GET", "POST", "DELETE"],
                 allow_headers=["Content-Type", "Authorization"],
                 max_age=86400,  # 1 day in seconds
             ),
@@ -271,6 +290,15 @@ class UploadServiceStack(Stack):
             payload_format_version="2.0",
         )
 
+        delete_submission_integration = apigwv2.CfnIntegration(
+            self,
+            "DeleteSubmissionIntegration",
+            api_id=http_api.ref,
+            integration_type="AWS_PROXY",
+            integration_uri=delete_submission_lambda.function_arn,
+            payload_format_version="2.0",
+        )
+
         # --- Routes ---
         apigwv2.CfnRoute(
             self,
@@ -292,6 +320,16 @@ class UploadServiceStack(Stack):
             target=f"integrations/{get_submissions_integration.ref}",
         )
 
+        apigwv2.CfnRoute(
+            self,
+            "DeleteSubmissionRoute",
+            api_id=http_api.ref,
+            route_key="DELETE /submissions/{id}",
+            authorization_type="JWT",
+            authorizer_id=jwt_authorizer.ref,
+            target=f"integrations/{delete_submission_integration.ref}",
+        )
+
         # --- Grant API Gateway permission to invoke Lambdas ---
         upload_lambda.add_permission(
             "ApiGwInvokeUpload",
@@ -303,6 +341,12 @@ class UploadServiceStack(Stack):
             "ApiGwInvokeGetSubmissions",
             principal=iam.ServicePrincipal("apigateway.amazonaws.com"),
             source_arn=f"arn:aws:execute-api:{self.region}:{self.account}:{http_api.ref}/*/*/submissions",
+        )
+
+        delete_submission_lambda.add_permission(
+            "ApiGwInvokeDeleteSubmission",
+            principal=iam.ServicePrincipal("apigateway.amazonaws.com"),
+            source_arn=f"arn:aws:execute-api:{self.region}:{self.account}:{http_api.ref}/*/*/submissions/*",
         )
 
         # --- Outputs ---
