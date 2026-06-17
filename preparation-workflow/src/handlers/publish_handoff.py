@@ -71,7 +71,40 @@ def publish_handoff(
         "Successfully published handoff message: message_id=%s", message_id
     )
 
+    # Immediately trigger the evaluation task launcher so the message
+    # is processed without waiting for CloudWatch alarm transitions.
+    _trigger_eval_task_launcher()
+
     return {"message_id": message_id}
+
+
+def _trigger_eval_task_launcher() -> None:
+    """Invoke the eval-task-launcher Lambda asynchronously (fire-and-forget).
+
+    This ensures an ECS Fargate Spot task is running to consume the
+    handoff message immediately, without relying on CloudWatch alarm
+    state transitions which can have delays.
+    """
+    launcher_fn_name = os.environ.get("EVAL_TASK_LAUNCHER_FN", "")
+    if not launcher_fn_name:
+        logger.debug("EVAL_TASK_LAUNCHER_FN not set — skipping direct trigger")
+        return
+
+    try:
+        lambda_client = boto3.client("lambda")
+        lambda_client.invoke(
+            FunctionName=launcher_fn_name,
+            InvocationType="Event",  # Async, fire-and-forget
+            Payload=b'{"source": "publish_handoff"}',
+        )
+        logger.info(
+            "Triggered eval task launcher: %s", launcher_fn_name
+        )
+    except Exception as exc:
+        # Best-effort — don't fail the handoff publish if this fails
+        logger.warning(
+            "Failed to trigger eval task launcher (non-fatal): %s", exc
+        )
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:

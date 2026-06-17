@@ -292,8 +292,22 @@ class PreparationWorkflowStack(Stack):
         self.publish_handoff_fn.add_environment(
             "HANDOFF_QUEUE_URL", self.handoff_queue.queue_url
         )
+        # Add eval task launcher function name for immediate trigger
+        eval_launcher_fn_name = f"prescoach-{self.env_name}-{self.instance_id}-eval-task-launcher"
+        self.publish_handoff_fn.add_environment(
+            "EVAL_TASK_LAUNCHER_FN", eval_launcher_fn_name
+        )
         # SQS send permission to handoff queue
         self.handoff_queue.grant_send_messages(self.publish_handoff_fn)
+        # Permission to invoke the eval task launcher Lambda
+        self.publish_handoff_fn.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["lambda:InvokeFunction"],
+                resources=[
+                    f"arn:aws:lambda:{self.region}:{self.account}:function:{eval_launcher_fn_name}"
+                ],
+            )
+        )
 
         # --- handle_failure Lambda ---
         self.handle_failure_fn = self._create_lambda(

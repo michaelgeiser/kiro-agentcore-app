@@ -342,6 +342,7 @@ class AgenticEvaluationStack(Stack):
                 "SUBNETS": public_subnet_ids,
                 "SECURITY_GROUPS": eval_sg.security_group_id,
                 "CONTAINER_NAME": "eval-container",
+                "SQS_QUEUE_URL": sqs_queue_url,
             },
             code=_lambda.Code.from_inline(
                 'import boto3\n'
@@ -349,10 +350,23 @@ class AgenticEvaluationStack(Stack):
                 'import json\n'
                 '\n'
                 'ecs = boto3.client("ecs")\n'
+                'sqs = boto3.client("sqs")\n'
                 '\n'
                 'def handler(event, context):\n'
                 '    cluster = os.environ["ECS_CLUSTER_ARN"]\n'
                 '    task_def = os.environ["TASK_DEFINITION_ARN"]\n'
+                '    queue_url = os.environ.get("SQS_QUEUE_URL", "")\n'
+                '\n'
+                '    # Check if there are actually messages on the queue\n'
+                '    if queue_url:\n'
+                '        attrs = sqs.get_queue_attributes(\n'
+                '            QueueUrl=queue_url,\n'
+                '            AttributeNames=["ApproximateNumberOfMessages"],\n'
+                '        )\n'
+                '        msg_count = int(attrs.get("Attributes", {}).get("ApproximateNumberOfMessages", "0"))\n'
+                '        if msg_count == 0:\n'
+                '            print("No messages on queue — skipping task launch")\n'
+                '            return {"launched": False, "reason": "no_messages"}\n'
                 '\n'
                 '    # Check if a task is already running\n'
                 '    running = ecs.list_tasks(\n'
@@ -385,13 +399,14 @@ class AgenticEvaluationStack(Stack):
             ),
         )
 
-        # Grant the Lambda permission to list and run ECS tasks
+        # Grant the Lambda permission to list and run ECS tasks + read SQS
         launcher_lambda.add_to_role_policy(
             iam.PolicyStatement(
                 actions=[
                     "ecs:ListTasks",
                     "ecs:RunTask",
                     "ecs:DescribeTasks",
+                    "sqs:GetQueueAttributes",
                 ],
                 resources=["*"],
             )
@@ -454,6 +469,25 @@ class AgenticEvaluationStack(Stack):
         )
 
         launch_rule.add_target(targets.LambdaFunction(launcher_lambda))
+
+        # =====================================================================
+        # Scheduled Rule: Safety net — check every 5 minutes for queued messages
+        # =====================================================================
+        # This handles the case where the alarm is already in ALARM state
+        # (no transition fires EventBridge) but messages are waiting.
+
+        schedule_rule = events.Rule(
+            self,
+            "EvalScheduledCheck",
+            rule_name=f"{resource_prefix}-eval-scheduled-check",
+            description=(
+                "Safety net: invokes the eval-task-launcher Lambda every 5 minutes "
+                "to check for unprocessed messages even if the alarm didn't transition."
+            ),
+            schedule=events.Schedule.rate(Duration.minutes(5)),
+        )
+
+        schedule_rule.add_target(targets.LambdaFunction(launcher_lambda))
 
         # =====================================================================
         # Outputs
