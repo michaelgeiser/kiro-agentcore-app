@@ -86,12 +86,12 @@ export function renderSubmissionCard(submission) {
 
   if (submission.status === 'Completed' && submission.reportUrl) {
     const reportLink = createElement('a', {
-      className: 'link',
+      className: 'btn btn-secondary',
       href: submission.reportUrl,
       target: '_blank',
       rel: 'noopener noreferrer',
-      textContent: 'View Report',
-      'aria-label': `View report for ${submission.title}`,
+      textContent: 'Download Report',
+      'aria-label': `Download coaching report for ${submission.title}`,
     });
     footerChildren.push(reportLink);
   }

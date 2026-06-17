@@ -24,6 +24,7 @@ class SubmissionRecord(BaseModel):
     processing_status: ProcessingStatus = ProcessingStatus.PENDING
     completion_date: Optional[str] = None
     report_link: Optional[str] = None
+    report_path: Optional[str] = None  # Written by agentic-evaluation module
 
 
 class ErrorType(str, Enum):
