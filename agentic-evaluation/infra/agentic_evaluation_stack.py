@@ -215,6 +215,8 @@ class AgenticEvaluationStack(Stack):
                                 "bedrock:InvokeModelWithResponseStream",
                                 "bedrock:Converse",
                                 "bedrock:ConverseStream",
+                                "aws-marketplace:ViewSubscriptions",
+                                "aws-marketplace:Subscribe",
                                 "sqs:*",
                                 "s3:*",
                                 "dynamodb:*",
