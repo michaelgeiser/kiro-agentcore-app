@@ -275,9 +275,6 @@ class CoachingSupervisor:
             A list of parsed EvaluationResult objects from tool invocations.
         """
         return self._direct_invoke_tools(input, dimensions)
-            results = self._direct_invoke_tools(input, dimensions)
-
-        return results
 
     def _extract_results_from_response(
         self, response: Any
