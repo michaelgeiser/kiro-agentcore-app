@@ -43,9 +43,9 @@ export function render(outlet) {
   const fileGroup = createElement('div', { className: 'form-group' });
   const fileLabel = createElement('label', {
     className: 'form-label',
-    textContent: 'Presentation File',
     for: 'upload-file-input',
   });
+  fileLabel.innerHTML = 'Presentation File <span style="color: red;">* Required</span>';
   const fileInput = createElement('input', {
     id: 'upload-file-input',
     className: 'form-file-input',
@@ -65,9 +65,9 @@ export function render(outlet) {
   const titleGroup = createElement('div', { className: 'form-group' });
   const titleLabel = createElement('label', {
     className: 'form-label',
-    textContent: 'Presentation Title',
     for: 'upload-title-input',
   });
+  titleLabel.innerHTML = 'Presentation Title <span style="color: red;">* Required</span>';
   const titleInput = createElement('input', {
     id: 'upload-title-input',
     className: 'form-input',
