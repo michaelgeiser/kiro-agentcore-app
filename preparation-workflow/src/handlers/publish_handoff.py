@@ -17,6 +17,7 @@ def publish_handoff(
     submission_id: str,
     user_id: str,
     s3_file_key: str,
+    transcript_s3_key: str,
     vector_store_location: str,
     chunk_count: int,
     presentation_title: str,
@@ -28,6 +29,7 @@ def publish_handoff(
         submission_id: The submission ID
         user_id: The user ID
         s3_file_key: S3 key of the processed file
+        transcript_s3_key: S3 key of the transcript file
         vector_store_location: Where embeddings are stored
         chunk_count: Number of chunks processed
         presentation_title: Title of the presentation
@@ -45,6 +47,7 @@ def publish_handoff(
         submission_id=submission_id,
         user_id=user_id,
         s3_file_key=s3_file_key,
+        transcript_s3_key=transcript_s3_key,
         vector_store_location=vector_store_location,
         chunk_count=chunk_count,
         presentation_title=presentation_title,
@@ -127,11 +130,13 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     # Handle nested store_result and chunks from Step Functions
     store_result = event.get("store_result", {})
     chunks = event.get("chunks", {})
+    transcript_result = event.get("transcript_result", {})
 
     return publish_handoff(
         submission_id=event["submission_id"],
         user_id=event["user_id"],
         s3_file_key=event["s3_file_key"],
+        transcript_s3_key=transcript_result.get("transcript_s3_key", ""),
         vector_store_location=store_result.get("vector_store_location", ""),
         chunk_count=chunks.get("chunk_count", 0),
         presentation_title=event["presentation_title"],

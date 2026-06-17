@@ -108,7 +108,7 @@ class TechnicalCommunicationEvaluator(BaseEvaluator):
         return self._parse_response(response_text)
 
     def _retrieve_content(self, input: EvaluationInput) -> str:
-        """Retrieve presentation content from the vector store.
+        """Read the presentation transcript from S3.
 
         Args:
             input: The evaluation input containing S3 bucket and key references.
@@ -117,27 +117,15 @@ class TechnicalCommunicationEvaluator(BaseEvaluator):
             The retrieved presentation content as a string.
         """
         try:
-            client = boto3.client("bedrock-agent-runtime")
-            response = client.retrieve(
-                knowledgeBaseId=input.s3_key,
-                retrievalQuery={
-                    "text": "technical explanation jargon complexity diagrams architecture"
-                },
-                retrievalConfiguration={
-                    "vectorSearchConfiguration": {
-                        "numberOfResults": 10
-                    }
-                },
+            s3_client = boto3.client("s3")
+            response = s3_client.get_object(
+                Bucket=input.s3_bucket,
+                Key=input.s3_key,
             )
-            results = response.get("retrievalResults", [])
-            content_parts = [
-                r.get("content", {}).get("text", "") for r in results
-            ]
-            return "\n\n".join(content_parts)
+            return response["Body"].read().decode("utf-8")
         except Exception as exc:
             logger.warning(
-                "Failed to retrieve content from vector store: %s. "
-                "Falling back to empty content.",
+                "Failed to retrieve transcript from S3: %s. Falling back to empty content.",
                 exc,
             )
             return ""

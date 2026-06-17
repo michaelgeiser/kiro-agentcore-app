@@ -202,6 +202,30 @@ class PreparationWorkflowStack(Stack):
             )
         )
 
+        # --- transcribe_audio Lambda ---
+        self.transcribe_audio_fn = self._create_lambda(
+            "TranscribeAudio",
+            handler="handlers.transcribe_audio.handler",
+            description="Transcribe audio using Amazon Transcribe",
+            timeout=Duration.minutes(6),
+        )
+        # Transcribe permissions
+        self.transcribe_audio_fn.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["transcribe:*"],
+                resources=["*"],
+            )
+        )
+        # S3 read/write for transcription input and output
+        self.transcribe_audio_fn.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["s3:GetObject", "s3:PutObject"],
+                resources=[f"arn:aws:s3:::prescoach-{self.env_name}-*/*"],
+            )
+        )
+
         # --- chunk_audio Lambda ---
         # Uses pydub + ffmpeg for actual audio splitting.
         # ffmpeg static binary is bundled in a layer built during CDK deploy.
@@ -543,7 +567,7 @@ class PreparationWorkflowStack(Stack):
                         {
                             "Variable": "$.validation_result.value.decision",
                             "StringEquals": "embed",
-                            "Next": "ChunkAudio",
+                            "Next": "TranscribeAudio",
                         },
                         {
                             "Variable": "$.validation_result.value.decision",
@@ -577,7 +601,60 @@ class PreparationWorkflowStack(Stack):
                     },
                     "Retry": mediaconvert_retry,
                     "Catch": common_catch,
-                    "Next": "ChunkAudio",
+                    "Next": "TranscribeAudio",
+                },
+                "TranscribeAudio": {
+                    "Type": "Task",
+                    "Resource": "arn:aws:states:::lambda:invoke",
+                    "Parameters": {
+                        "FunctionName": self.transcribe_audio_fn.function_arn,
+                        "Payload": {
+                            "submission_id.$": "$.parsed_message.value.message.submission_id",
+                            "s3_bucket.$": "$.parsed_message.value.message.s3_bucket",
+                            "s3_file_key.$": "$.parsed_message.value.message.s3_file_key",
+                            "config.$": "$.config.value",
+                        },
+                    },
+                    "ResultPath": "$.transcribe_result",
+                    "ResultSelector": {
+                        "value.$": "$.Payload",
+                    },
+                    "Retry": lambda_retry,
+                    "Catch": common_catch,
+                    "Next": "CheckEmbeddingsEnabled",
+                },
+                "CheckEmbeddingsEnabled": {
+                    "Type": "Choice",
+                    "Choices": [
+                        {
+                            "Variable": "$.config.value.embeddings_enabled",
+                            "StringEquals": "true",
+                            "Next": "ChunkAudio",
+                        },
+                    ],
+                    "Default": "SetDefaultsForSkippedEmbeddings",
+                },
+                "SetDefaultsForSkippedEmbeddings": {
+                    "Type": "Pass",
+                    "Comment": "Set empty defaults for store_result and chunks when embeddings are disabled",
+                    "Result": {
+                        "value": {
+                            "vector_store_location": "",
+                            "chunk_count": 0,
+                        }
+                    },
+                    "ResultPath": "$.store_result",
+                    "Next": "SetDefaultChunks",
+                },
+                "SetDefaultChunks": {
+                    "Type": "Pass",
+                    "Result": {
+                        "value": {
+                            "chunk_count": 0,
+                        }
+                    },
+                    "ResultPath": "$.chunks",
+                    "Next": "PublishHandoff",
                 },
                 "ChunkAudio": {
                     "Type": "Task",
@@ -662,6 +739,7 @@ class PreparationWorkflowStack(Stack):
                             "user_id.$": "$.parsed_message.value.message.user_id",
                             "s3_file_key.$": "$.parsed_message.value.message.s3_file_key",
                             "presentation_title.$": "$.parsed_message.value.message.presentation_title",
+                            "transcript_result.$": "$.transcribe_result.value",
                             "store_result.$": "$.store_result.value",
                             "chunks.$": "$.chunks.value",
                             "config.$": "$.config.value",
@@ -739,6 +817,7 @@ class PreparationWorkflowStack(Stack):
                     self.parse_message_fn.function_arn,
                     self.validate_format_fn.function_arn,
                     self.extract_audio_fn.function_arn,
+                    self.transcribe_audio_fn.function_arn,
                     self.chunk_audio_fn.function_arn,
                     self.create_embedding_fn.function_arn,
                     self.store_vectors_fn.function_arn,
@@ -845,6 +924,10 @@ class PreparationWorkflowStack(Stack):
             "batch-processing-enabled": {
                 "value": "false",
                 "description": "Feature flag for batch embedding processing",
+            },
+            "embeddings-enabled": {
+                "value": "false",
+                "description": "Feature flag to enable/disable audio embedding creation",
             },
         }
 

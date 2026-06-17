@@ -12,6 +12,7 @@ class HandoffMessage(BaseModel):
     submission_id: str = Field(..., min_length=1)
     user_id: str = Field(..., min_length=1)
     s3_file_key: str = Field(..., min_length=1)
+    transcript_s3_key: str = Field(..., min_length=1)
     vector_store_location: str = Field(..., min_length=1)
     chunk_count: int = Field(..., ge=1)
     presentation_title: str = Field(..., min_length=1)

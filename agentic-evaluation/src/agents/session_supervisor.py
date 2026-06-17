@@ -177,7 +177,7 @@ class SessionSupervisor:
         evaluation_input = EvaluationInput(
             submission_id=submission_id,
             s3_bucket=self._bucket_name,
-            s3_key=handoff.s3_file_key,
+            s3_key=handoff.transcript_s3_key,
             dimension="all",
             user_id=handoff.user_id,
         )
