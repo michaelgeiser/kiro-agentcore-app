@@ -59,11 +59,11 @@ export function render(outlet) {
   fileGroup.appendChild(fileLabel);
   const fileHint = createElement('p', {
     className: 'form-hint',
-    textContent: 'audio file (mp3, wav, m4a, aac)',
+    textContent: 'Allowed audio file types (mp3, wav, m4a, aac)',
   });
   fileHint.style.border = '1px dashed #ccc';
   fileHint.style.padding = '12px';
-  fileHint.style.textAlign = 'center';
+  fileHint.style.textAlign = 'left';
   fileHint.style.marginBottom = '8px';
   fileHint.style.color = '#666';
   fileGroup.appendChild(fileHint);
