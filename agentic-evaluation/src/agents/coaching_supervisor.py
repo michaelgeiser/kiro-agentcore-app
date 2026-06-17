@@ -259,40 +259,22 @@ class CoachingSupervisor:
         dimensions: list[str],
         prompt: str,
     ) -> list[EvaluationResult]:
-        """Invoke the Strands agent and collect evaluation results.
+        """Invoke evaluation tools directly for each requested dimension.
 
-        Uses the agent's tool-calling capabilities to invoke evaluation
-        tools for each dimension. Parses tool call results into
-        EvaluationResult objects.
-
-        This method supports iterative invocation — the agent may decide
-        to call additional tools based on earlier findings.
-
-        On agent orchestration failure, falls back to direct tool invocation
-        while tracking any individual agent failures.
+        Uses direct tool invocation rather than Strands Agent orchestration
+        for deterministic, reliable results. Each dimension's tool is called
+        sequentially, with iterative invocation support (findings from one
+        agent can trigger additional dimensions).
 
         Args:
             input: The evaluation input.
             dimensions: The dimensions being evaluated.
-            prompt: The orchestration prompt for the agent.
+            prompt: Unused (kept for interface compatibility).
 
         Returns:
             A list of parsed EvaluationResult objects from tool invocations.
         """
-        results: list[EvaluationResult] = []
-
-        try:
-            response = self._agent(prompt)
-            # Extract tool results from the agent's response
-            results = self._extract_results_from_response(response)
-        except Exception as exc:  # noqa: BLE001
-            logger.error(
-                "Agent orchestration failed for submission_id=%s: %s. "
-                "Falling back to direct tool invocation.",
-                input.submission_id,
-                exc,
-            )
-            # Fall back to direct tool invocation for each dimension
+        return self._direct_invoke_tools(input, dimensions)
             results = self._direct_invoke_tools(input, dimensions)
 
         return results
