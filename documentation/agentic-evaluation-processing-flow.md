@@ -449,14 +449,14 @@ Consider migrating to AgentCore when:
 # Register the Session Supervisor agent
 aws bedrock-agentcore create-agent \
   --agent-name "prescoach-eval-session-supervisor" \
-  --foundation-model-id "anthropic.claude-sonnet-4-20250514" \
+  --foundation-model-id "anthropic.claude-sonnet-4-6" \
   --instruction "You are the Session Supervisor for a presentation evaluation platform..." \
   --region us-east-1
 
 # Register the Coaching Supervisor agent
 aws bedrock-agentcore create-agent \
   --agent-name "prescoach-eval-coaching-supervisor" \
-  --foundation-model-id "anthropic.claude-sonnet-4-20250514" \
+  --foundation-model-id "anthropic.claude-sonnet-4-6" \
   --instruction "You orchestrate evaluation agents to assess presentations..." \
   --region us-east-1
 ```

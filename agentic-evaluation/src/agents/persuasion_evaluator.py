@@ -1,7 +1,8 @@
-"""Technical Communication Evaluation Agent.
+"""Persuasion Evaluation Agent.
 
-Evaluates clarity of technical explanations, appropriate use of jargon,
-visual aid effectiveness, and complexity management.
+Assesses argument strength, evidence usage, call-to-action clarity, emotional
+appeal, logical structure, and credibility to evaluate presentation persuasion
+effectiveness.
 """
 
 import json
@@ -23,20 +24,19 @@ EVALUATION_MODEL_ID = os.environ.get(
     "EVALUATION_MODEL_ID", "anthropic.claude-sonnet-4-6"
 )
 
-SYSTEM_PROMPT = """You are an expert technical communication evaluator. Your role is to assess
-how effectively a presenter communicates technical or complex concepts to their audience.
+SYSTEM_PROMPT = """You are an expert presentation persuasion evaluator. Your role is to assess
+how effectively a presenter persuades and convinces their audience through argumentation and rhetoric.
 
-You evaluate the following aspects of technical communication:
-- **Clarity of Explanations**: Whether complex concepts are broken down into understandable components
-- **Appropriate Jargon Usage**: Whether technical terms are used appropriately for the audience level,
-  with definitions provided when needed
-- **Visual Aid Effectiveness**: References to slides, diagrams, or demos that enhance understanding
-- **Complexity Management**: Ability to layer information progressively, building from simple to complex
-- **Analogy and Metaphor**: Use of relatable comparisons to make abstract concepts concrete
-- **Technical Accuracy**: Whether technical claims and descriptions are precise and correct
+You evaluate the following aspects of persuasion:
+- **Argument Strength**: Clarity, validity, and soundness of the main arguments presented
+- **Evidence Usage**: Quality and relevance of data, statistics, case studies, and examples used to support claims
+- **Call-to-Action Clarity**: How clearly and compellingly the presenter communicates what the audience should do next
+- **Emotional Appeal**: Effective use of pathos to connect with the audience on an emotional level
+- **Logical Structure**: Organization of arguments in a coherent, progressive manner that builds toward a conclusion
+- **Credibility**: Establishment of trust and authority through expertise, references, and professional delivery
 
 For each aspect, provide specific observations with evidence from the presentation content.
-Rate the overall technical communication on a scale of 0.0 to 10.0.
+Rate the overall persuasion effectiveness on a scale of 0.0 to 10.0.
 Identify concrete strengths and specific, actionable improvements.
 
 Respond in the following JSON format:
@@ -56,46 +56,46 @@ Respond in the following JSON format:
 """
 
 
-class TechnicalCommunicationEvaluator(BaseEvaluator):
-    """Evaluates technical communication effectiveness."""
+class PersuasionEvaluator(BaseEvaluator):
+    """Evaluates presentation persuasion effectiveness."""
 
     @property
     def dimension(self) -> str:
         """Return the evaluation dimension name."""
-        return "technical_communication"
+        return "persuasion"
 
     @property
     def agent_id(self) -> str:
         """Return the unique agent identifier."""
-        return "technical-communication-evaluator-v1"
+        return "persuasion-evaluator-v1"
 
     def evaluate(self, input: EvaluationInput) -> EvaluationResult:
-        """Evaluate a presentation's technical communication quality.
+        """Evaluate a presentation's persuasion quality.
 
         Retrieves presentation embeddings from the vector store, processes
-        them through the LLM with the technical communication-specific prompt,
-        and returns structured findings.
+        them through the LLM with the persuasion-specific prompt, and returns
+        structured findings.
 
         Args:
             input: The standard evaluation input with submission metadata.
 
         Returns:
-            A structured EvaluationResult with technical communication findings.
+            A structured EvaluationResult with persuasion-specific findings.
         """
         logger.info(
-            "Starting technical communication evaluation for submission_id=%s",
+            "Starting persuasion evaluation for submission_id=%s",
             input.submission_id,
         )
 
         # Retrieve relevant content from the vector store
         content = self._retrieve_content(input)
 
-        # Create a Strands Agent with the technical communication-specific system prompt
+        # Create a Strands Agent with the persuasion-specific system prompt
         agent = Agent(system_prompt=SYSTEM_PROMPT, model=EVALUATION_MODEL_ID)
 
         # Invoke the agent with the retrieved content
         prompt = (
-            f"Evaluate the technical communication quality of this presentation.\n\n"
+            f"Evaluate the persuasion quality of this presentation.\n\n"
             f"Presentation Title: {input.dimension}\n"
             f"Submission ID: {input.submission_id}\n\n"
             f"Presentation Content:\n{content}"
@@ -120,9 +120,7 @@ class TechnicalCommunicationEvaluator(BaseEvaluator):
             client = boto3.client("bedrock-agent-runtime")
             response = client.retrieve(
                 knowledgeBaseId=input.s3_key,
-                retrievalQuery={
-                    "text": "technical explanation jargon complexity diagrams architecture"
-                },
+                retrievalQuery={"text": "persuasion argument evidence credibility call to action"},
                 retrievalConfiguration={
                     "vectorSearchConfiguration": {
                         "numberOfResults": 10
@@ -152,16 +150,19 @@ class TechnicalCommunicationEvaluator(BaseEvaluator):
             A validated EvaluationResult instance.
         """
         try:
+            # Try to extract JSON from the response
             data = json.loads(response_text)
         except json.JSONDecodeError:
+            # If JSON parsing fails, try to find JSON block in the response
             import re
 
             json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
             if json_match:
                 data = json.loads(json_match.group())
             else:
+                # Return a default result if parsing completely fails
                 logger.warning(
-                    "Could not parse LLM response for technical communication evaluation"
+                    "Could not parse LLM response for persuasion evaluation"
                 )
                 data = {
                     "score": 5.0,
@@ -192,13 +193,13 @@ class TechnicalCommunicationEvaluator(BaseEvaluator):
 
 
 def create_tool() -> Any:
-    """Factory function to create the technical communication evaluator tool.
+    """Factory function to create the persuasion evaluator tool.
 
-    Instantiates the TechnicalCommunicationEvaluator and wraps it using
+    Instantiates the PersuasionEvaluator and wraps it using
     create_evaluation_tool() from base_evaluator.py.
 
     Returns:
-        A Strands-compatible tool function for technical communication evaluation.
+        A Strands-compatible tool function for persuasion evaluation.
     """
-    evaluator = TechnicalCommunicationEvaluator()
+    evaluator = PersuasionEvaluator()
     return create_evaluation_tool(evaluator)

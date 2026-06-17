@@ -41,7 +41,7 @@ class AgentEndpointConfig(BaseModel):
 
     agent_name: str = Field(..., min_length=1)
     agent_id: str | None = None
-    model_id: str = Field(default="anthropic.claude-sonnet-4-20250514")
+    model_id: str = Field(default="anthropic.claude-sonnet-4-6")
     memory_enabled: bool = True
     memory_retention_days: int = Field(default=7, ge=1)
     max_tokens: int = Field(default=4096, ge=1)
@@ -135,12 +135,12 @@ class AgentCoreConfig(BaseModel):
 _ENVIRONMENT_DEFAULTS: dict[DeploymentEnvironment, dict[str, Any]] = {
     DeploymentEnvironment.DEV: {
         "session_supervisor": {
-            "model_id": "anthropic.claude-sonnet-4-20250514",
+            "model_id": "anthropic.claude-sonnet-4-6",
             "timeout_seconds": 600,
             "temperature": 0.3,
         },
         "coaching_supervisor": {
-            "model_id": "anthropic.claude-sonnet-4-20250514",
+            "model_id": "anthropic.claude-sonnet-4-6",
             "timeout_seconds": 300,
             "temperature": 0.3,
         },
@@ -151,12 +151,12 @@ _ENVIRONMENT_DEFAULTS: dict[DeploymentEnvironment, dict[str, Any]] = {
     },
     DeploymentEnvironment.STAGING: {
         "session_supervisor": {
-            "model_id": "anthropic.claude-sonnet-4-20250514",
+            "model_id": "anthropic.claude-sonnet-4-6",
             "timeout_seconds": 600,
             "temperature": 0.2,
         },
         "coaching_supervisor": {
-            "model_id": "anthropic.claude-sonnet-4-20250514",
+            "model_id": "anthropic.claude-sonnet-4-6",
             "timeout_seconds": 300,
             "temperature": 0.2,
         },
@@ -167,12 +167,12 @@ _ENVIRONMENT_DEFAULTS: dict[DeploymentEnvironment, dict[str, Any]] = {
     },
     DeploymentEnvironment.PROD: {
         "session_supervisor": {
-            "model_id": "anthropic.claude-sonnet-4-20250514",
+            "model_id": "anthropic.claude-sonnet-4-6",
             "timeout_seconds": 900,
             "temperature": 0.1,
         },
         "coaching_supervisor": {
-            "model_id": "anthropic.claude-sonnet-4-20250514",
+            "model_id": "anthropic.claude-sonnet-4-6",
             "timeout_seconds": 600,
             "temperature": 0.1,
         },

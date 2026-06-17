@@ -12,7 +12,7 @@ Models have short production lifecycles. This document ensures you can locate an
 
 | Model ID | Provider | Purpose | Module |
 |----------|----------|---------|--------|
-| `anthropic.claude-sonnet-4-20250514` | Anthropic (via Bedrock) | Evaluation reasoning — all 7 evaluation agents + Coaching Supervisor | Agentic Evaluation |
+| `anthropic.claude-sonnet-4-6` | Anthropic (via Bedrock) | Evaluation reasoning — all 7 evaluation agents + Coaching Supervisor | Agentic Evaluation |
 | `amazon.nova-2-multimodal-embeddings-v1:0` | Amazon (via Bedrock) | Audio chunk embedding (vectorization) | Preparation Workflow |
 
 ---
@@ -25,7 +25,7 @@ The Coaching Supervisor orchestrates evaluation agents and reasons about which d
 
 | Attribute | Value |
 |-----------|-------|
-| **Current Model** | `anthropic.claude-sonnet-4-20250514` |
+| **Current Model** | `anthropic.claude-sonnet-4-6` |
 | **Where Set (runtime)** | Environment variable `COACHING_SUPERVISOR_MODEL_ID` |
 | **Where Set (infra-as-code)** | `agentic-evaluation/infra/agentic_evaluation_stack.py` → `environment` dict |
 | **Where Set (config defaults)** | `agentic-evaluation/src/deployment/agentcore_config.py` → `_ENVIRONMENT_DEFAULTS` |
@@ -38,10 +38,10 @@ Each evaluation agent (delivery, structure, executive_presence, technical_commun
 
 | Attribute | Value |
 |-----------|-------|
-| **Current Model** | `anthropic.claude-sonnet-4-20250514` |
+| **Current Model** | `anthropic.claude-sonnet-4-6` |
 | **Where Set (runtime)** | Environment variable `EVALUATION_MODEL_ID` |
 | **Where Set (infra-as-code)** | `agentic-evaluation/infra/agentic_evaluation_stack.py` → `environment` dict |
-| **Code that reads it** | Each evaluator file reads `os.environ.get("EVALUATION_MODEL_ID", "anthropic.claude-sonnet-4-20250514")` at module load |
+| **Code that reads it** | Each evaluator file reads `os.environ.get("EVALUATION_MODEL_ID", "anthropic.claude-sonnet-4-6")` at module load |
 | **Files that use it** | |
 | | `agentic-evaluation/src/agents/delivery_evaluator.py` |
 | | `agentic-evaluation/src/agents/structure_evaluator.py` |
@@ -150,8 +150,8 @@ The `agentcore_config.py` supports per-environment model overrides:
 ```python
 _ENVIRONMENT_DEFAULTS = {
     DeploymentEnvironment.DEV: {
-        "session_supervisor": {"model_id": "anthropic.claude-sonnet-4-20250514"},
-        "coaching_supervisor": {"model_id": "anthropic.claude-sonnet-4-20250514"},
+        "session_supervisor": {"model_id": "anthropic.claude-sonnet-4-6"},
+        "coaching_supervisor": {"model_id": "anthropic.claude-sonnet-4-6"},
     },
     DeploymentEnvironment.PROD: {
         "session_supervisor": {"model_id": "anthropic.claude-5-sonnet-20260101"},

@@ -1,7 +1,7 @@
-"""Technical Communication Evaluation Agent.
+"""Pacing Evaluation Agent.
 
-Evaluates clarity of technical explanations, appropriate use of jargon,
-visual aid effectiveness, and complexity management.
+Assesses timing, rhythm, speed variation, appropriate pauses, segment balance,
+and content density to evaluate presentation pacing effectiveness.
 """
 
 import json
@@ -23,20 +23,19 @@ EVALUATION_MODEL_ID = os.environ.get(
     "EVALUATION_MODEL_ID", "anthropic.claude-sonnet-4-6"
 )
 
-SYSTEM_PROMPT = """You are an expert technical communication evaluator. Your role is to assess
-how effectively a presenter communicates technical or complex concepts to their audience.
+SYSTEM_PROMPT = """You are an expert presentation pacing evaluator. Your role is to assess
+the pacing and timing quality of a presentation by analyzing rhythm, speed, and structural balance.
 
-You evaluate the following aspects of technical communication:
-- **Clarity of Explanations**: Whether complex concepts are broken down into understandable components
-- **Appropriate Jargon Usage**: Whether technical terms are used appropriately for the audience level,
-  with definitions provided when needed
-- **Visual Aid Effectiveness**: References to slides, diagrams, or demos that enhance understanding
-- **Complexity Management**: Ability to layer information progressively, building from simple to complex
-- **Analogy and Metaphor**: Use of relatable comparisons to make abstract concepts concrete
-- **Technical Accuracy**: Whether technical claims and descriptions are precise and correct
+You evaluate the following aspects of pacing:
+- **Timing**: Overall time management and adherence to expected duration for each section
+- **Rhythm**: The natural flow and cadence of the presentation, including transitions between topics
+- **Speed Variation**: Appropriate changes in speaking speed to emphasize key points or convey urgency
+- **Appropriate Pauses**: Strategic use of pauses for emphasis, comprehension, and dramatic effect
+- **Segment Balance**: Proportional allocation of time across introduction, body, and conclusion
+- **Content Density**: Whether information is spread evenly or clustered, and if the audience has time to absorb key points
 
 For each aspect, provide specific observations with evidence from the presentation content.
-Rate the overall technical communication on a scale of 0.0 to 10.0.
+Rate the overall pacing on a scale of 0.0 to 10.0.
 Identify concrete strengths and specific, actionable improvements.
 
 Respond in the following JSON format:
@@ -56,46 +55,46 @@ Respond in the following JSON format:
 """
 
 
-class TechnicalCommunicationEvaluator(BaseEvaluator):
-    """Evaluates technical communication effectiveness."""
+class PacingEvaluator(BaseEvaluator):
+    """Evaluates presentation pacing effectiveness."""
 
     @property
     def dimension(self) -> str:
         """Return the evaluation dimension name."""
-        return "technical_communication"
+        return "pacing"
 
     @property
     def agent_id(self) -> str:
         """Return the unique agent identifier."""
-        return "technical-communication-evaluator-v1"
+        return "pacing-evaluator-v1"
 
     def evaluate(self, input: EvaluationInput) -> EvaluationResult:
-        """Evaluate a presentation's technical communication quality.
+        """Evaluate a presentation's pacing quality.
 
         Retrieves presentation embeddings from the vector store, processes
-        them through the LLM with the technical communication-specific prompt,
-        and returns structured findings.
+        them through the LLM with the pacing-specific prompt, and returns
+        structured findings.
 
         Args:
             input: The standard evaluation input with submission metadata.
 
         Returns:
-            A structured EvaluationResult with technical communication findings.
+            A structured EvaluationResult with pacing-specific findings.
         """
         logger.info(
-            "Starting technical communication evaluation for submission_id=%s",
+            "Starting pacing evaluation for submission_id=%s",
             input.submission_id,
         )
 
         # Retrieve relevant content from the vector store
         content = self._retrieve_content(input)
 
-        # Create a Strands Agent with the technical communication-specific system prompt
+        # Create a Strands Agent with the pacing-specific system prompt
         agent = Agent(system_prompt=SYSTEM_PROMPT, model=EVALUATION_MODEL_ID)
 
         # Invoke the agent with the retrieved content
         prompt = (
-            f"Evaluate the technical communication quality of this presentation.\n\n"
+            f"Evaluate the pacing quality of this presentation.\n\n"
             f"Presentation Title: {input.dimension}\n"
             f"Submission ID: {input.submission_id}\n\n"
             f"Presentation Content:\n{content}"
@@ -120,9 +119,7 @@ class TechnicalCommunicationEvaluator(BaseEvaluator):
             client = boto3.client("bedrock-agent-runtime")
             response = client.retrieve(
                 knowledgeBaseId=input.s3_key,
-                retrievalQuery={
-                    "text": "technical explanation jargon complexity diagrams architecture"
-                },
+                retrievalQuery={"text": "pacing timing rhythm speed pauses transitions"},
                 retrievalConfiguration={
                     "vectorSearchConfiguration": {
                         "numberOfResults": 10
@@ -152,16 +149,19 @@ class TechnicalCommunicationEvaluator(BaseEvaluator):
             A validated EvaluationResult instance.
         """
         try:
+            # Try to extract JSON from the response
             data = json.loads(response_text)
         except json.JSONDecodeError:
+            # If JSON parsing fails, try to find JSON block in the response
             import re
 
             json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
             if json_match:
                 data = json.loads(json_match.group())
             else:
+                # Return a default result if parsing completely fails
                 logger.warning(
-                    "Could not parse LLM response for technical communication evaluation"
+                    "Could not parse LLM response for pacing evaluation"
                 )
                 data = {
                     "score": 5.0,
@@ -192,13 +192,13 @@ class TechnicalCommunicationEvaluator(BaseEvaluator):
 
 
 def create_tool() -> Any:
-    """Factory function to create the technical communication evaluator tool.
+    """Factory function to create the pacing evaluator tool.
 
-    Instantiates the TechnicalCommunicationEvaluator and wraps it using
+    Instantiates the PacingEvaluator and wraps it using
     create_evaluation_tool() from base_evaluator.py.
 
     Returns:
-        A Strands-compatible tool function for technical communication evaluation.
+        A Strands-compatible tool function for pacing evaluation.
     """
-    evaluator = TechnicalCommunicationEvaluator()
+    evaluator = PacingEvaluator()
     return create_evaluation_tool(evaluator)

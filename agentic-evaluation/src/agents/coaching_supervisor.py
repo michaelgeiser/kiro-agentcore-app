@@ -63,7 +63,7 @@ class CoachingSupervisor:
         self,
         registry: AgentRegistry,
         agent: Agent | None = None,
-        model_id: str = "anthropic.claude-sonnet-4-20250514",
+        model_id: str = "anthropic.claude-sonnet-4-6",
     ) -> None:
         self._registry = registry
         self._model_id = model_id
