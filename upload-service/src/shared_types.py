@@ -9,7 +9,7 @@ MAX_FILE_SIZE_BYTES: int = 500 * 1024 * 1024  # 500 MB
 
 CORS_HEADERS: dict[str, str] = {
     "Access-Control-Allow-Origin": "https://kiro.geiserai.com",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Max-Age": "86400",
 }
