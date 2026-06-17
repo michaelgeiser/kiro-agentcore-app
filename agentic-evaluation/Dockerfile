@@ -1,5 +1,6 @@
 FROM public.ecr.aws/docker/library/python:3.12-slim
 
+# Build version: 2026-06-17-v2
 WORKDIR /app
 
 # Install dependencies first for better layer caching
