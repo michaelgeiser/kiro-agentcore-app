@@ -212,6 +212,9 @@ class AgenticEvaluationStack(Stack):
                         iam.PolicyStatement(
                             actions=[
                                 "bedrock:InvokeModel",
+                                "bedrock:InvokeModelWithResponseStream",
+                                "bedrock:Converse",
+                                "bedrock:ConverseStream",
                                 "sqs:*",
                                 "s3:*",
                                 "dynamodb:*",
