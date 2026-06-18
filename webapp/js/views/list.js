@@ -103,6 +103,22 @@ export function renderSubmissionCard(submission) {
 
   const body = createElement('div', { className: 'card-body' }, bodyChildren);
 
+  // Processing indicator (inside the card, shown only when this submission is processing)
+  const processingStates = ['Pending', 'Processing', 'Evaluating', 'Report_Generating'];
+  if (processingStates.includes(submission.status)) {
+    const processingDiv = createElement('div', {});
+    processingDiv.style.textAlign = 'center';
+    processingDiv.style.padding = '12px';
+    const loadingImg = createElement('img', {
+      src: 'assets/loading.gif',
+      alt: 'Processing...',
+    });
+    loadingImg.style.width = '50%';
+    loadingImg.style.maxWidth = '150px';
+    processingDiv.appendChild(loadingImg);
+    body.appendChild(processingDiv);
+  }
+
   // Card footer: report link (only for Completed status) + delete button
   const footerChildren = [];
 
@@ -118,13 +134,14 @@ export function renderSubmissionCard(submission) {
     footerChildren.push(reportLink);
   }
 
-  // Delete button (always shown)
+  // Delete button (always shown, always on the right)
   const deleteBtn = createElement('button', {
     className: 'btn btn-danger',
     type: 'button',
     textContent: 'Delete',
     'aria-label': `Delete submission ${submission.title}`,
   });
+  deleteBtn.style.marginLeft = 'auto';
   deleteBtn.addEventListener('click', () => {
     _confirmAndDelete(submission.id, submission.title, card);
   });
@@ -136,6 +153,8 @@ export function renderSubmissionCard(submission) {
   ]);
 
   const footer = createElement('div', { className: 'card-footer' }, footerChildren);
+  footer.style.display = 'flex';
+  footer.style.alignItems = 'center';
   card.appendChild(footer);
 
   return card;
@@ -191,6 +210,9 @@ function renderErrorState(onRetry) {
   return container;
 }
 
+/** @type {number|null} */
+let _refreshInterval = null;
+
 /**
  * Render the List View into the given outlet element.
  * Fetches submissions from the API and displays them sorted by date descending.
@@ -198,6 +220,12 @@ function renderErrorState(onRetry) {
  * @param {HTMLElement} outlet - The DOM element to render into
  */
 export function render(outlet) {
+  // Clear any existing refresh interval from a previous render
+  if (_refreshInterval) {
+    clearInterval(_refreshInterval);
+    _refreshInterval = null;
+  }
+
   clearChildren(outlet);
 
   const container = createElement('section', { 'aria-label': 'Submissions list' });
@@ -217,6 +245,7 @@ export function render(outlet) {
 
 /**
  * Load submissions from the API and render them into the content area.
+ * Sets up auto-refresh if any submissions are in a processing state.
  * @param {HTMLElement} contentArea - The element to render submissions into
  */
 async function loadSubmissions(contentArea) {
@@ -227,8 +256,13 @@ async function loadSubmissions(contentArea) {
 
     if (!submissions || submissions.length === 0) {
       contentArea.appendChild(renderEmptyState());
+      _stopAutoRefresh();
       return;
     }
+
+    // Check if any submissions are still processing
+    const processingStates = ['Pending', 'Processing', 'Evaluating', 'Report_Generating'];
+    const hasProcessing = submissions.some(s => processingStates.includes(s.status));
 
     // Sort by dateUploaded descending (most recent first)
     const sorted = [...submissions].sort((a, b) => {
@@ -244,6 +278,13 @@ async function loadSubmissions(contentArea) {
     }
 
     contentArea.appendChild(list);
+
+    // Start auto-refresh if any submissions are still processing
+    if (hasProcessing) {
+      _startAutoRefresh(contentArea);
+    } else {
+      _stopAutoRefresh();
+    }
   } catch (error) {
     clearChildren(contentArea);
     contentArea.appendChild(renderErrorState(() => {
@@ -251,5 +292,26 @@ async function loadSubmissions(contentArea) {
       contentArea.appendChild(renderLoading());
       loadSubmissions(contentArea);
     }));
+  }
+}
+
+/**
+ * Start auto-refreshing the submissions list every 60 seconds.
+ * @param {HTMLElement} contentArea
+ */
+function _startAutoRefresh(contentArea) {
+  _stopAutoRefresh();
+  _refreshInterval = setInterval(() => {
+    loadSubmissions(contentArea);
+  }, 60000);
+}
+
+/**
+ * Stop auto-refreshing the submissions list.
+ */
+function _stopAutoRefresh() {
+  if (_refreshInterval) {
+    clearInterval(_refreshInterval);
+    _refreshInterval = null;
   }
 }

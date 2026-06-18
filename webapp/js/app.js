@@ -71,6 +71,18 @@ async function init() {
     });
   }
 
+  // 4.5. Wire nav links to force re-render when clicking the current page
+  document.querySelectorAll('.nav-links a[href^="#"]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      const target = link.getAttribute('href').slice(1);
+      const current = window.location.hash.slice(1) || 'upload';
+      if (target === current) {
+        e.preventDefault();
+        router.start(); // Force re-render
+      }
+    });
+  });
+
   // 5. Wire hamburger menu toggle for mobile navigation
   const navToggle = document.querySelector('.nav-toggle');
   const navLinks = document.querySelector('.nav-links');
