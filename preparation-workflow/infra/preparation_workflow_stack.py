@@ -628,7 +628,7 @@ class PreparationWorkflowStack(Stack):
                     "Choices": [
                         {
                             "Variable": "$.config.value.embeddings_enabled",
-                            "StringEquals": "true",
+                            "BooleanEquals": True,
                             "Next": "ChunkAudio",
                         },
                     ],

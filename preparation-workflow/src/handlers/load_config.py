@@ -22,6 +22,7 @@ PARAMETER_NAME_MAP: dict[str, str] = {
     "vector-store-type": "vector_store_type",
     "batch-size": "batch_size",
     "batch-processing-enabled": "batch_processing_enabled",
+    "embeddings-enabled": "embeddings_enabled",
 }
 
 # Fields that should be parsed as integers
@@ -36,6 +37,7 @@ INT_FIELDS: set[str] = {
 BOOL_FIELDS: set[str] = {
     "video_processing_enabled",
     "batch_processing_enabled",
+    "embeddings_enabled",
 }
 
 

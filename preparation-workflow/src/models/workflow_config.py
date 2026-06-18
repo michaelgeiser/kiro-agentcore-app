@@ -19,6 +19,7 @@ class WorkflowConfig(BaseModel):
     vector_store_type: str
     batch_size: int
     batch_processing_enabled: bool
+    embeddings_enabled: bool
 
     @field_validator("chunk_size_seconds")
     @classmethod
