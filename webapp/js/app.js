@@ -54,14 +54,27 @@ async function init() {
 
   // 2. Check authentication state
   if (!auth.isAuthenticated()) {
-    // Show landing page, hide nav links, wire login button
+    // Show landing page, hide auth-only nav links, wire login button
     const navLinks = document.getElementById('nav-links');
-    if (navLinks) navLinks.style.display = 'none';
+    if (navLinks) {
+      // Hide Upload, Submissions, Logout — show only the brand link
+      navLinks.style.display = 'none';
+    }
 
+    // Wire the Sign In button
     const loginBtn = document.getElementById('landing-login-btn');
     if (loginBtn) {
       loginBtn.addEventListener('click', () => {
         auth.login();
+      });
+    }
+
+    // Wire the brand link to just scroll to top (no route needed)
+    const brandLink = document.querySelector('.nav-brand');
+    if (brandLink) {
+      brandLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.scrollTo(0, 0);
       });
     }
     return;
@@ -70,6 +83,10 @@ async function init() {
   // 3. Authenticated — hide landing page, show app
   const landingPage = document.getElementById('landing-page');
   if (landingPage) landingPage.remove();
+
+  // Show nav links
+  const navLinks = document.getElementById('nav-links');
+  if (navLinks) navLinks.style.display = '';
 
   const outlet = document.getElementById('app-outlet');
   const router = new Router(
