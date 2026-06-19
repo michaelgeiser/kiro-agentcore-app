@@ -57,17 +57,24 @@ export function render(outlet) {
   const fileError = createElement('div', { className: 'field-error', 'aria-live': 'polite' });
 
   fileGroup.appendChild(fileLabel);
-  const fileHint = createElement('p', {
+
+  // File input + inline hint in a row
+  const fileRow = createElement('div', { className: 'file-input-row' });
+  fileRow.style.display = 'flex';
+  fileRow.style.alignItems = 'center';
+  fileRow.style.gap = '12px';
+
+  const fileHint = createElement('span', {
     className: 'form-hint',
     textContent: 'Allowed audio file types (mp3, wav, m4a, aac)',
   });
-  fileHint.style.border = '1px dashed #444';
-  fileHint.style.padding = '12px';
-  fileHint.style.textAlign = 'left';
-  fileHint.style.marginBottom = '8px';
   fileHint.style.color = '#9aa0a6';
-  fileGroup.appendChild(fileHint);
-  fileGroup.appendChild(fileInput);
+  fileHint.style.fontSize = '0.85em';
+  fileHint.style.whiteSpace = 'nowrap';
+
+  fileRow.appendChild(fileInput);
+  fileRow.appendChild(fileHint);
+  fileGroup.appendChild(fileRow);
   fileGroup.appendChild(fileInfo);
   fileGroup.appendChild(fileError);
 
@@ -184,6 +191,7 @@ export function render(outlet) {
     fileInput.classList.remove('form-file-input--error');
 
     if (file) {
+      fileHint.style.display = 'none';
       const result = validateFile(file);
       if (result.valid) {
         const nameSpan = createElement('span', { textContent: file.name });
@@ -199,6 +207,8 @@ export function render(outlet) {
         fileInfo.appendChild(nameSpan);
         fileInfo.appendChild(sizeSpan);
       }
+    } else {
+      fileHint.style.display = '';
     }
 
     updateSubmitState();
