@@ -35,15 +35,16 @@ class ProcessingStatus(str, Enum):
 class HandoffMessage(BaseModel):
     """Message received from the Preparation Workflow handoff queue.
 
-    All string fields are required and non-empty. chunk_count must be >= 1.
+    All string fields are required and non-empty. chunk_count must be >= 0
+    (0 when embeddings are disabled).
     """
 
     submission_id: str = Field(..., min_length=1)
     user_id: str = Field(..., min_length=1)
     s3_file_key: str = Field(..., min_length=1)
     transcript_s3_key: str = Field(..., min_length=1)
-    vector_store_location: str = Field(..., min_length=1)
-    chunk_count: int = Field(..., ge=1)
+    vector_store_location: str = Field(default="")
+    chunk_count: int = Field(default=0, ge=0)
     presentation_title: str = Field(..., min_length=1)
 
 
