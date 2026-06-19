@@ -165,7 +165,7 @@
   font-size: var(--font-size-base);
   color: var(--color-text);
   background-color: var(--color-background);
-  border: 2px dashed var(--color-secondary);
+  border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
   text-align: center;

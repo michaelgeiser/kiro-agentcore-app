@@ -58,11 +58,35 @@ export function render(outlet) {
 
   fileGroup.appendChild(fileLabel);
 
-  // File input + inline hint in a row
+  // Custom file input: button + "No file chosen" + hint in one dashed row
   const fileRow = createElement('div', { className: 'file-input-row' });
   fileRow.style.display = 'flex';
   fileRow.style.alignItems = 'center';
   fileRow.style.gap = '12px';
+  fileRow.style.border = '2px dashed var(--color-secondary, #444)';
+  fileRow.style.borderRadius = '8px';
+  fileRow.style.padding = '12px';
+  fileRow.style.cursor = 'pointer';
+  fileRow.style.transition = 'border-color 0.2s ease, background-color 0.2s ease';
+
+  // Hide the native input visually but keep it accessible
+  fileInput.style.position = 'absolute';
+  fileInput.style.width = '1px';
+  fileInput.style.height = '1px';
+  fileInput.style.overflow = 'hidden';
+  fileInput.style.clip = 'rect(0, 0, 0, 0)';
+  fileInput.style.border = '0';
+
+  const chooseBtn = createElement('button', {
+    type: 'button',
+    textContent: 'Choose File',
+    className: 'btn btn-secondary',
+  });
+  chooseBtn.style.flexShrink = '0';
+  chooseBtn.addEventListener('click', () => fileInput.click());
+
+  const fileStatus = createElement('span', { textContent: 'No file chosen' });
+  fileStatus.style.color = '#9aa0a6';
 
   const fileHint = createElement('span', {
     className: 'form-hint',
@@ -71,8 +95,16 @@ export function render(outlet) {
   fileHint.style.color = '#9aa0a6';
   fileHint.style.fontSize = '0.85em';
   fileHint.style.whiteSpace = 'nowrap';
+  fileHint.style.marginLeft = 'auto';
+
+  // Clicking the row also opens the file picker
+  fileRow.addEventListener('click', (e) => {
+    if (e.target !== chooseBtn) fileInput.click();
+  });
 
   fileRow.appendChild(fileInput);
+  fileRow.appendChild(chooseBtn);
+  fileRow.appendChild(fileStatus);
   fileRow.appendChild(fileHint);
   fileGroup.appendChild(fileRow);
   fileGroup.appendChild(fileInfo);
@@ -191,6 +223,8 @@ export function render(outlet) {
     fileInput.classList.remove('form-file-input--error');
 
     if (file) {
+      fileStatus.textContent = file.name;
+      fileStatus.style.color = 'var(--color-text, #e8eaed)';
       fileHint.style.display = 'none';
       const result = validateFile(file);
       if (result.valid) {
@@ -208,6 +242,8 @@ export function render(outlet) {
         fileInfo.appendChild(sizeSpan);
       }
     } else {
+      fileStatus.textContent = 'No file chosen';
+      fileStatus.style.color = '#9aa0a6';
       fileHint.style.display = '';
     }
 
