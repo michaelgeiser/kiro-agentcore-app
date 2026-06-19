@@ -12,6 +12,20 @@ import { render as renderList } from './views/list.js';
 import { showToast } from './utils/dom.js';
 
 /**
+ * Render the landing/home page into the outlet.
+ * @param {HTMLElement} outlet
+ */
+function renderHome(outlet) {
+  outlet.innerHTML = `
+    <div style="text-align: center; padding-top: 20px;">
+      <img src="assets/heroAI-PC.png" alt="AI Presentation Coaching" style="max-width: 100%; height: auto;">
+      <h2 style="margin-top: 24px;">AI-Powered Presentation Coaching</h2>
+      <p style="max-width: 600px; margin: 12px auto; color: #555;">Upload your presentation audio and receive detailed feedback across 7 dimensions: delivery, structure, executive presence, technical communication, audience engagement, pacing, and persuasion.</p>
+    </div>
+  `;
+}
+
+/**
  * Initialize the application.
  * Handles Cognito callback, authentication check, and router setup.
  */
@@ -40,15 +54,26 @@ async function init() {
 
   // 2. Check authentication state
   if (!auth.isAuthenticated()) {
-    // Redirect to Cognito login
-    auth.login();
+    // Show landing page, hide nav links, wire login button
+    const navLinks = document.getElementById('nav-links');
+    if (navLinks) navLinks.style.display = 'none';
+
+    const loginBtn = document.getElementById('landing-login-btn');
+    if (loginBtn) {
+      loginBtn.addEventListener('click', () => {
+        auth.login();
+      });
+    }
     return;
   }
 
-  // 3. Authenticated — initialize router
+  // 3. Authenticated — hide landing page, show app
+  const landingPage = document.getElementById('landing-page');
+  if (landingPage) landingPage.remove();
+
   const outlet = document.getElementById('app-outlet');
   const router = new Router(
-    { upload: renderUpload, list: renderList },
+    { upload: renderUpload, list: renderList, home: renderHome },
     outlet
   );
   router.start();

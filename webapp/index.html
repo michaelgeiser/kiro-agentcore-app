@@ -11,11 +11,13 @@
 <body>
     <header>
         <nav aria-label="Main navigation">
-            <a href="#upload" class="nav-brand">Presentation Coach</a>
+            <a href="#home" class="nav-brand">
+                <img src="assets/square-1024x1024-AI-PC.png" alt="Presentation Coach Logo" width="128" height="128" style="vertical-align: middle; margin-right: 12px;">Presentation Coach
+            </a>
             <button class="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
                 <span class="nav-toggle-icon"></span>
             </button>
-            <ul class="nav-links">
+            <ul class="nav-links" id="nav-links">
                 <li><a href="#upload">Upload</a></li>
                 <li><a href="#list">Submissions</a></li>
                 <li><button id="logout-btn" class="nav-logout">Logout</button></li>
@@ -24,7 +26,13 @@
     </header>
 
     <main id="app-outlet">
-        <!-- Views are rendered here by the router -->
+        <!-- Landing page content (shown before authentication) -->
+        <div id="landing-page" style="text-align: center; padding-top: 20px;">
+            <img src="assets/heroAI-PC.png" alt="AI Presentation Coaching" style="max-width: 100%; height: auto;">
+            <h2 style="margin-top: 24px;">AI-Powered Presentation Coaching</h2>
+            <p style="max-width: 600px; margin: 12px auto; color: #555;">Upload your presentation audio and receive detailed feedback across 7 dimensions: delivery, structure, executive presence, technical communication, audience engagement, pacing, and persuasion.</p>
+            <button id="landing-login-btn" class="btn btn-primary" style="margin-top: 20px; font-size: 1.1rem; padding: 12px 32px;">Sign In to Get Started</button>
+        </div>
     </main>
 
     <footer>
