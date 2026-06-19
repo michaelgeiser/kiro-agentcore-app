@@ -20,7 +20,7 @@ function renderHome(outlet) {
     <div style="text-align: center; padding-top: 20px;">
       <img src="assets/heroAI-PC.png" alt="AI Presentation Coaching" style="max-width: 50%; height: auto;">
       <h2 style="margin-top: 24px;">AI-Powered Presentation Coaching</h2>
-      <p style="max-width: 600px; margin: 12px auto; color: #555;">Upload your presentation audio and receive detailed feedback across 7 dimensions: delivery, structure, executive presence, technical communication, audience engagement, pacing, and persuasion.</p>
+      <p style="max-width: 600px; margin: 12px auto; color: #9aa0a6;">Upload your presentation audio and receive detailed feedback across 7 dimensions: delivery, structure, executive presence, technical communication, audience engagement, pacing, and persuasion.</p>
     </div>
   `;
 }

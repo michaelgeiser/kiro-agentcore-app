@@ -51,7 +51,7 @@ textarea:focus-visible {
 /* --- Header & Navigation --- */
 header {
   background-color: var(--color-background);
-  border-bottom: 1px solid var(--color-secondary);
+  border-bottom: 1px solid var(--color-border);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -94,7 +94,7 @@ nav {
 }
 
 .nav-toggle:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .nav-toggle-icon,
@@ -176,7 +176,7 @@ nav {
 
 .nav-links a:hover,
 .nav-links button:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: rgba(255, 255, 255, 0.1);
   color: var(--color-primary);
 }
 
@@ -203,8 +203,8 @@ footer {
   text-align: center;
   padding: var(--spacing-md);
   font-size: var(--font-size-sm);
-  color: var(--color-secondary);
-  border-top: 1px solid var(--color-secondary);
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
 }
 
 /* --- Grid Layout Utility --- */

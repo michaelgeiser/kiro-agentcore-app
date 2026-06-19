@@ -61,11 +61,11 @@ export function render(outlet) {
     className: 'form-hint',
     textContent: 'Allowed audio file types (mp3, wav, m4a, aac)',
   });
-  fileHint.style.border = '1px dashed #ccc';
+  fileHint.style.border = '1px dashed #444';
   fileHint.style.padding = '12px';
   fileHint.style.textAlign = 'left';
   fileHint.style.marginBottom = '8px';
-  fileHint.style.color = '#666';
+  fileHint.style.color = '#9aa0a6';
   fileGroup.appendChild(fileHint);
   fileGroup.appendChild(fileInput);
   fileGroup.appendChild(fileInfo);

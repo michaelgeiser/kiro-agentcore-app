@@ -6,13 +6,16 @@
    ========================================================================== */
 
 :root {
-  /* --- Colors --- */
-  --color-primary: #1a73e8;
-  --color-secondary: #5f6368;
-  --color-background: #ffffff;
-  --color-text: #202124;
-  --color-error: #d93025;
-  --color-success: #1e8e3e;
+  /* --- Colors (Dark Theme) --- */
+  --color-primary: #4da6ff;
+  --color-secondary: #9aa0a6;
+  --color-background: #000000;
+  --color-surface: #1a1a1a;
+  --color-text: #e8eaed;
+  --color-text-muted: #9aa0a6;
+  --color-error: #f28b82;
+  --color-success: #81c995;
+  --color-border: #333333;
 
   /* --- Font Families --- */
   --font-heading: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -39,4 +42,9 @@
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-full: 9999px;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
 }
