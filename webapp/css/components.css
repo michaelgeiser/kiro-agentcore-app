@@ -391,7 +391,7 @@
 }
 
 .toast--success {
-  background-color: var(--color-success);
+  background-color: #1a73e8;
   color: #ffffff;
 }
 
