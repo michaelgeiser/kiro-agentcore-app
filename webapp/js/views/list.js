@@ -56,7 +56,7 @@ function formatDate(isoString) {
  * @param {string} submission.fileName
  * @param {string} [submission.description]
  * @param {string} submission.dateUploaded - ISO 8601 date string
- * @param {'Pending'|'Processing'|'Completed'|'Failed'} submission.status
+ * @param {'Pending'|'Processing'|'Waiting'|'Evaluating'|'Report_Generating'|'Completed'|'Failed'} submission.status
  * @param {string} [submission.dateCompleted] - ISO 8601 date string
  * @param {string} [submission.reportUrl] - URL to the generated report
  * @returns {HTMLElement} The card element
@@ -64,14 +64,31 @@ function formatDate(isoString) {
 export function renderSubmissionCard(submission) {
   const statusClass = `status-badge status-badge--${submission.status.toLowerCase()}`;
 
-  // Card header: title + status badge
+  // Card header: title + status badge (with optional processing indicator)
   const titleEl = createElement('h3', { className: 'card-title', textContent: submission.title });
+
+  // Processing indicator shown inline when evaluation is in progress
+  const evaluationStates = ['Evaluating', 'Report_Generating'];
+  let processingIndicator = null;
+  if (evaluationStates.includes(submission.status)) {
+    const loadingImg = createElement('img', {
+      src: 'assets/loading.gif',
+      alt: 'Evaluating...',
+      className: 'processing-indicator',
+    });
+    processingIndicator = loadingImg;
+  }
+
   const statusBadge = createElement('span', {
     className: statusClass,
-    textContent: submission.status,
+    textContent: submission.status === 'Report_Generating' ? 'Generating Report' : submission.status,
     'aria-label': `Status: ${submission.status}`,
   });
-  const header = createElement('div', { className: 'card-header' }, [titleEl, statusBadge]);
+
+  const headerChildren = [titleEl];
+  if (processingIndicator) headerChildren.push(processingIndicator);
+  headerChildren.push(statusBadge);
+  const header = createElement('div', { className: 'card-header' }, headerChildren);
 
   // Card body: file name, description, dates
   const bodyChildren = [];
@@ -102,22 +119,6 @@ export function renderSubmissionCard(submission) {
   }
 
   const body = createElement('div', { className: 'card-body' }, bodyChildren);
-
-  // Processing indicator (inside the card, shown only when this submission is processing)
-  const processingStates = ['Pending', 'Processing', 'Evaluating', 'Report_Generating'];
-  if (processingStates.includes(submission.status)) {
-    const processingDiv = createElement('div', {});
-    processingDiv.style.textAlign = 'center';
-    processingDiv.style.padding = '12px';
-    const loadingImg = createElement('img', {
-      src: 'assets/loading.gif',
-      alt: 'Processing...',
-    });
-    loadingImg.style.width = '50%';
-    loadingImg.style.maxWidth = '150px';
-    processingDiv.appendChild(loadingImg);
-    body.appendChild(processingDiv);
-  }
 
   // Card footer: report link (only for Completed status) + delete button
   const footerChildren = [];
@@ -261,7 +262,7 @@ async function loadSubmissions(contentArea) {
     }
 
     // Check if any submissions are still processing
-    const processingStates = ['Pending', 'Processing', 'Evaluating', 'Report_Generating'];
+    const processingStates = ['Pending', 'Processing', 'Waiting', 'Evaluating', 'Report_Generating'];
     const hasProcessing = submissions.some(s => processingStates.includes(s.status));
 
     // Sort by dateUploaded descending (most recent first)

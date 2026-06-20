@@ -21,6 +21,7 @@ class ProcessingStatus(str, Enum):
 
     PENDING = "Pending"
     PROCESSING = "Processing"
+    WAITING = "Waiting"
     EVALUATING = "Evaluating"
     REPORT_GENERATING = "Report_Generating"
     COMPLETED = "Completed"

@@ -400,7 +400,7 @@ class PreparationWorkflowStack(Stack):
 
         Flow:
           LoadConfig → ParseMessage → UpdateStatusProcessing → ValidateFileFormat → CheckVideoFlag
-            → [Audio/embed] → ChunkAudio → CreateEmbeddings (Map) → StoreVectors → PublishHandoff → UpdateStatusCompleted
+            → [Audio/embed] → ChunkAudio → CreateEmbeddings (Map) → StoreVectors → PublishHandoff → UpdateStatusWaiting
             → [Video + enabled/extract_audio] → ExtractAudio → ChunkAudio → ...
             → [Video + disabled/fail] → HandleFailure
             → [Invalid format] → HandleFailure
@@ -751,9 +751,9 @@ class PreparationWorkflowStack(Stack):
                     },
                     "Retry": lambda_retry,
                     "Catch": common_catch,
-                    "Next": "UpdateStatusCompleted",
+                    "Next": "UpdateStatusWaiting",
                 },
-                "UpdateStatusCompleted": {
+                "UpdateStatusWaiting": {
                     "Type": "Task",
                     "Resource": "arn:aws:states:::dynamodb:updateItem",
                     "Parameters": {
@@ -765,10 +765,10 @@ class PreparationWorkflowStack(Stack):
                         },
                         "UpdateExpression": "SET processing_status = :status",
                         "ExpressionAttributeValues": {
-                            ":status": {"S": "Completed"},
+                            ":status": {"S": "Waiting"},
                         },
                     },
-                    "ResultPath": "$.dynamodb_update_completed",
+                    "ResultPath": "$.dynamodb_update_waiting",
                     "Retry": dynamodb_retry,
                     "Catch": common_catch,
                     "End": True,

@@ -474,6 +474,20 @@
   color: #00695c;
 }
 
+/* Waiting — dark amber on light amber
+   Contrast: #e65100 on #fff3e0 = 5.0:1 */
+.status-badge--waiting {
+  background-color: #fff3e0;
+  color: #e65100;
+}
+
+/* Inline processing indicator in card header */
+.processing-indicator {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
 /* ==========================================================================
    EMPTY STATE
    ========================================================================== */
