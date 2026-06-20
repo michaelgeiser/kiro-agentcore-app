@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1450 900" font-family="Amazon Ember, Helvetica Neue, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1450 850" font-family="Amazon Ember, Helvetica Neue, Arial, sans-serif">
   <defs>
     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#545B64"/>
@@ -19,14 +19,14 @@
   </defs>
 
   <!-- Background -->
-  <rect width="1450" height="900" fill="#FFFFFF"/>
+  <rect width="1450" height="850" fill="#FFFFFF"/>
 
   <!-- Title -->
-  <text x="725" y="35" text-anchor="middle" font-size="18" font-weight="bold" fill="#232F3E">Agentic Evaluation — LOCAL MODE Architecture</text>
+  <text x="725" y="35" text-anchor="middle" font-size="18" font-weight="bold" fill="#232F3E">Agentic Evaluation — LOCAL MODE Architecture (Current Deployment)</text>
   <text x="725" y="55" text-anchor="middle" font-size="11" fill="#545B64">ECS Fargate Spot | Strands SDK Local Execution | Direct Bedrock InvokeModel</text>
 
   <!-- AWS Cloud boundary -->
-  <rect x="30" y="70" width="1390" height="810" rx="8" ry="8" fill="none" stroke="#232F3E" stroke-width="2" stroke-dasharray="8,4"/>
+  <rect x="30" y="70" width="1390" height="750" rx="8" ry="8" fill="none" stroke="#232F3E" stroke-width="2" stroke-dasharray="8,4"/>
   <rect x="30" y="70" width="140" height="24" rx="4" ry="4" fill="#232F3E"/>
   <text x="100" y="86" text-anchor="middle" font-size="11" fill="#FFFFFF" font-weight="bold">AWS Cloud</text>
 
@@ -65,9 +65,8 @@
   <line x1="130" y1="495" x2="130" y2="526" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
 
   <!-- ==================== ECS FARGATE SPOT BOUNDARY ==================== -->
-  <!-- Reduced height - only contains Session Supervisor, Coaching Supervisor, and Evaluation Agents -->
 
-  <rect x="260" y="100" width="1130" height="420" rx="8" ry="8" fill="#F0FFF4" stroke="#3F8624" stroke-width="2"/>
+  <rect x="260" y="100" width="1130" height="540" rx="8" ry="8" fill="#F0FFF4" stroke="#3F8624" stroke-width="2"/>
   <rect x="260" y="100" width="290" height="24" rx="4" ry="0" fill="#3F8624"/>
   <text x="405" y="116" text-anchor="middle" font-size="10" fill="#FFFFFF" font-weight="bold">ECS Fargate Spot (0.5 vCPU, 1 GB)</text>
   <text x="825" y="116" text-anchor="middle" font-size="9" fill="#3F8624">30-min idle timeout | 5 concurrent workers | SIGTERM graceful shutdown</text>
@@ -78,35 +77,39 @@
 
   <!-- ==================== SESSION SUPERVISOR (in-process) ==================== -->
 
-  <rect x="280" y="170" width="200" height="335" rx="6" ry="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="2"/>
+  <rect x="280" y="170" width="200" height="440" rx="6" ry="6" fill="#FFFFFF" stroke="#232F3E" stroke-width="2"/>
   <rect x="280" y="170" width="200" height="24" rx="6" ry="0" fill="#232F3E"/>
   <text x="380" y="186" text-anchor="middle" font-size="10" fill="#FFFFFF" font-weight="bold">Session Supervisor</text>
   <text x="380" y="207" text-anchor="middle" font-size="7" fill="#545B64">ThreadPoolExecutor(max_workers=5)</text>
 
   <!-- Session Supervisor steps -->
-  <rect x="295" y="220" width="170" height="28" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
-  <text x="380" y="238" text-anchor="middle" font-size="8" fill="#232F3E">Long-poll SQS (20s)</text>
+  <rect x="295" y="220" width="170" height="30" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="380" y="239" text-anchor="middle" font-size="8" fill="#232F3E">Long-poll SQS (20s)</text>
 
-  <rect x="295" y="256" width="170" height="28" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
-  <text x="380" y="274" text-anchor="middle" font-size="8" fill="#232F3E">Parse &amp; Validate Message</text>
+  <rect x="295" y="260" width="170" height="30" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="380" y="279" text-anchor="middle" font-size="8" fill="#232F3E">Parse &amp; Validate Message</text>
 
-  <rect x="295" y="292" width="170" height="28" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
-  <text x="380" y="310" text-anchor="middle" font-size="8" fill="#232F3E">DDB → Evaluating</text>
+  <rect x="295" y="300" width="170" height="30" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="380" y="319" text-anchor="middle" font-size="8" fill="#232F3E">DDB → Evaluating</text>
 
-  <rect x="295" y="328" width="170" height="28" rx="4" ry="4" fill="#E3F2FD" stroke="#0972D3" stroke-width="1"/>
-  <text x="380" y="346" text-anchor="middle" font-size="8" font-weight="bold" fill="#0972D3">Invoke Coaching Supervisor</text>
+  <rect x="295" y="340" width="170" height="30" rx="4" ry="4" fill="#E3F2FD" stroke="#0972D3" stroke-width="1"/>
+  <text x="380" y="359" text-anchor="middle" font-size="8" font-weight="bold" fill="#0972D3">Invoke Coaching Supervisor</text>
 
-  <rect x="295" y="364" width="170" height="28" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
-  <text x="380" y="382" text-anchor="middle" font-size="8" fill="#232F3E">Store Results → S3</text>
+  <rect x="295" y="380" width="170" height="30" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="380" y="399" text-anchor="middle" font-size="8" fill="#232F3E">Store Results → S3</text>
 
-  <rect x="295" y="400" width="170" height="28" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
-  <text x="380" y="418" text-anchor="middle" font-size="8" fill="#232F3E">DDB → Report_Generating</text>
+  <rect x="295" y="420" width="170" height="30" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="380" y="439" text-anchor="middle" font-size="8" fill="#232F3E">DDB → Report_Generating</text>
 
-  <rect x="295" y="436" width="170" height="28" rx="4" ry="4" fill="#F3E5F5" stroke="#7D2293" stroke-width="1"/>
-  <text x="380" y="454" text-anchor="middle" font-size="8" fill="#7D2293">Generate PDF Report</text>
+  <rect x="295" y="460" width="170" height="30" rx="4" ry="4" fill="#F3E5F5" stroke="#7D2293" stroke-width="1"/>
+  <text x="380" y="479" text-anchor="middle" font-size="8" fill="#7D2293">Generate PDF Report</text>
 
-  <rect x="295" y="472" width="170" height="28" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
-  <text x="380" y="490" text-anchor="middle" font-size="8" fill="#232F3E">DDB → Completed</text>
+  <rect x="295" y="500" width="170" height="30" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="380" y="519" text-anchor="middle" font-size="8" fill="#232F3E">DDB → Completed</text>
+
+  <rect x="295" y="545" width="170" height="30" rx="4" ry="4" fill="#F9FAFB" stroke="#545B64" stroke-width="1"/>
+  <text x="380" y="558" text-anchor="middle" font-size="7" fill="#545B64">Idle 30 min? → Exit(0)</text>
+  <text x="380" y="570" text-anchor="middle" font-size="7" fill="#545B64">SIGTERM? → Finish &amp; Exit</text>
 
   <!-- ==================== COACHING SUPERVISOR (in-process) ==================== -->
 
@@ -165,61 +168,66 @@
   <text x="975" y="272" text-anchor="middle" font-size="7" font-weight="bold" fill="#232F3E">Persuasion</text>
   <text x="975" y="287" text-anchor="middle" font-size="6" fill="#545B64">arguments</text>
 
-  <!-- Direct Bedrock call note -->
+  <!-- Direct Bedrock call -->
   <rect x="815" y="310" width="530" height="30" rx="4" ry="4" fill="#E3F2FD" stroke="#0972D3" stroke-width="1" stroke-dasharray="3,2"/>
   <text x="1080" y="329" text-anchor="middle" font-size="8" fill="#0972D3">Each tool calls bedrock:InvokeModel directly (no AgentCore) → Claude Sonnet reasoning</text>
 
-  <!-- ==================== EXTERNAL AWS SERVICES (outside ECS boundary) ==================== -->
+  <!-- ==================== BEDROCK (external service) ==================== -->
 
-  <!-- Amazon Bedrock -->
-  <rect x="260" y="560" width="220" height="60" rx="6" ry="6" fill="#FFFFFF" stroke="#0972D3" stroke-width="2"/>
-  <rect x="260" y="560" width="220" height="20" rx="6" ry="0" fill="#0972D3"/>
-  <text x="370" y="574" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon Bedrock</text>
-  <text x="370" y="595" text-anchor="middle" font-size="8" fill="#232F3E">InvokeModel API</text>
-  <text x="370" y="610" text-anchor="middle" font-size="8" fill="#545B64">anthropic.claude-sonnet-4-20250514</text>
+  <rect x="800" y="380" width="250" height="60" rx="6" ry="6" fill="#FFFFFF" stroke="#0972D3" stroke-width="2"/>
+  <rect x="800" y="380" width="250" height="20" rx="6" ry="0" fill="#0972D3"/>
+  <text x="925" y="394" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon Bedrock</text>
+  <text x="925" y="415" text-anchor="middle" font-size="8" fill="#232F3E">InvokeModel API</text>
+  <text x="925" y="430" text-anchor="middle" font-size="8" fill="#545B64">anthropic.claude-sonnet-4-20250514</text>
 
-  <!-- S3 — evaluations + reports -->
-  <rect x="510" y="560" width="180" height="65" rx="6" ry="6" fill="#FFFFFF" stroke="#3F8624" stroke-width="2"/>
-  <rect x="510" y="560" width="180" height="20" rx="6" ry="0" fill="#3F8624"/>
-  <text x="600" y="574" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon S3</text>
-  <text x="600" y="593" text-anchor="middle" font-size="8" fill="#232F3E">evaluations/ + reports/</text>
-  <text x="600" y="608" text-anchor="middle" font-size="7" fill="#545B64">Result JSON + PDF reports</text>
-  <text x="600" y="620" text-anchor="middle" font-size="7" fill="#545B64">Retry w/ exponential backoff</text>
+  <!-- Arrow: Agents → Bedrock -->
+  <line x1="1080" y1="345" x2="1000" y2="376" stroke="#0972D3" stroke-width="1.5" marker-end="url(#arrowhead-blue)"/>
+  <text x="1050" y="365" text-anchor="middle" font-size="7" fill="#0972D3">InvokeModel</text>
 
-  <!-- S3 — Vector Store -->
-  <rect x="720" y="560" width="180" height="65" rx="6" ry="6" fill="#FFFFFF" stroke="#3F8624" stroke-width="2"/>
-  <rect x="720" y="560" width="180" height="20" rx="6" ry="0" fill="#3F8624"/>
-  <text x="810" y="574" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon S3</text>
-  <text x="810" y="593" text-anchor="middle" font-size="8" fill="#232F3E">Vector Store</text>
-  <text x="810" y="608" text-anchor="middle" font-size="7" fill="#545B64">{sub_id}/embeddings/chunk_N.json</text>
+  <!-- ==================== EXTERNAL AWS SERVICES ==================== -->
+
+  <!-- S3 -->
+  <rect x="530" y="470" width="180" height="65" rx="6" ry="6" fill="#FFFFFF" stroke="#3F8624" stroke-width="2"/>
+  <rect x="530" y="470" width="180" height="20" rx="6" ry="0" fill="#3F8624"/>
+  <text x="620" y="484" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon S3</text>
+  <text x="620" y="503" text-anchor="middle" font-size="8" fill="#232F3E">evaluations/ + reports/</text>
+  <text x="620" y="518" text-anchor="middle" font-size="7" fill="#545B64">Result JSON + PDF reports</text>
+  <text x="620" y="530" text-anchor="middle" font-size="7" fill="#545B64">Retry w/ exponential backoff</text>
+
+  <!-- Vector Store S3 -->
+  <rect x="800" y="470" width="180" height="65" rx="6" ry="6" fill="#FFFFFF" stroke="#3F8624" stroke-width="2"/>
+  <rect x="800" y="470" width="180" height="20" rx="6" ry="0" fill="#3F8624"/>
+  <text x="890" y="484" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon S3</text>
+  <text x="890" y="503" text-anchor="middle" font-size="8" fill="#232F3E">Vector Store</text>
+  <text x="890" y="518" text-anchor="middle" font-size="7" fill="#545B64">{sub_id}/embeddings/chunk_N.json</text>
 
   <!-- DynamoDB -->
-  <rect x="930" y="560" width="180" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#3334B9" stroke-width="2"/>
-  <rect x="930" y="560" width="180" height="20" rx="6" ry="0" fill="#3334B9"/>
-  <text x="1020" y="574" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon DynamoDB</text>
-  <text x="1020" y="594" text-anchor="middle" font-size="8" fill="#232F3E">submissions table</text>
-  <text x="1020" y="608" text-anchor="middle" font-size="7" fill="#545B64">Evaluating → Report_Generating → Completed</text>
+  <rect x="530" y="560" width="180" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#3334B9" stroke-width="2"/>
+  <rect x="530" y="560" width="180" height="20" rx="6" ry="0" fill="#3334B9"/>
+  <text x="620" y="574" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon DynamoDB</text>
+  <text x="620" y="594" text-anchor="middle" font-size="8" fill="#232F3E">submissions table</text>
+  <text x="620" y="608" text-anchor="middle" font-size="7" fill="#545B64">Evaluating → Report_Generating → Completed</text>
 
   <!-- SNS -->
-  <rect x="260" y="660" width="180" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="2"/>
-  <rect x="260" y="660" width="180" height="20" rx="6" ry="0" fill="#FF4F8B"/>
-  <text x="350" y="674" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon SNS</text>
-  <text x="350" y="694" text-anchor="middle" font-size="8" fill="#232F3E">evaluation-errors</text>
-  <text x="350" y="708" text-anchor="middle" font-size="7" fill="#545B64">Error notifications + DLQ alerts</text>
+  <rect x="800" y="560" width="180" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="2"/>
+  <rect x="800" y="560" width="180" height="20" rx="6" ry="0" fill="#FF4F8B"/>
+  <text x="890" y="574" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon SNS</text>
+  <text x="890" y="594" text-anchor="middle" font-size="8" fill="#232F3E">evaluation-errors</text>
+  <text x="890" y="608" text-anchor="middle" font-size="7" fill="#545B64">Error notifications + DLQ alerts</text>
 
   <!-- CloudWatch Logs -->
-  <rect x="510" y="660" width="200" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#0972D3" stroke-width="1.5"/>
-  <rect x="510" y="660" width="200" height="20" rx="6" ry="0" fill="#0972D3"/>
-  <text x="610" y="674" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">CloudWatch Logs</text>
-  <text x="610" y="694" text-anchor="middle" font-size="8" fill="#232F3E">/ecs/prescoach-dev-kiro-</text>
-  <text x="610" y="708" text-anchor="middle" font-size="8" fill="#232F3E">agentic-evaluation</text>
+  <rect x="1080" y="470" width="200" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#0972D3" stroke-width="1.5"/>
+  <rect x="1080" y="470" width="200" height="20" rx="6" ry="0" fill="#0972D3"/>
+  <text x="1180" y="484" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">CloudWatch Logs</text>
+  <text x="1180" y="503" text-anchor="middle" font-size="8" fill="#232F3E">/ecs/prescoach-dev-kiro-</text>
+  <text x="1180" y="516" text-anchor="middle" font-size="8" fill="#232F3E">agentic-evaluation</text>
 
   <!-- ECR -->
-  <rect x="780" y="660" width="200" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
-  <rect x="780" y="660" width="200" height="20" rx="6" ry="0" fill="#ED7100"/>
-  <text x="880" y="674" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon ECR</text>
-  <text x="880" y="694" text-anchor="middle" font-size="8" fill="#232F3E">agentic-evaluation:latest</text>
-  <text x="880" y="708" text-anchor="middle" font-size="7" fill="#545B64">Container image registry</text>
+  <rect x="1080" y="560" width="200" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
+  <rect x="1080" y="560" width="200" height="20" rx="6" ry="0" fill="#ED7100"/>
+  <text x="1180" y="574" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon ECR</text>
+  <text x="1180" y="594" text-anchor="middle" font-size="8" fill="#232F3E">agentic-evaluation:latest</text>
+  <text x="1180" y="608" text-anchor="middle" font-size="7" fill="#545B64">Container image registry</text>
 
   <!-- ==================== ARROWS ==================== -->
 
@@ -232,37 +240,44 @@
   <text x="240" y="250" text-anchor="middle" font-size="7" fill="#545B64">long-poll</text>
 
   <!-- Session Supervisor → Coaching Supervisor -->
-  <line x1="480" y1="346" x2="525" y2="310" stroke="#0972D3" stroke-width="1.5" marker-end="url(#arrowhead-blue)"/>
+  <line x1="480" y1="355" x2="525" y2="310" stroke="#0972D3" stroke-width="1.5" marker-end="url(#arrowhead-blue)"/>
 
   <!-- Coaching Supervisor → Agents -->
   <line x1="750" y1="310" x2="795" y2="270" stroke="#ED7100" stroke-width="1.5" marker-end="url(#arrowhead-orange)"/>
   <text x="778" y="283" text-anchor="middle" font-size="7" fill="#ED7100">tools</text>
 
-  <!-- ECS → Bedrock -->
-  <line x1="370" y1="520" x2="370" y2="556" stroke="#0972D3" stroke-width="1.5" marker-end="url(#arrowhead-blue)"/>
-  <text x="385" y="542" font-size="7" fill="#0972D3">InvokeModel</text>
+  <!-- Session Supervisor → S3 -->
+  <line x1="420" y1="395" x2="525" y2="490" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
 
-  <!-- ECS → S3 (evaluations) -->
-  <line x1="440" y1="520" x2="560" y2="556" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+  <!-- Session Supervisor → DDB -->
+  <line x1="420" y1="440" x2="525" y2="575" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
 
-  <!-- ECS → S3 (vector store) -->
-  <line x1="640" y1="420" x2="810" y2="556" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
-  <text x="740" y="480" text-anchor="middle" font-size="7" fill="#545B64">retrieve</text>
+  <!-- Agents → Vector Store -->
+  <line x1="890" y1="345" x2="890" y2="466" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+  <text x="905" y="420" text-anchor="middle" font-size="7" fill="#545B64">retrieve</text>
 
-  <!-- ECS → DynamoDB -->
-  <line x1="480" y1="490" x2="935" y2="575" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
-  <text x="700" y="525" text-anchor="middle" font-size="7" fill="#545B64">status updates</text>
+  <!-- ==================== LEGEND ==================== -->
+  <rect x="50" y="660" width="1330" height="130" rx="6" ry="6" fill="#F9FAFB" stroke="#D5DBDB" stroke-width="1"/>
+  <text x="80" y="685" font-size="11" font-weight="bold" fill="#232F3E">LOCAL MODE — Key Characteristics</text>
 
-  <!-- ECS → SNS (errors) -->
-  <line x1="320" y1="520" x2="340" y2="656" stroke="#FF4F8B" stroke-width="1.0" marker-end="url(#arrowhead-red)"/>
-  <text x="310" y="600" font-size="7" fill="#FF4F8B">errors</text>
+  <text x="80" y="710" font-size="9" fill="#232F3E">•</text>
+  <text x="95" y="710" font-size="9" fill="#545B64">All agents run in-process inside a single ECS Fargate Spot container (no AgentCore deployment required)</text>
 
-  <!-- ECS → CloudWatch Logs -->
-  <line x1="600" y1="520" x2="610" y2="656" stroke="#0972D3" stroke-width="1.0" marker-end="url(#arrowhead-blue)"/>
-  <text x="620" y="640" font-size="7" fill="#0972D3">logs</text>
+  <text x="80" y="728" font-size="9" fill="#232F3E">•</text>
+  <text x="95" y="728" font-size="9" fill="#545B64">Strands SDK creates Agent objects locally — each evaluation tool calls bedrock:InvokeModel directly</text>
 
-  <!-- ECR → ECS (image pull) -->
-  <line x1="880" y1="656" x2="880" y2="524" stroke="#ED7100" stroke-width="1.0" marker-end="url(#arrowhead-orange)"/>
-  <text x="895" y="600" font-size="7" fill="#ED7100">image</text>
+  <text x="80" y="746" font-size="9" fill="#232F3E">•</text>
+  <text x="95" y="746" font-size="9" fill="#545B64">Session state is in-memory only (lost when task exits) — no persistent memory across task launches</text>
 
+  <text x="80" y="764" font-size="9" fill="#232F3E">•</text>
+  <text x="95" y="764" font-size="9" fill="#545B64">Cost-optimized: Fargate Spot (70% discount), 30-min idle timeout, concurrent processing of 5 submissions</text>
+
+  <text x="80" y="782" font-size="9" fill="#232F3E">•</text>
+  <text x="95" y="782" font-size="9" fill="#545B64">Cold start: ~45-90s (container pull + startup). Kept warm for 30 min after last message.</text>
+
+  <text x="730" y="685" font-size="11" font-weight="bold" fill="#3F8624">Cost Estimate</text>
+  <text x="730" y="710" font-size="9" fill="#545B64">Per evaluation task (5 min): ~$0.0007</text>
+  <text x="730" y="728" font-size="9" fill="#545B64">Monthly @ 5/day: ~$0.10</text>
+  <text x="730" y="746" font-size="9" fill="#545B64">Monthly @ 100/day: ~$2.10</text>
+  <text x="730" y="764" font-size="9" fill="#545B64">(Bedrock model costs are additional)</text>
 </svg>

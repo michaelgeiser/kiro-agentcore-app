@@ -1,6 +1,6 @@
 # Building PresCoach: An AI-DLC Retrospective
 
-## How a CTO and an AI Development Companion Built a Production-Grade Agentic System in Five Days 
+## How a CTO and an AI Development Companion Built a Production-Grade Agentic System in Under Two Days
 
 ---
 
@@ -64,8 +64,8 @@ The authentication architecture uses Cognito's hosted UI for login/signup, store
 
 ### Key Design Decisions
 
-- **No framework (React/Vue/Angular):** For an MVP with two views (Upload and List), a framework adds bundle size and complexity without meaningful benefit. The vanilla approach loads in milliseconds and has zero build step for static files. 
-- **Cognito Hosted UI:** Building custom login forms (which must handle MFA, password policies, and verification flows) is never an acceptable option. The hosted UI provides production-grade Au/Az in minutes.
+- **No framework (React/Vue/Angular):** For an MVP with two views (Upload and List), a framework adds bundle size and complexity without meaningful benefit. The vanilla approach loads in milliseconds and has zero build step for static files.
+- **Cognito Hosted UI:** Rather than building custom login forms (which must handle MFA, password policies, and verification flows), the hosted UI provides production-grade auth in minutes.
 - **CloudFront + S3:** Global CDN delivery with zero servers. The entire frontend costs pennies per month at MVP scale.
 
 ---
@@ -236,7 +236,7 @@ PresCoach currently deploys to `us-east-1`. All resources — API Gateway, Lambd
 - SQS: Replicated across AZs within the region
 - Step Functions: Regionally resilient (multi-AZ)
 
-The system is resilient to individual AZ failures with no configuration. Only a complete regional outage would take the system offline. 
+The system is resilient to individual AZ failures with no configuration. A complete regional outage would take the system offline.
 
 ### Path to Multi-Region
 
@@ -330,9 +330,9 @@ The Bolt architecture means this Work Unit can be built, tested, and deployed wi
 
 | Metric | Value |
 |--------|-------|
-| Working hours | ~40 hours |
-| Elapsed time | <7 days |
-| Work Units | 4 |
+| Working hours | ~8 hours |
+| Elapsed time | <2 days |
+| Work Units | 4 (3 implemented, 1 specified) |
 | Lambda functions | 9 (preparation workflow) + 3 (upload service) |
 | Tests written | 203+ |
 | Property-based tests | 10 formal correctness properties |

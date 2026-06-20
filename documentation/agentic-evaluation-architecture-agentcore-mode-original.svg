@@ -25,7 +25,7 @@
   <rect width="1450" height="850" fill="#FFFFFF"/>
 
   <!-- Title -->
-  <text x="725" y="35" text-anchor="middle" font-size="18" font-weight="bold" fill="#232F3E">Agentic Evaluation — AGENTCORE MODE Architecture</text>
+  <text x="725" y="35" text-anchor="middle" font-size="18" font-weight="bold" fill="#232F3E">Agentic Evaluation — AGENTCORE MODE Architecture (Future Deployment)</text>
   <text x="725" y="55" text-anchor="middle" font-size="11" fill="#545B64">Amazon Bedrock AgentCore Runtime | Managed Agents | Session Memory | Auto-Scaling</text>
 
   <!-- AWS Cloud boundary -->

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 200" font-family="Amazon Ember, Helvetica Neue, Arial, sans-serif">
+  <!-- Background -->
+  <rect width="900" height="200" fill="#FFFFFF"/>
+
+  <rect x="20" y="15" width="860" height="170" rx="6" ry="6" fill="#F9FAFB" stroke="#D5DBDB" stroke-width="1"/>
+  <text x="50" y="42" font-size="12" font-weight="bold" fill="#232F3E">LOCAL MODE — Key Characteristics</text>
+
+  <text x="50" y="68" font-size="10" fill="#232F3E">•</text>
+  <text x="65" y="68" font-size="10" fill="#545B64">All agents run in-process inside a single ECS Fargate Spot container (no AgentCore deployment required)</text>
+
+  <text x="50" y="90" font-size="10" fill="#232F3E">•</text>
+  <text x="65" y="90" font-size="10" fill="#545B64">Strands SDK creates Agent objects locally — each evaluation tool calls bedrock:InvokeModel directly</text>
+
+  <text x="50" y="112" font-size="10" fill="#232F3E">•</text>
+  <text x="65" y="112" font-size="10" fill="#545B64">Session state is in-memory only (lost when task exits) — no persistent memory across task launches</text>
+
+  <text x="50" y="134" font-size="10" fill="#232F3E">•</text>
+  <text x="65" y="134" font-size="10" fill="#545B64">Cost-optimized: Fargate Spot (70% discount), 30-min idle timeout, concurrent processing of 5 submissions</text>
+
+  <text x="50" y="156" font-size="10" fill="#232F3E">•</text>
+  <text x="65" y="156" font-size="10" fill="#545B64">Cold start: ~45-90s (container pull + startup). Kept warm for 30 min after last message.</text>
+
+  <text x="550" y="42" font-size="12" font-weight="bold" fill="#3F8624">Cost Estimate</text>
+  <text x="550" y="68" font-size="10" fill="#545B64">Per evaluation task (5 min): ~$0.0007</text>
+  <text x="550" y="90" font-size="10" fill="#545B64">Monthly @ 5/day: ~$0.10</text>
+  <text x="550" y="112" font-size="10" fill="#545B64">Monthly @ 100/day: ~$2.10</text>
+  <text x="550" y="134" font-size="10" fill="#545B64">(Bedrock model costs are additional)</text>
+</svg>
