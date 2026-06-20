@@ -103,22 +103,23 @@ An EventBridge Pipe (`prescoach-dev-prep-input-to-sfn`) monitors the Input Queue
 
 - **Type:** Task (Lambda invoke)
 - **Lambda:** `prescoach-dev-prep-loadconfig`
-- **What it does:** Reads all 9 SSM parameters from `/prescoach/dev/preparation-workflow/` and returns them as a config object
+- **What it does:** Reads all 10 SSM parameters from `/prescoach/dev/preparation-workflow/` and returns them as a config object
 - **Output stored at:** `$.config.value`
 - **CloudWatch Logs:** `/aws/lambda/prescoach-dev-prep-loadconfig`
 
 **Config values loaded:**
 | Parameter | Example Value |
 |-----------|---------------|
-| `embedding-model-id` | `amazon.nova-embed-multimodal-v1:0` |
+| `embedding-model-id` | `amazon.nova-2-multimodal-embeddings-v1:0` |
 | `chunk-size-seconds` | `30` |
 | `chunk-overlap-seconds` | `5` |
 | `max-retry-attempts` | `3` |
 | `video-processing-enabled` | `false` |
-| `vector-store-endpoint` | `<YOUR_VECTORS_BUCKET>` |
+| `vector-store-endpoint` | `prescoach-dev-kiro-uploads` |
 | `vector-store-type` | `s3` |
 | `batch-size` | `10` |
 | `batch-processing-enabled` | `false` |
+| `embeddings-enabled` | `false` |
 
 ### State 2: ParseMessage
 
@@ -158,11 +159,50 @@ An EventBridge Pipe (`prescoach-dev-prep-input-to-sfn`) monitors the Input Queue
 
 - **Type:** Choice
 - **What it does:** Routes based on `$.validation_result.value.decision`:
-  - `"embed"` → **ChunkAudio** (audio file — this is the happy path)
+  - `"embed"` → **TranscribeAudio** (audio file — this is the happy path)
   - `"extract_audio"` → ExtractAudio (video with flag enabled)
   - `"fail"` → HandleFailure
 
-### State 6: ChunkAudio
+### State 5b: ExtractAudio (video path only)
+
+- **Type:** Task (Lambda invoke)
+- **Lambda:** `prescoach-dev-prep-extractaudio`
+- **What it does:** Submits a MediaConvert job to extract the audio track from a video file
+- **Output stored at:** `$.extraction_result.value`
+- **CloudWatch Logs:** `/aws/lambda/prescoach-dev-prep-extractaudio`
+- **Next:** TranscribeAudio
+
+### State 6: TranscribeAudio
+
+- **Type:** Task (Lambda invoke)
+- **Lambda:** `prescoach-dev-prep-transcribeaudio`
+- **What it does:** Starts an Amazon Transcribe job with automatic language detection, polls for completion (up to 5 minutes), and returns the S3 key of the transcript
+- **Output stored at:** `$.transcribe_result.value`
+- **CloudWatch Logs:** `/aws/lambda/prescoach-dev-prep-transcribeaudio`
+
+**S3 object created:**
+```
+Bucket: prescoach-dev-kiro-uploads
+Key:    transcripts/{submission_id}/transcript.txt
+```
+
+**Output example:**
+```json
+{
+  "transcript_s3_key": "transcripts/sub-98765/transcript.txt"
+}
+```
+
+### State 7: CheckEmbeddingsEnabled
+
+- **Type:** Choice
+- **What it does:** Routes based on `$.config.value.embeddings_enabled`:
+  - `true` → **ChunkAudio** (proceed with embedding pipeline)
+  - `false` → **SetDefaultsForSkippedEmbeddings** (skip to handoff)
+
+When embeddings are disabled, the workflow sets empty defaults for `store_result` and `chunks` via two Pass states (SetDefaultsForSkippedEmbeddings → SetDefaultChunks) and proceeds directly to PublishHandoff. This allows the evaluation agents to work from the transcript alone without requiring embeddings.
+
+### State 8: ChunkAudio
 
 - **Type:** Task (Lambda invoke)
 - **Lambda:** `prescoach-dev-prep-chunkaudio`
@@ -187,7 +227,7 @@ s3://prescoach-dev-kiro-uploads/processed/abc123/sub-98765/chunks/chunk_0001.mp3
 s3://prescoach-dev-kiro-uploads/processed/abc123/sub-98765/chunks/chunk_0002.mp3
 ```
 
-### State 7: CreateEmbeddings
+### State 9: CreateEmbeddings
 
 - **Type:** Map (parallel processing)
 - **Max concurrency:** 10
@@ -205,7 +245,7 @@ s3://prescoach-dev-kiro-uploads/processed/abc123/sub-98765/chunks/chunk_0002.mp3
 }
 ```
 
-### State 8: StoreVectors
+### State 10: StoreVectors
 
 - **Type:** Task (Lambda invoke)
 - **Lambda:** `prescoach-dev-prep-storevectors`
@@ -215,7 +255,7 @@ s3://prescoach-dev-kiro-uploads/processed/abc123/sub-98765/chunks/chunk_0002.mp3
 
 **S3 objects created:**
 ```
-Bucket: <YOUR_VECTORS_BUCKET>
+Bucket: prescoach-dev-kiro-uploads
 Keys:
   {submission_id}/embeddings/chunk_0000.json
   {submission_id}/embeddings/chunk_0001.json
@@ -233,16 +273,16 @@ Keys:
     "chunk_index": 0,
     "chunk_timestamp_start": 0.0,
     "chunk_timestamp_end": 30.0,
-    "embedding_model_version": "amazon.nova-embed-multimodal-v1:0"
+    "embedding_model_version": "amazon.nova-2-multimodal-embeddings-v1:0"
   }
 }
 ```
 
-### State 9: PublishHandoff
+### State 11: PublishHandoff
 
 - **Type:** Task (Lambda invoke)
 - **Lambda:** `prescoach-dev-prep-publishhandoff`
-- **What it does:** Constructs a `HandoffMessage` and publishes it to the FIFO Handoff Queue for the Agentic Processing service
+- **What it does:** Constructs a `HandoffMessage` and publishes it to the FIFO Handoff Queue for the Agentic Evaluation service. Also triggers the eval-task-launcher Lambda asynchronously (fire-and-forget) to ensure an ECS task starts immediately without waiting for CloudWatch alarm transitions.
 - **Output stored at:** `$.handoff_result.value`
 - **CloudWatch Logs:** `/aws/lambda/prescoach-dev-prep-publishhandoff`
 
@@ -254,7 +294,8 @@ Keys:
   "submission_id": "sub-98765",
   "user_id": "abc123",
   "s3_file_key": "uploads/abc123/sub-98765/my-presentation.mp3",
-  "vector_store_location": "s3://<YOUR_VECTORS_BUCKET>/sub-98765/embeddings",
+  "transcript_s3_key": "transcripts/sub-98765/transcript.txt",
+  "vector_store_location": "s3://prescoach-dev-kiro-uploads/sub-98765/embeddings",
   "chunk_count": 3,
   "presentation_title": "Q4 Review"
 }
@@ -269,7 +310,7 @@ Keys:
 |------|----|-----------|---------|
 | Preparation Workflow (`publish_handoff` Lambda) | Agentic Processing | SQS FIFO `prescoach-dev-preparation-handoff.fifo` | HandoffMessage JSON above |
 
-### State 10: UpdateStatusCompleted
+### State 12: UpdateStatusCompleted
 
 - **Type:** Task (DynamoDB SDK integration)
 - **What it does:** Updates the submission record
@@ -286,8 +327,9 @@ Keys:
 | Step | Bucket | Key Pattern | Content |
 |------|--------|-------------|---------|
 | User upload | `prescoach-dev-kiro-uploads` | `uploads/{user_id}/{submission_id}/{filename}` | Original audio file |
+| Transcription | `prescoach-dev-kiro-uploads` | `transcripts/{submission_id}/transcript.txt` | Full text transcript |
 | Chunking | `prescoach-dev-kiro-uploads` | `processed/{user_id}/{submission_id}/chunks/chunk_{NNNN}.mp3` | Audio chunk segments |
-| Vector storage | `<YOUR_VECTORS_BUCKET>` | `{submission_id}/embeddings/chunk_{NNNN}.json` | Embedding vector + metadata |
+| Vector storage | `prescoach-dev-kiro-uploads` | `{submission_id}/embeddings/chunk_{NNNN}.json` | Embedding vector + metadata |
 
 ---
 
@@ -301,10 +343,11 @@ Keys:
 | LoadConfig | `/aws/lambda/prescoach-dev-prep-loadconfig` | SSM parameter fetch |
 | ParseMessage | `/aws/lambda/prescoach-dev-prep-parsemessage` | Message deserialization |
 | ValidateFormat | `/aws/lambda/prescoach-dev-prep-validateformat` | Format check, decision logic |
+| TranscribeAudio | `/aws/lambda/prescoach-dev-prep-transcribeaudio` | Transcribe job start, polling, completion |
 | ChunkAudio | `/aws/lambda/prescoach-dev-prep-chunkaudio` | Chunk boundaries, S3 uploads |
 | CreateEmbedding | `/aws/lambda/prescoach-dev-prep-createembedding` | Bedrock invocation, response parsing |
 | StoreVectors | `/aws/lambda/prescoach-dev-prep-storevectors` | S3 puts for each embedding |
-| PublishHandoff | `/aws/lambda/prescoach-dev-prep-publishhandoff` | SQS FIFO publish |
+| PublishHandoff | `/aws/lambda/prescoach-dev-prep-publishhandoff` | SQS FIFO publish, eval launcher trigger |
 | HandleFailure | `/aws/lambda/prescoach-dev-prep-handlefailure` | DynamoDB update, SNS publish, DLQ routing |
 
 ---
@@ -315,16 +358,17 @@ Every Task state in the Step Function has automatic retry configured:
 
 | State | Initial Wait | Backoff Rate | Max Attempts | Errors Caught |
 |-------|-------------|--------------|--------------|---------------|
-| LoadConfig | 2s | 2x | 3 | TaskFailed, Timeout |
-| ParseMessage | 2s | 2x | 3 | TaskFailed, Timeout |
-| UpdateStatusProcessing | 1s | 2x | 3 | TaskFailed, Timeout |
-| ValidateFileFormat | 2s | 2x | 3 | TaskFailed, Timeout |
-| ExtractAudio | 30s | 2x | 3 | TaskFailed, Timeout |
-| ChunkAudio | 2s | 2x | 3 | TaskFailed, Timeout |
-| CreateEmbeddings (per chunk) | 5s | 2x | 3 | TaskFailed, Timeout |
-| StoreVectors | 2s | 2x | 3 | TaskFailed, Timeout |
-| PublishHandoff | 2s | 2x | 3 | TaskFailed, Timeout |
-| UpdateStatusCompleted | 1s | 2x | 3 | TaskFailed, Timeout |
+| LoadConfig | 2s | 2x | 3 | Lambda.ServiceException, TooManyRequests, Timeout |
+| ParseMessage | 2s | 2x | 3 | Lambda.ServiceException, TooManyRequests, Timeout |
+| UpdateStatusProcessing | 1s | 2x | 3 | DynamoDB Throttling, InternalServerError, Timeout |
+| ValidateFileFormat | 2s | 2x | 3 | Lambda.ServiceException, TooManyRequests, Timeout |
+| ExtractAudio | 30s | 2x | 3 | Lambda.ServiceException, TooManyRequests, Timeout |
+| TranscribeAudio | 2s | 2x | 3 | Lambda.ServiceException, TooManyRequests, Timeout |
+| ChunkAudio | 2s | 2x | 3 | Lambda.ServiceException, TooManyRequests, Timeout |
+| CreateEmbeddings (per chunk) | 5s | 2x | 3 | Lambda.ServiceException, TooManyRequests, Timeout |
+| StoreVectors | 2s | 2x | 3 | Lambda.ServiceException, TooManyRequests, Timeout |
+| PublishHandoff | 2s | 2x | 3 | Lambda.ServiceException, TooManyRequests, Timeout |
+| UpdateStatusCompleted | 1s | 2x | 3 | DynamoDB Throttling, InternalServerError, Timeout |
 
 **Retry sequence example** (ChunkAudio with 2s initial):
 1. First attempt fails → wait 2s
@@ -353,6 +397,7 @@ If any state fails after exhausting retries, the execution routes to the **Handl
 | ValidateFileFormat | Unsupported format (.exe, .pdf, etc.) | DLQ Input |
 | ValidateFileFormat | Video file + flag disabled | DLQ Input |
 | ExtractAudio | MediaConvert job failure after retries | DLQ Input |
+| TranscribeAudio | Transcribe job failure or timeout after retries | DLQ Input |
 | ChunkAudio | S3 read/write failure after retries | DLQ Input |
 | CreateEmbeddings | Bedrock throttling/failure after retries | DLQ Input |
 | StoreVectors | Vector store write failure after retries | DLQ Input |
@@ -422,9 +467,9 @@ Expected: Status = `SUCCEEDED`
 
 ### Check 3: Vector embeddings stored
 ```bash
-aws s3 ls s3://<YOUR_VECTORS_BUCKET>/YOUR_SUBMISSION_ID/embeddings/
+aws s3 ls s3://prescoach-dev-kiro-uploads/YOUR_SUBMISSION_ID/embeddings/
 ```
-Expected: List of `chunk_NNNN.json` files
+Expected: List of `chunk_NNNN.json` files (only present if `embeddings-enabled` is `true`)
 
 ### Check 4: Handoff message on queue
 ```bash

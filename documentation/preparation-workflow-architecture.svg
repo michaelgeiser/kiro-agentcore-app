@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1400 850" font-family="Amazon Ember, Helvetica Neue, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1500 950" font-family="Amazon Ember, Helvetica Neue, Arial, sans-serif">
   <defs>
     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#545B64"/>
@@ -10,116 +10,135 @@
     <marker id="arrowhead-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#DD344C"/>
     </marker>
+    <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3F8624"/>
+    </marker>
   </defs>
 
   <!-- Background -->
-  <rect width="1400" height="850" fill="#FFFFFF"/>
+  <rect width="1500" height="950" fill="#FFFFFF"/>
 
   <!-- Title -->
-  <text x="700" y="35" text-anchor="middle" font-size="18" font-weight="bold" fill="#232F3E">Preparation Workflow — Architecture Diagram</text>
-  <text x="700" y="55" text-anchor="middle" font-size="11" fill="#545B64">prescoach-dev-kiro | Step Functions Standard Workflow</text>
+  <text x="750" y="35" text-anchor="middle" font-size="18" font-weight="bold" fill="#232F3E">Preparation Workflow — Architecture Diagram</text>
+  <text x="750" y="55" text-anchor="middle" font-size="11" fill="#545B64">prescoach-dev-kiro | Step Functions Standard Workflow | 10 Lambda Functions</text>
 
   <!-- AWS Cloud boundary -->
-  <rect x="30" y="70" width="1340" height="750" rx="8" ry="8" fill="none" stroke="#232F3E" stroke-width="2" stroke-dasharray="8,4"/>
+  <rect x="30" y="70" width="1440" height="850" rx="8" ry="8" fill="none" stroke="#232F3E" stroke-width="2" stroke-dasharray="8,4"/>
   <rect x="30" y="70" width="140" height="24" rx="4" ry="4" fill="#232F3E"/>
   <text x="100" y="86" text-anchor="middle" font-size="11" fill="#FFFFFF" font-weight="bold">AWS Cloud</text>
 
   <!-- ==================== INPUT SECTION ==================== -->
 
   <!-- SQS Input Queue (from Upload Service) -->
-  <rect x="50" y="280" width="140" height="75" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="2"/>
-  <rect x="50" y="280" width="140" height="20" rx="6" ry="0" fill="#FF4F8B"/>
-  <text x="120" y="294" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon SQS</text>
-  <text x="120" y="318" text-anchor="middle" font-size="9" fill="#232F3E">preparation-input</text>
-  <text x="120" y="332" text-anchor="middle" font-size="8" fill="#545B64">Standard Queue</text>
-  <text x="120" y="346" text-anchor="middle" font-size="8" fill="#545B64">(from Upload Service)</text>
+  <rect x="50" y="300" width="140" height="75" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="2"/>
+  <rect x="50" y="300" width="140" height="20" rx="6" ry="0" fill="#FF4F8B"/>
+  <text x="120" y="314" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon SQS</text>
+  <text x="120" y="338" text-anchor="middle" font-size="9" fill="#232F3E">preparation-input</text>
+  <text x="120" y="352" text-anchor="middle" font-size="8" fill="#545B64">Standard Queue</text>
+  <text x="120" y="366" text-anchor="middle" font-size="8" fill="#545B64">(from Upload Service)</text>
 
   <!-- EventBridge Pipe -->
-  <rect x="230" y="290" width="130" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="2"/>
-  <rect x="230" y="290" width="130" height="20" rx="6" ry="0" fill="#E7157B"/>
-  <text x="295" y="304" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">EventBridge Pipe</text>
-  <text x="295" y="325" text-anchor="middle" font-size="9" fill="#232F3E">SQS → Step Functions</text>
-  <text x="295" y="338" text-anchor="middle" font-size="8" fill="#545B64">batch_size=1</text>
+  <rect x="230" y="310" width="130" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="2"/>
+  <rect x="230" y="310" width="130" height="20" rx="6" ry="0" fill="#E7157B"/>
+  <text x="295" y="324" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">EventBridge Pipe</text>
+  <text x="295" y="345" text-anchor="middle" font-size="9" fill="#232F3E">SQS → Step Functions</text>
+  <text x="295" y="358" text-anchor="middle" font-size="8" fill="#545B64">batch_size=1</text>
 
   <!-- ==================== STEP FUNCTIONS STATE MACHINE ==================== -->
 
   <!-- Step Functions boundary -->
-  <rect x="395" y="100" width="960" height="520" rx="8" ry="8" fill="#FDF7F0" stroke="#CD2264" stroke-width="2"/>
+  <rect x="395" y="100" width="1050" height="620" rx="8" ry="8" fill="#FDF7F0" stroke="#CD2264" stroke-width="2"/>
   <rect x="395" y="100" width="220" height="22" rx="4" ry="0" fill="#CD2264"/>
   <text x="505" y="115" text-anchor="middle" font-size="10" fill="#FFFFFF" font-weight="bold">AWS Step Functions — Standard Workflow</text>
 
   <!-- State 1: UnwrapInput -->
-  <rect x="420" y="285" width="100" height="45" rx="4" ry="4" fill="#FFFFFF" stroke="#545B64" stroke-width="1.5"/>
-  <text x="470" y="305" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">UnwrapInput</text>
-  <text x="470" y="318" text-anchor="middle" font-size="7" fill="#545B64">Pass ($[0])</text>
+  <rect x="420" y="305" width="100" height="45" rx="4" ry="4" fill="#FFFFFF" stroke="#545B64" stroke-width="1.5"/>
+  <text x="470" y="325" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">UnwrapInput</text>
+  <text x="470" y="338" text-anchor="middle" font-size="7" fill="#545B64">Pass ($[0])</text>
 
   <!-- State 2: LoadConfig -->
   <rect x="545" y="140" width="110" height="50" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
   <text x="600" y="160" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">LoadConfig</text>
   <text x="600" y="174" text-anchor="middle" font-size="7" fill="#545B64">Lambda → SSM</text>
-  <text x="600" y="184" text-anchor="middle" font-size="7" fill="#545B64">9 parameters</text>
+  <text x="600" y="184" text-anchor="middle" font-size="7" fill="#545B64">10 parameters</text>
 
   <!-- State 3: ParseMessage -->
-  <rect x="545" y="220" width="110" height="45" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
-  <text x="600" y="240" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">ParseMessage</text>
-  <text x="600" y="254" text-anchor="middle" font-size="7" fill="#545B64">Lambda: validate JSON</text>
+  <rect x="545" y="215" width="110" height="45" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
+  <text x="600" y="235" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">ParseMessage</text>
+  <text x="600" y="249" text-anchor="middle" font-size="7" fill="#545B64">Lambda: validate JSON</text>
 
   <!-- State 4: UpdateStatusProcessing -->
-  <rect x="545" y="290" width="110" height="45" rx="4" ry="4" fill="#FFFFFF" stroke="#3334B9" stroke-width="1.5"/>
-  <text x="600" y="307" text-anchor="middle" font-size="7" font-weight="bold" fill="#232F3E">UpdateStatus</text>
-  <text x="600" y="319" text-anchor="middle" font-size="7" fill="#545B64">DDB: Processing</text>
-  <text x="600" y="330" text-anchor="middle" font-size="7" fill="#3334B9">SDK integration</text>
+  <rect x="545" y="285" width="110" height="45" rx="4" ry="4" fill="#FFFFFF" stroke="#3334B9" stroke-width="1.5"/>
+  <text x="600" y="302" text-anchor="middle" font-size="7" font-weight="bold" fill="#232F3E">UpdateStatus</text>
+  <text x="600" y="314" text-anchor="middle" font-size="7" fill="#545B64">DDB: Processing</text>
+  <text x="600" y="325" text-anchor="middle" font-size="7" fill="#3334B9">SDK integration</text>
 
   <!-- State 5: ValidateFormat -->
-  <rect x="545" y="360" width="110" height="45" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
-  <text x="600" y="378" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">ValidateFormat</text>
-  <text x="600" y="392" text-anchor="middle" font-size="7" fill="#545B64">Lambda: check ext</text>
+  <rect x="545" y="355" width="110" height="45" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
+  <text x="600" y="373" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">ValidateFormat</text>
+  <text x="600" y="387" text-anchor="middle" font-size="7" fill="#545B64">Lambda: check ext</text>
 
   <!-- State 6: CheckVideoFlag (Choice) -->
-  <polygon points="600,430 645,455 600,480 555,455" fill="#FFFFFF" stroke="#545B64" stroke-width="1.5"/>
-  <text x="600" y="458" text-anchor="middle" font-size="7" font-weight="bold" fill="#232F3E">Choice</text>
+  <polygon points="600,420 645,445 600,470 555,445" fill="#FFFFFF" stroke="#545B64" stroke-width="1.5"/>
+  <text x="600" y="448" text-anchor="middle" font-size="7" font-weight="bold" fill="#232F3E">CheckVideo</text>
 
   <!-- State 7: ExtractAudio (video path) -->
-  <rect x="440" y="500" width="110" height="45" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5" stroke-dasharray="4,2"/>
-  <text x="495" y="518" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">ExtractAudio</text>
-  <text x="495" y="532" text-anchor="middle" font-size="7" fill="#545B64">MediaConvert</text>
-  <text x="495" y="542" text-anchor="middle" font-size="7" fill="#999">(video path)</text>
+  <rect x="430" y="500" width="110" height="45" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <text x="485" y="518" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">ExtractAudio</text>
+  <text x="485" y="532" text-anchor="middle" font-size="7" fill="#545B64">MediaConvert</text>
+  <text x="485" y="542" text-anchor="middle" font-size="7" fill="#999">(video path)</text>
 
-  <!-- State 8: ChunkAudio -->
-  <rect x="700" y="430" width="120" height="50" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="2"/>
-  <text x="760" y="450" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">ChunkAudio</text>
-  <text x="760" y="464" text-anchor="middle" font-size="7" fill="#545B64">Lambda: pydub+ffmpeg</text>
-  <text x="760" y="476" text-anchor="middle" font-size="7" fill="#545B64">Split → S3 upload</text>
+  <!-- State 8: TranscribeAudio (NEW) -->
+  <rect x="680" y="430" width="120" height="50" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="2"/>
+  <text x="740" y="450" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">TranscribeAudio</text>
+  <text x="740" y="464" text-anchor="middle" font-size="7" fill="#545B64">Lambda → Transcribe</text>
+  <text x="740" y="476" text-anchor="middle" font-size="7" fill="#545B64">Poll for completion</text>
 
-  <!-- State 9: CreateEmbeddings (Map) -->
-  <rect x="850" y="430" width="130" height="55" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="2"/>
-  <rect x="855" y="435" width="120" height="45" rx="3" ry="3" fill="none" stroke="#ED7100" stroke-width="0.5" stroke-dasharray="2,2"/>
-  <text x="915" y="452" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">CreateEmbeddings</text>
-  <text x="915" y="465" text-anchor="middle" font-size="7" fill="#545B64">Map (concurrency=10)</text>
-  <text x="915" y="478" text-anchor="middle" font-size="7" fill="#545B64">Nova Embeddings per chunk</text>
+  <!-- State 9: CheckEmbeddingsEnabled (Choice) (NEW) -->
+  <polygon points="860,445 900,465 860,485 820,465" fill="#FFFFFF" stroke="#545B64" stroke-width="1.5"/>
+  <text x="860" y="462" text-anchor="middle" font-size="6" font-weight="bold" fill="#232F3E">Embed?</text>
+  <text x="860" y="472" text-anchor="middle" font-size="6" fill="#545B64">enabled</text>
 
-  <!-- State 10: StoreVectors -->
-  <rect x="1010" y="430" width="110" height="50" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
-  <text x="1065" y="450" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">StoreVectors</text>
-  <text x="1065" y="464" text-anchor="middle" font-size="7" fill="#545B64">Lambda → S3</text>
-  <text x="1065" y="476" text-anchor="middle" font-size="7" fill="#545B64">JSON embeddings</text>
+  <!-- State 10: SetDefaultsForSkippedEmbeddings (skip path) -->
+  <rect x="810" y="510" width="110" height="40" rx="4" ry="4" fill="#FFFFFF" stroke="#545B64" stroke-width="1" stroke-dasharray="4,2"/>
+  <text x="865" y="528" text-anchor="middle" font-size="7" font-weight="bold" fill="#232F3E">SetDefaults</text>
+  <text x="865" y="540" text-anchor="middle" font-size="6" fill="#545B64">Skip embeddings</text>
 
-  <!-- State 11: PublishHandoff -->
-  <rect x="1150" y="430" width="110" height="50" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
-  <text x="1205" y="450" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">PublishHandoff</text>
-  <text x="1205" y="464" text-anchor="middle" font-size="7" fill="#545B64">Lambda → SQS FIFO</text>
-  <text x="1205" y="476" text-anchor="middle" font-size="7" fill="#545B64">handoff queue</text>
+  <!-- State 11: ChunkAudio -->
+  <rect x="930" y="430" width="120" height="50" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="2"/>
+  <text x="990" y="450" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">ChunkAudio</text>
+  <text x="990" y="464" text-anchor="middle" font-size="7" fill="#545B64">Lambda: pydub+ffmpeg</text>
+  <text x="990" y="476" text-anchor="middle" font-size="7" fill="#545B64">Split → S3 upload</text>
 
-  <!-- State 12: UpdateStatusCompleted -->
-  <rect x="1150" y="510" width="110" height="45" rx="4" ry="4" fill="#FFFFFF" stroke="#3334B9" stroke-width="1.5"/>
-  <text x="1205" y="528" text-anchor="middle" font-size="7" font-weight="bold" fill="#232F3E">UpdateStatus</text>
-  <text x="1205" y="540" text-anchor="middle" font-size="7" fill="#545B64">DDB: Completed</text>
-  <text x="1205" y="551" text-anchor="middle" font-size="7" fill="#3334B9">SDK integration</text>
+  <!-- State 12: CreateEmbeddings (Map) -->
+  <rect x="1070" y="430" width="130" height="55" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="2"/>
+  <rect x="1075" y="435" width="120" height="45" rx="3" ry="3" fill="none" stroke="#ED7100" stroke-width="0.5" stroke-dasharray="2,2"/>
+  <text x="1135" y="452" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">CreateEmbeddings</text>
+  <text x="1135" y="465" text-anchor="middle" font-size="7" fill="#545B64">Map (concurrency=10)</text>
+  <text x="1135" y="478" text-anchor="middle" font-size="7" fill="#545B64">Nova Embeddings per chunk</text>
+
+  <!-- State 13: StoreVectors -->
+  <rect x="1220" y="430" width="110" height="50" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
+  <text x="1275" y="450" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">StoreVectors</text>
+  <text x="1275" y="464" text-anchor="middle" font-size="7" fill="#545B64">Lambda → S3</text>
+  <text x="1275" y="476" text-anchor="middle" font-size="7" fill="#545B64">JSON embeddings</text>
+
+  <!-- State 14: PublishHandoff -->
+  <rect x="1220" y="520" width="110" height="50" rx="4" ry="4" fill="#FFFFFF" stroke="#ED7100" stroke-width="1.5"/>
+  <text x="1275" y="540" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">PublishHandoff</text>
+  <text x="1275" y="554" text-anchor="middle" font-size="7" fill="#545B64">Lambda → SQS FIFO</text>
+  <text x="1275" y="566" text-anchor="middle" font-size="7" fill="#545B64">+ trigger eval launcher</text>
+
+  <!-- State 15: UpdateStatusCompleted -->
+  <rect x="1220" y="600" width="110" height="45" rx="4" ry="4" fill="#FFFFFF" stroke="#3334B9" stroke-width="1.5"/>
+  <text x="1275" y="618" text-anchor="middle" font-size="7" font-weight="bold" fill="#232F3E">UpdateStatus</text>
+  <text x="1275" y="630" text-anchor="middle" font-size="7" fill="#545B64">DDB: Completed</text>
+  <text x="1275" y="641" text-anchor="middle" font-size="7" fill="#3334B9">SDK integration</text>
 
   <!-- State: HandleFailure -->
-  <rect x="700" y="550" width="120" height="50" rx="4" ry="4" fill="#FFF0F0" stroke="#DD344C" stroke-width="2"/>
-  <text x="760" y="570" text-anchor="middle" font-size="8" font-weight="bold" fill="#DD344C">HandleFailure</text>
-  <text x="760" y="584" text-anchor="middle" font-size="7" fill="#545B64">DDB + SNS + DLQ</text>
+  <rect x="680" y="600" width="120" height="50" rx="4" ry="4" fill="#FFF0F0" stroke="#DD344C" stroke-width="2"/>
+  <text x="740" y="620" text-anchor="middle" font-size="8" font-weight="bold" fill="#DD344C">HandleFailure</text>
+  <text x="740" y="634" text-anchor="middle" font-size="7" fill="#545B64">DDB + SNS + DLQ</text>
 
   <!-- ==================== EXTERNAL SERVICES ==================== -->
 
@@ -127,21 +146,28 @@
   <rect x="420" y="130" width="100" height="50" rx="4" ry="4" fill="#FFFFFF" stroke="#3334B9" stroke-width="1.5"/>
   <text x="470" y="150" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">SSM</text>
   <text x="470" y="163" text-anchor="middle" font-size="7" fill="#545B64">Parameter Store</text>
-  <text x="470" y="175" text-anchor="middle" font-size="7" fill="#545B64">9 config params</text>
+  <text x="470" y="175" text-anchor="middle" font-size="7" fill="#545B64">10 config params</text>
+
+  <!-- Amazon Transcribe -->
+  <rect x="680" y="350" width="120" height="50" rx="4" ry="4" fill="#FFFFFF" stroke="#0972D3" stroke-width="2"/>
+  <rect x="680" y="350" width="120" height="18" rx="4" ry="0" fill="#0972D3"/>
+  <text x="740" y="363" text-anchor="middle" font-size="8" fill="#FFFFFF" font-weight="bold">Amazon Transcribe</text>
+  <text x="740" y="383" text-anchor="middle" font-size="8" fill="#232F3E">Speech-to-Text</text>
+  <text x="740" y="395" text-anchor="middle" font-size="7" fill="#545B64">Auto language detect</text>
 
   <!-- Amazon Bedrock -->
-  <rect x="850" y="350" width="130" height="50" rx="4" ry="4" fill="#FFFFFF" stroke="#0972D3" stroke-width="2"/>
-  <rect x="850" y="350" width="130" height="18" rx="4" ry="0" fill="#0972D3"/>
-  <text x="915" y="363" text-anchor="middle" font-size="8" fill="#FFFFFF" font-weight="bold">Amazon Bedrock</text>
-  <text x="915" y="383" text-anchor="middle" font-size="8" fill="#232F3E">Nova Multimodal</text>
-  <text x="915" y="395" text-anchor="middle" font-size="7" fill="#545B64">Embeddings v1:0</text>
+  <rect x="1070" y="350" width="130" height="50" rx="4" ry="4" fill="#FFFFFF" stroke="#0972D3" stroke-width="2"/>
+  <rect x="1070" y="350" width="130" height="18" rx="4" ry="0" fill="#0972D3"/>
+  <text x="1135" y="363" text-anchor="middle" font-size="8" fill="#FFFFFF" font-weight="bold">Amazon Bedrock</text>
+  <text x="1135" y="383" text-anchor="middle" font-size="8" fill="#232F3E">Nova Multimodal</text>
+  <text x="1135" y="395" text-anchor="middle" font-size="7" fill="#545B64">Embeddings v2</text>
 
   <!-- S3 (uploads + vectors) -->
-  <rect x="700" y="350" width="120" height="55" rx="4" ry="4" fill="#FFFFFF" stroke="#3F8624" stroke-width="2"/>
-  <rect x="700" y="350" width="120" height="18" rx="4" ry="0" fill="#3F8624"/>
-  <text x="760" y="363" text-anchor="middle" font-size="8" fill="#FFFFFF" font-weight="bold">Amazon S3</text>
-  <text x="760" y="382" text-anchor="middle" font-size="8" fill="#232F3E">uploads bucket</text>
-  <text x="760" y="395" text-anchor="middle" font-size="7" fill="#545B64">chunks + vectors</text>
+  <rect x="930" y="350" width="120" height="55" rx="4" ry="4" fill="#FFFFFF" stroke="#3F8624" stroke-width="2"/>
+  <rect x="930" y="350" width="120" height="18" rx="4" ry="0" fill="#3F8624"/>
+  <text x="990" y="363" text-anchor="middle" font-size="8" fill="#FFFFFF" font-weight="bold">Amazon S3</text>
+  <text x="990" y="382" text-anchor="middle" font-size="8" fill="#232F3E">uploads bucket</text>
+  <text x="990" y="395" text-anchor="middle" font-size="7" fill="#545B64">chunks + vectors + transcripts</text>
 
   <!-- DynamoDB -->
   <rect x="50" y="420" width="120" height="55" rx="4" ry="4" fill="#FFFFFF" stroke="#3334B9" stroke-width="2"/>
@@ -151,141 +177,158 @@
   <text x="110" y="466" text-anchor="middle" font-size="7" fill="#545B64">processing_status</text>
 
   <!-- SQS Handoff Queue -->
-  <rect x="1150" y="640" width="140" height="65" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="2"/>
-  <rect x="1150" y="640" width="140" height="20" rx="6" ry="0" fill="#FF4F8B"/>
-  <text x="1220" y="654" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon SQS (FIFO)</text>
-  <text x="1220" y="676" text-anchor="middle" font-size="9" fill="#232F3E">preparation-handoff</text>
-  <text x="1220" y="692" text-anchor="middle" font-size="8" fill="#545B64">→ Agentic Processing</text>
+  <rect x="1220" y="740" width="140" height="65" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="2"/>
+  <rect x="1220" y="740" width="140" height="20" rx="6" ry="0" fill="#FF4F8B"/>
+  <text x="1290" y="754" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon SQS (FIFO)</text>
+  <text x="1290" y="776" text-anchor="middle" font-size="9" fill="#232F3E">preparation-handoff</text>
+  <text x="1290" y="792" text-anchor="middle" font-size="8" fill="#545B64">→ Agentic Evaluation</text>
 
   <!-- SNS Error Topic -->
-  <rect x="550" y="640" width="130" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="2"/>
-  <rect x="550" y="640" width="130" height="20" rx="6" ry="0" fill="#FF4F8B"/>
-  <text x="615" y="654" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon SNS</text>
-  <text x="615" y="676" text-anchor="middle" font-size="9" fill="#232F3E">preparation-errors</text>
-  <text x="615" y="690" text-anchor="middle" font-size="8" fill="#545B64">Email notifications</text>
+  <rect x="550" y="730" width="130" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="2"/>
+  <rect x="550" y="730" width="130" height="20" rx="6" ry="0" fill="#FF4F8B"/>
+  <text x="615" y="744" text-anchor="middle" font-size="9" fill="#FFFFFF" font-weight="bold">Amazon SNS</text>
+  <text x="615" y="766" text-anchor="middle" font-size="9" fill="#232F3E">preparation-errors</text>
+  <text x="615" y="780" text-anchor="middle" font-size="8" fill="#545B64">Email notifications</text>
 
   <!-- DLQ Input -->
-  <rect x="750" y="640" width="120" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="1.5"/>
-  <text x="810" y="663" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">SQS DLQ</text>
-  <text x="810" y="678" text-anchor="middle" font-size="8" fill="#545B64">preparation-dlq-input</text>
-  <text x="810" y="691" text-anchor="middle" font-size="7" fill="#545B64">Failed messages</text>
+  <rect x="750" y="730" width="120" height="55" rx="6" ry="6" fill="#FFFFFF" stroke="#FF4F8B" stroke-width="1.5"/>
+  <text x="810" y="753" text-anchor="middle" font-size="8" font-weight="bold" fill="#232F3E">SQS DLQ</text>
+  <text x="810" y="768" text-anchor="middle" font-size="8" fill="#545B64">preparation-dlq-input</text>
+  <text x="810" y="781" text-anchor="middle" font-size="7" fill="#545B64">Failed messages</text>
 
   <!-- ==================== FLOW ARROWS ==================== -->
 
   <!-- SQS Input → EventBridge Pipe -->
-  <line x1="190" y1="317" x2="225" y2="317" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <line x1="190" y1="337" x2="225" y2="337" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
 
   <!-- EventBridge Pipe → Step Functions (UnwrapInput) -->
-  <line x1="360" y1="317" x2="415" y2="307" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <line x1="360" y1="337" x2="415" y2="327" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
 
   <!-- UnwrapInput → LoadConfig -->
-  <path d="M 520 295 Q 540 270, 545 170" fill="none" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+  <path d="M 520 315 Q 540 270, 545 170" fill="none" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
 
   <!-- LoadConfig → SSM -->
   <line x1="545" y1="160" x2="520" y2="158" stroke="#545B64" stroke-width="1" marker-end="url(#arrowhead)"/>
 
   <!-- LoadConfig → ParseMessage -->
-  <line x1="600" y1="190" x2="600" y2="215" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+  <line x1="600" y1="190" x2="600" y2="210" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
 
   <!-- ParseMessage → UpdateStatus -->
-  <line x1="600" y1="265" x2="600" y2="285" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+  <line x1="600" y1="260" x2="600" y2="280" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
 
   <!-- UpdateStatus → DynamoDB -->
-  <path d="M 545 312 Q 300 350, 170 440" fill="none" stroke="#545B64" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+  <path d="M 545 307 Q 300 350, 170 440" fill="none" stroke="#545B64" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
 
   <!-- UpdateStatus → ValidateFormat -->
-  <line x1="600" y1="335" x2="600" y2="355" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+  <line x1="600" y1="330" x2="600" y2="350" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
 
-  <!-- ValidateFormat → Choice -->
-  <line x1="600" y1="405" x2="600" y2="430" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+  <!-- ValidateFormat → CheckVideoFlag -->
+  <line x1="600" y1="400" x2="600" y2="420" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
 
-  <!-- Choice → ChunkAudio (embed path) -->
-  <line x1="645" y1="455" x2="695" y2="455" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-  <text x="670" y="448" text-anchor="middle" font-size="7" fill="#3F8624">embed</text>
+  <!-- CheckVideoFlag → TranscribeAudio (embed path) -->
+  <line x1="645" y1="445" x2="675" y2="445" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <text x="660" y="438" text-anchor="middle" font-size="7" fill="#3F8624">embed</text>
 
-  <!-- Choice → ExtractAudio (video path) -->
-  <line x1="555" y1="455" x2="495" y2="495" stroke="#545B64" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
-  <text x="510" y="478" text-anchor="middle" font-size="7" fill="#545B64">extract_audio</text>
+  <!-- CheckVideoFlag → ExtractAudio (video path) -->
+  <line x1="555" y1="445" x2="485" y2="495" stroke="#545B64" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+  <text x="505" y="472" text-anchor="middle" font-size="7" fill="#545B64">extract_audio</text>
 
-  <!-- Choice → HandleFailure (fail) -->
-  <line x1="600" y1="480" x2="700" y2="565" stroke="#DD344C" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead-red)"/>
-  <text x="635" y="530" text-anchor="middle" font-size="7" fill="#DD344C">fail</text>
+  <!-- CheckVideoFlag → HandleFailure (fail) -->
+  <line x1="600" y1="470" x2="680" y2="610" stroke="#DD344C" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead-red)"/>
+  <text x="625" y="545" text-anchor="middle" font-size="7" fill="#DD344C">fail</text>
 
-  <!-- ExtractAudio → ChunkAudio -->
-  <path d="M 550 522 Q 630 510, 700 455" fill="none" stroke="#545B64" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+  <!-- ExtractAudio → TranscribeAudio -->
+  <path d="M 540 522 Q 620 500, 680 455" fill="none" stroke="#545B64" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+
+  <!-- TranscribeAudio → Transcribe service -->
+  <line x1="740" y1="430" x2="740" y2="405" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+
+  <!-- TranscribeAudio → CheckEmbeddingsEnabled -->
+  <line x1="800" y1="455" x2="820" y2="462" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+  <!-- CheckEmbeddingsEnabled → ChunkAudio (enabled=true) -->
+  <line x1="900" y1="465" x2="925" y2="455" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <text x="912" y="452" text-anchor="middle" font-size="6" fill="#3F8624">true</text>
+
+  <!-- CheckEmbeddingsEnabled → SetDefaults (enabled=false, skip path) -->
+  <line x1="860" y1="485" x2="860" y2="505" stroke="#545B64" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+  <text x="875" y="498" font-size="6" fill="#545B64">false</text>
+
+  <!-- SetDefaults → PublishHandoff (skip embeddings path) -->
+  <path d="M 920 530 Q 1100 560, 1220 545" fill="none" stroke="#545B64" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
 
   <!-- ChunkAudio → S3 -->
-  <line x1="760" y1="430" x2="760" y2="410" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+  <line x1="990" y1="430" x2="990" y2="410" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
 
   <!-- ChunkAudio → CreateEmbeddings -->
-  <line x1="820" y1="455" x2="845" y2="455" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <line x1="1050" y1="455" x2="1065" y2="455" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
 
   <!-- CreateEmbeddings → Bedrock -->
-  <line x1="915" y1="430" x2="915" y2="405" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+  <line x1="1135" y1="430" x2="1135" y2="405" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
 
   <!-- CreateEmbeddings → StoreVectors -->
-  <line x1="980" y1="455" x2="1005" y2="455" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <line x1="1200" y1="455" x2="1215" y2="455" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
 
   <!-- StoreVectors → S3 -->
-  <path d="M 1065 430 Q 1065 395, 820 385" fill="none" stroke="#545B64" stroke-width="1" marker-end="url(#arrowhead)"/>
+  <path d="M 1275 430 Q 1275 395, 1050 385" fill="none" stroke="#545B64" stroke-width="1" marker-end="url(#arrowhead)"/>
 
   <!-- StoreVectors → PublishHandoff -->
-  <line x1="1120" y1="455" x2="1145" y2="455" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <line x1="1275" y1="480" x2="1275" y2="515" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
 
   <!-- PublishHandoff → UpdateStatusCompleted -->
-  <line x1="1205" y1="480" x2="1205" y2="505" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+  <line x1="1275" y1="570" x2="1275" y2="595" stroke="#545B64" stroke-width="1.2" marker-end="url(#arrowhead)"/>
 
   <!-- PublishHandoff → SQS Handoff -->
-  <line x1="1220" y1="480" x2="1220" y2="635" stroke="#FF9900" stroke-width="1.5" marker-end="url(#arrowhead-orange)"/>
+  <line x1="1290" y1="570" x2="1290" y2="735" stroke="#FF9900" stroke-width="1.5" marker-end="url(#arrowhead-orange)"/>
 
   <!-- UpdateStatusCompleted → DynamoDB -->
-  <path d="M 1150 535 Q 400 600, 170 470" fill="none" stroke="#545B64" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+  <path d="M 1220 625 Q 400 690, 170 470" fill="none" stroke="#545B64" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
 
   <!-- HandleFailure → SNS -->
-  <line x1="730" y1="600" x2="680" y2="640" stroke="#DD344C" stroke-width="1.2" marker-end="url(#arrowhead-red)"/>
+  <line x1="710" y1="650" x2="660" y2="725" stroke="#DD344C" stroke-width="1.2" marker-end="url(#arrowhead-red)"/>
 
   <!-- HandleFailure → DLQ -->
-  <line x1="790" y1="600" x2="810" y2="635" stroke="#DD344C" stroke-width="1.2" marker-end="url(#arrowhead-red)"/>
+  <line x1="770" y1="650" x2="810" y2="725" stroke="#DD344C" stroke-width="1.2" marker-end="url(#arrowhead-red)"/>
 
   <!-- HandleFailure → DynamoDB -->
-  <path d="M 700 575 Q 400 580, 170 460" fill="none" stroke="#DD344C" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead-red)"/>
+  <path d="M 680 625 Q 400 640, 170 460" fill="none" stroke="#DD344C" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead-red)"/>
 
   <!-- ==================== LEGEND ==================== -->
-  <rect x="50" y="720" width="420" height="90" rx="6" ry="6" fill="#F9FAFB" stroke="#D5DBDB" stroke-width="1"/>
-  <text x="70" y="740" font-size="10" font-weight="bold" fill="#232F3E">Legend</text>
+  <rect x="50" y="820" width="420" height="90" rx="6" ry="6" fill="#F9FAFB" stroke="#D5DBDB" stroke-width="1"/>
+  <text x="70" y="840" font-size="10" font-weight="bold" fill="#232F3E">Legend</text>
 
-  <line x1="70" y1="758" x2="110" y2="758" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-  <text x="120" y="762" font-size="9" fill="#545B64">Happy path data flow</text>
+  <line x1="70" y1="858" x2="110" y2="858" stroke="#545B64" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <text x="120" y="862" font-size="9" fill="#545B64">Happy path data flow</text>
 
-  <line x1="70" y1="778" x2="110" y2="778" stroke="#FF9900" stroke-width="1.5" marker-end="url(#arrowhead-orange)"/>
-  <text x="120" y="782" font-size="9" fill="#FF9900">Event/message publish</text>
+  <line x1="70" y1="878" x2="110" y2="878" stroke="#FF9900" stroke-width="1.5" marker-end="url(#arrowhead-orange)"/>
+  <text x="120" y="882" font-size="9" fill="#FF9900">Event/message publish</text>
 
-  <line x1="70" y1="798" x2="110" y2="798" stroke="#DD344C" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead-red)"/>
-  <text x="120" y="802" font-size="9" fill="#DD344C">Error / failure path</text>
+  <line x1="70" y1="898" x2="110" y2="898" stroke="#DD344C" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowhead-red)"/>
+  <text x="120" y="902" font-size="9" fill="#DD344C">Error / failure path</text>
 
-  <rect x="270" y="750" width="12" height="12" fill="#ED7100"/>
-  <text x="288" y="761" font-size="9" fill="#545B64">Lambda</text>
+  <rect x="270" y="850" width="12" height="12" fill="#ED7100"/>
+  <text x="288" y="861" font-size="9" fill="#545B64">Lambda</text>
 
-  <rect x="270" y="767" width="12" height="12" fill="#3F8624"/>
-  <text x="288" y="778" font-size="9" fill="#545B64">S3</text>
+  <rect x="270" y="867" width="12" height="12" fill="#3F8624"/>
+  <text x="288" y="878" font-size="9" fill="#545B64">S3</text>
 
-  <rect x="270" y="784" width="12" height="12" fill="#3334B9"/>
-  <text x="288" y="795" font-size="9" fill="#545B64">DynamoDB / SSM</text>
+  <rect x="270" y="884" width="12" height="12" fill="#3334B9"/>
+  <text x="288" y="895" font-size="9" fill="#545B64">DynamoDB / SSM</text>
 
-  <rect x="360" y="750" width="12" height="12" fill="#FF4F8B"/>
-  <text x="378" y="761" font-size="9" fill="#545B64">SQS / SNS</text>
+  <rect x="360" y="850" width="12" height="12" fill="#FF4F8B"/>
+  <text x="378" y="861" font-size="9" fill="#545B64">SQS / SNS</text>
 
-  <rect x="360" y="767" width="12" height="12" fill="#0972D3"/>
-  <text x="378" y="778" font-size="9" fill="#545B64">Bedrock</text>
+  <rect x="360" y="867" width="12" height="12" fill="#0972D3"/>
+  <text x="378" y="878" font-size="9" fill="#545B64">Bedrock / Transcribe</text>
 
-  <rect x="360" y="784" width="12" height="12" fill="#E7157B"/>
-  <text x="378" y="795" font-size="9" fill="#545B64">EventBridge</text>
+  <rect x="360" y="884" width="12" height="12" fill="#E7157B"/>
+  <text x="378" y="895" font-size="9" fill="#545B64">EventBridge</text>
 
   <!-- Flow summary -->
-  <rect x="500" y="720" width="860" height="90" rx="6" ry="6" fill="#F9FAFB" stroke="#D5DBDB" stroke-width="1"/>
-  <text x="520" y="740" font-size="10" font-weight="bold" fill="#232F3E">Happy Path Flow (Audio File)</text>
-  <text x="520" y="758" font-size="9" fill="#545B64">1. SQS message → EventBridge Pipe → Step Functions execution starts</text>
-  <text x="520" y="772" font-size="9" fill="#545B64">2. LoadConfig (SSM) → ParseMessage → UpdateStatus (DDB: Processing) → ValidateFormat → "embed" decision</text>
-  <text x="520" y="786" font-size="9" fill="#545B64">3. ChunkAudio (download, split with ffmpeg, upload chunks to S3) → CreateEmbeddings (Nova Bedrock per chunk)</text>
-  <text x="520" y="800" font-size="9" fill="#545B64">4. StoreVectors (S3 JSON) → PublishHandoff (FIFO SQS) → UpdateStatus (DDB: Completed)</text>
+  <rect x="500" y="820" width="960" height="90" rx="6" ry="6" fill="#F9FAFB" stroke="#D5DBDB" stroke-width="1"/>
+  <text x="520" y="840" font-size="10" font-weight="bold" fill="#232F3E">Happy Path Flow (Audio File, Embeddings Enabled)</text>
+  <text x="520" y="858" font-size="9" fill="#545B64">1. SQS message → EventBridge Pipe → Step Functions execution starts</text>
+  <text x="520" y="872" font-size="9" fill="#545B64">2. LoadConfig (SSM, 10 params) → ParseMessage → UpdateStatus (DDB: Processing) → ValidateFormat → "embed" decision</text>
+  <text x="520" y="886" font-size="9" fill="#545B64">3. TranscribeAudio (Amazon Transcribe) → CheckEmbeddingsEnabled → ChunkAudio (pydub/ffmpeg, S3) → CreateEmbeddings (Nova Bedrock per chunk)</text>
+  <text x="520" y="900" font-size="9" fill="#545B64">4. StoreVectors (S3 JSON) → PublishHandoff (FIFO SQS + trigger eval launcher) → UpdateStatus (DDB: Completed)</text>
 </svg>

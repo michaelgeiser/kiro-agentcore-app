@@ -14,7 +14,7 @@ Stage 1: Upload and Storage
 A single-page web app hosted on CloudFront handles authentication via Cognito and file uploads to S3 through presigned URLs. An API Gateway backed by Lambda functions manages submission records in DynamoDB. When a file lands in S3, an event triggers the next stage.
 
 Stage 2: Preparation Workflow
-An AWS Step Functions state machine orchestrates the preparation pipeline. It validates the file format, chunks the audio into 30-second segments with 5-second overlap, calls Amazon Bedrock (Nova Multimodal Embeddings) to create vector embeddings for each chunk, stores the embeddings as JSON files in S3, and publishes a handoff message to an SQS FIFO queue. This stage typically completes in 1-3 minutes.
+An AWS Step Functions state machine orchestrates the preparation pipeline. It validates the file format, transcribes the audio using Amazon Transcribe (with automatic language detection), and optionally chunks the audio into 30-second segments with 5-second overlap and calls Amazon Bedrock (Nova Multimodal Embeddings v2) to create vector embeddings for each chunk. Embeddings are controlled by a feature flag (`embeddings-enabled`) and stored as JSON files in S3 when enabled. The workflow publishes a handoff message (including the transcript S3 key) to an SQS FIFO queue. This stage typically completes in 1-3 minutes.
 
 Stage 3: Agentic Evaluation
 An ECS Fargate Spot task picks up the handoff message and orchestrates the evaluation. Seven independent evaluation agents (delivery, structure, executive presence, technical communication, audience engagement, pacing, persuasion) each analyze the presentation through their specific lens. Each agent calls Claude Sonnet via Bedrock to perform its assessment. The results are stored in S3 as JSON, then a Report Generator assembles them into a PDF coaching report using ReportLab.
@@ -23,7 +23,7 @@ An ECS Fargate Spot task picks up the handoff message and orchestrates the evalu
 
 Frontend: Static SPA on CloudFront + Cognito authentication
 Backend API: API Gateway + Lambda + DynamoDB
-Preparation: Step Functions + Lambda (9 functions) + SQS + Bedrock Embeddings
+Preparation: Step Functions + Lambda (10 functions) + SQS + Bedrock Embeddings + Amazon Transcribe
 Evaluation: ECS Fargate Spot + Strands Agents SDK + Bedrock Claude Sonnet
 Storage: S3 (uploads, chunks, embeddings, evaluation results, PDF reports)
 Messaging: SQS FIFO queues with dead-letter queues
@@ -82,7 +82,8 @@ Compute:
   AWS Step Functions      — Preparation workflow orchestration (Standard Workflow)
 
 AI/ML:
-  Amazon Bedrock          — Foundation model access (Claude Sonnet 4, Nova Embeddings)
+  Amazon Bedrock          — Foundation model access (Claude Sonnet 4, Nova Embeddings v2)
+  Amazon Transcribe       — Speech-to-text transcription with automatic language detection
 
 Storage:
   Amazon S3               — File uploads, audio chunks, embeddings, evaluation results, PDF reports

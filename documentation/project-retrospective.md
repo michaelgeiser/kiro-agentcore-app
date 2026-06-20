@@ -186,7 +186,7 @@ The property-based testing approach is particularly noteworthy. Rather than test
 |-----------|-----------------|
 | **Step Functions (Standard)** | Long-running orchestration (embeddings may take >5 min), built-in retry with backoff/jitter, execution history, native error handling |
 | **EventBridge Pipes** | Zero-code SQS → Step Functions integration, no Lambda trigger needed |
-| **Lambda (9 functions)** | Each function does one thing, independently scalable, millisecond billing |
+| **Lambda (10 functions)** | Each function does one thing, independently scalable, millisecond billing |
 | **Bedrock (Nova Embeddings)** | Serverless AI inference, pay-per-request, no model hosting |
 | **MediaConvert** | Serverless transcoding, pay-per-minute of output, no FFmpeg servers |
 | **SSM Parameter Store** | Runtime reconfiguration without redeployment, free tier covers it |
@@ -306,7 +306,7 @@ The collaboration followed a structured Agentic Development Life Cycle:
 
 5. **I made decisions at branch points.** Architecture choices (serverless vs. containers, S3 vs. OpenSearch for vectors, Standard vs. Express workflow), feature scope (video disabled for MVP), and naming conventions.
 
-6. **Kiro handled the volume.** 203 tests, 9 Lambda functions, a 12-state Step Functions ASL definition, 9 SSM parameters, complete IAM policies with least-privilege, CDK infrastructure, CloudFormation templates, CI/CD pipelines, and installation documentation.
+6. **Kiro handled the volume.** 203 tests, 10 Lambda functions, a 15-state Step Functions ASL definition, 10 SSM parameters, complete IAM policies with least-privilege, CDK infrastructure, CloudFormation templates, CI/CD pipelines, and installation documentation.
 
 ### What Made This Fast
 
@@ -373,11 +373,11 @@ Every service in PresCoach was chosen because it charges **nothing when idle**. 
 
 ### SSM Parameter Store: Free Configuration Management
 
-The Preparation Workflow reads 9 configuration parameters from SSM Parameter Store at the start of every execution. This is a deliberate architectural choice: it enables runtime reconfiguration (swap embedding models, change chunk sizes, toggle features) without redeploying code.
+The Preparation Workflow reads 10 configuration parameters from SSM Parameter Store at the start of every execution. This is a deliberate architectural choice: it enables runtime reconfiguration (swap embedding models, change chunk sizes, toggle features) without redeploying code.
 
 **Cost:** $0. Standard parameters are free for both storage and API calls at standard throughput (up to 40 transactions per second). You would need 40+ simultaneous workflow executions starting in the same second to approach the throughput limit — at which point higher throughput mode costs $0.05 per 10,000 interactions.
 
-Even at 1 million workflow executions per month, SSM reads cost nothing at standard throughput. The 9 parameters are fetched via a single `GetParametersByPath` call (not 9 individual calls), making this extremely efficient.
+Even at 1 million workflow executions per month, SSM reads cost nothing at standard throughput. The 10 parameters are fetched via a single `GetParametersByPath` call (not 10 individual calls), making this extremely efficient.
 
 ### S3 as Vector Store: The MVP Decision
 

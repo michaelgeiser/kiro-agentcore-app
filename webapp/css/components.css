@@ -436,7 +436,7 @@
    Contrast: #202124 on #f1f3f4 = 14.8:1 */
 .status-badge--pending {
   background-color: #f1f3f4;
-  color: var(--color-text);
+  color: #202124;
 }
 
 /* Processing — dark blue on light blue
@@ -458,6 +458,20 @@
 .status-badge--failed {
   background-color: #fce8e6;
   color: #a50e0e;
+}
+
+/* Evaluating — dark purple on light purple
+   Contrast: #5e35b1 on #ede7f6 = 5.6:1 */
+.status-badge--evaluating {
+  background-color: #ede7f6;
+  color: #5e35b1;
+}
+
+/* Report_Generating — dark teal on light teal
+   Contrast: #00695c on #e0f2f1 = 5.2:1 */
+.status-badge--report_generating {
+  background-color: #e0f2f1;
+  color: #00695c;
 }
 
 /* ==========================================================================

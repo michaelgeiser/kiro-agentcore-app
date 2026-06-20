@@ -7,6 +7,8 @@ from pydantic import BaseModel
 class ProcessingStatus(str, Enum):
     PENDING = "Pending"
     PROCESSING = "Processing"
+    EVALUATING = "Evaluating"
+    REPORT_GENERATING = "Report_Generating"
     COMPLETED = "Completed"
     FAILED = "Failed"
 
