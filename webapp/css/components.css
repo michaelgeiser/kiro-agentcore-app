@@ -484,10 +484,10 @@
 /* Inline processing indicator in card header */
 .processing-indicator {
   font-family: var(--font-body);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-md);
   font-weight: 500;
   flex-shrink: 0;
-  animation: processing-color-cycle 4s linear infinite;
+  animation: processing-color-cycle 6s linear infinite;
 }
 
 @keyframes processing-color-cycle {
