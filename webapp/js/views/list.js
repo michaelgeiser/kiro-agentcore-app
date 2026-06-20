@@ -67,16 +67,16 @@ export function renderSubmissionCard(submission) {
   // Card header: title + status badge (with optional processing indicator)
   const titleEl = createElement('h3', { className: 'card-title', textContent: submission.title });
 
-  // Processing indicator shown inline when evaluation is in progress
-  const evaluationStates = ['Evaluating', 'Report_Generating'];
+  // Processing indicator shown inline during active processing/evaluation
+  const activeProcessingStates = ['Processing', 'Evaluating', 'Report_Generating'];
   let processingIndicator = null;
-  if (evaluationStates.includes(submission.status)) {
-    const loadingImg = createElement('img', {
-      src: 'assets/loading.gif',
-      alt: 'Evaluating...',
+  if (activeProcessingStates.includes(submission.status)) {
+    const processingText = createElement('span', {
       className: 'processing-indicator',
+      textContent: 'Processing...',
+      'aria-label': 'Processing in progress',
     });
-    processingIndicator = loadingImg;
+    processingIndicator = processingText;
   }
 
   const statusBadge = createElement('span', {

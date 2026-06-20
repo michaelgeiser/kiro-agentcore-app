@@ -483,9 +483,19 @@
 
 /* Inline processing indicator in card header */
 .processing-indicator {
-  width: 24px;
-  height: 24px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
   flex-shrink: 0;
+  animation: processing-color-cycle 4s linear infinite;
+}
+
+@keyframes processing-color-cycle {
+  0%   { color: #FFFFFF; }
+  25%  { color: #73B7FF; }
+  50%  { color: #1E88E5; }
+  75%  { color: #0B3D91; }
+  100% { color: #FFFFFF; }
 }
 
 /* ==========================================================================
