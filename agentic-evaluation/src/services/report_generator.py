@@ -470,6 +470,11 @@ class ReportGenerator:
         try:
             from strands import Agent
 
+            logger.info(
+                "Generating LLM executive summary narrative using model=%s",
+                _REPORT_MODEL_ID,
+            )
+
             # Build structured data for the LLM
             dimension_data = []
             for r in results:
@@ -522,18 +527,27 @@ class ReportGenerator:
             narrative = str(response).strip()
 
             if len(narrative) < 50:
-                logger.warning(
-                    "Executive summary narrative too short (%d chars), using fallback",
+                logger.error(
+                    "Executive summary narrative too short (%d chars). "
+                    "Response was: %s. Using fallback.",
                     len(narrative),
+                    narrative[:200],
                 )
                 return None
 
+            logger.info(
+                "LLM executive summary generated successfully (%d chars)",
+                len(narrative),
+            )
             return narrative
 
         except Exception as exc:
-            logger.warning(
-                "Failed to generate LLM executive summary: %s. Using fallback.",
+            logger.error(
+                "Failed to generate LLM executive summary: %s. "
+                "Model=%s. Using fallback summary.",
                 exc,
+                _REPORT_MODEL_ID,
+                exc_info=True,
             )
             return None
 
@@ -544,9 +558,11 @@ class ReportGenerator:
         body_style: ParagraphStyle,
         bullet_style: ParagraphStyle,
     ) -> list[Any]:
-        """Build a basic fallback executive summary without LLM.
+        """Build a narrative fallback executive summary without LLM.
 
-        Used when the LLM narrative generation fails.
+        Produces a coaching-style narrative summary programmatically when
+        the LLM call fails. Follows the same structure: diagnosis, score
+        interpretation, strengths narrative, top improvements, next target.
 
         Args:
             results: All evaluation results.
@@ -558,27 +574,83 @@ class ReportGenerator:
             List of flowable elements.
         """
         elements: list[Any] = []
-        dimension_count = len(results)
 
-        elements.append(
-            Paragraph(
-                f"This report evaluates <b>{dimension_count}</b> "
-                f"dimension{'s' if dimension_count != 1 else ''} with an "
-                f"overall average score of <b>{avg_score:.1f}/10.0</b>.",
-                body_style,
-            )
+        # Sort dimensions by score for identifying strengths and weaknesses
+        sorted_results = sorted(results, key=lambda r: r.score, reverse=True)
+        top_dims = sorted_results[:3]
+        bottom_dims = sorted_results[-3:] if len(sorted_results) >= 3 else sorted_results
+
+        # Score interpretation
+        if avg_score >= 8.0:
+            interpretation = "strong and polished"
+        elif avg_score >= 7.0:
+            interpretation = "solid with room to sharpen impact"
+        elif avg_score >= 6.0:
+            interpretation = "competent but not yet commanding"
+        elif avg_score >= 5.0:
+            interpretation = "technically adequate but lacking audience impact"
+        elif avg_score >= 4.0:
+            interpretation = "showing potential but needing focused development"
+        else:
+            interpretation = "at an early stage requiring foundational work"
+
+        # Paragraph 1: Diagnosis and score
+        top_strength_names = [_get_dimension_display_name(r.dimension) for r in top_dims[:2]]
+        bottom_weakness_names = [
+            _get_dimension_display_name(r.dimension)
+            for r in bottom_dims
+            if r.score < avg_score
+        ][:2]
+
+        diagnosis = (
+            f"With an overall score of {avg_score:.1f}/10.0, this presentation is "
+            f"{interpretation}."
         )
+        if top_strength_names and bottom_weakness_names:
+            diagnosis += (
+                f" The strongest areas are {' and '.join(top_strength_names)}, "
+                f"while {' and '.join(bottom_weakness_names)} "
+                f"represent the clearest opportunities for growth."
+            )
+        elements.append(Paragraph(diagnosis, body_style))
         elements.append(Spacer(1, 0.08 * inch))
 
-        # Per-dimension scores
-        if results:
-            score_lines = []
-            for r in results:
-                display_name = _get_dimension_display_name(r.dimension)
-                score_lines.append(f"{display_name}: <b>{r.score:.1f}</b>/10.0")
-            dimension_summary = " &nbsp;|&nbsp; ".join(score_lines)
-            elements.append(Paragraph(dimension_summary, body_style))
-            elements.append(Spacer(1, 0.1 * inch))
+        # Paragraph 2: Strengths as narrative
+        all_strengths: list[str] = []
+        for r in top_dims:
+            all_strengths.extend(r.strengths[:2])
+        if all_strengths:
+            strengths_text = (
+                f"The presentation's core strengths center on "
+                f"{', '.join(all_strengths[:3]).lower()}"
+            )
+            if len(all_strengths) > 3:
+                strengths_text += f", and {all_strengths[3].lower()}"
+            strengths_text += (
+                ". These create a foundation to build on as other areas develop."
+            )
+            elements.append(Paragraph(strengths_text, body_style))
+            elements.append(Spacer(1, 0.08 * inch))
+
+        # Paragraph 3: Highest-leverage improvements + next target
+        improvement_dims = [
+            r for r in sorted_results if r.score < avg_score and r.improvements
+        ]
+        if improvement_dims:
+            top_improvements = []
+            for r in improvement_dims[:3]:
+                if r.improvements:
+                    top_improvements.append(r.improvements[0].lower())
+
+            if top_improvements:
+                improvements_text = (
+                    f"The highest-leverage improvements are: "
+                    f"{'; '.join(top_improvements)}. "
+                    f"For the next presentation, focus on addressing these areas "
+                    f"specifically, as they cut across multiple dimensions and "
+                    f"would have the greatest impact on overall effectiveness."
+                )
+                elements.append(Paragraph(improvements_text, body_style))
 
         return elements
 
@@ -673,8 +745,8 @@ class ReportGenerator:
     ) -> list[Any]:
         """Build the Overall Coaching Assessment section.
 
-        Aggregates strengths and improvements across all dimensions to
-        provide a holistic coaching perspective.
+        Provides a narrative coaching perspective that synthesizes findings
+        across all dimensions into actionable guidance.
 
         Args:
             results: All evaluation results.
@@ -690,13 +762,6 @@ class ReportGenerator:
             Paragraph("Overall Coaching Assessment", heading_style)
         )
 
-        # Aggregate all strengths and improvements
-        all_strengths: list[str] = []
-        all_improvements: list[str] = []
-        for result in results:
-            all_strengths.extend(result.strengths)
-            all_improvements.extend(result.improvements)
-
         if results:
             avg_score = sum(r.score for r in results) / len(results)
         else:
@@ -705,52 +770,98 @@ class ReportGenerator:
         # Overall assessment narrative
         if avg_score >= 8.0:
             assessment = (
-                "Excellent presentation overall. The speaker demonstrates "
-                "strong command across multiple dimensions. Focus on refining "
-                "the few areas noted below to achieve mastery."
+                "This is an excellent presentation that demonstrates strong command "
+                "across multiple dimensions. The presenter has a solid foundation "
+                "and should focus on refining the specific areas noted in the detailed "
+                "feedback to move from very good to exceptional. At this level, small "
+                "adjustments in the weakest dimensions can create outsized impact."
             )
         elif avg_score >= 6.0:
             assessment = (
-                "Good presentation with solid fundamentals. There are clear "
-                "strengths to build on, along with specific areas where "
-                "targeted practice will yield significant improvement."
+                "This presentation shows solid fundamentals and clear strengths to "
+                "build on. The gap between current performance and high impact is not "
+                "about fixing major deficiencies — it is about sharpening specific "
+                "skills that multiply the effectiveness of what already works well. "
+                "The detailed feedback identifies exactly where targeted practice "
+                "will yield the most improvement."
             )
         elif avg_score >= 4.0:
             assessment = (
-                "The presentation shows promise but has several areas that "
-                "would benefit from focused development. Prioritize the "
-                "improvement areas listed below for the greatest impact."
+                "This presentation shows promise and has identifiable strengths, but "
+                "several dimensions need focused development to achieve the desired "
+                "impact. The key is prioritization — not everything needs to improve "
+                "at once. The two or three lowest-scoring dimensions represent the "
+                "areas where improvement will be most noticeable to the audience."
             )
         else:
             assessment = (
-                "The presentation has fundamental areas that need attention. "
-                "Consider working with a coach or mentor to develop the core "
-                "skills identified in the improvement areas below."
+                "This presentation has fundamental areas that need attention before "
+                "the higher-level dimensions can shine. Working with a coach or "
+                "practicing with structured feedback on the core skills identified "
+                "below will build the foundation needed for more advanced development."
             )
 
         elements.append(Paragraph(assessment, body_style))
         elements.append(Spacer(1, 0.15 * inch))
 
-        # Top strengths
+        # Strengths as narrative paragraph (not bullets)
+        all_strengths: list[str] = []
+        for result in results:
+            all_strengths.extend(result.strengths)
+
         if all_strengths:
-            elements.append(
-                Paragraph("<b>Key Strengths:</b>", body_style)
+            # Take top strengths and weave into a sentence
+            unique_strengths = list(dict.fromkeys(all_strengths))[:6]
+            strengths_narrative = (
+                f"<b>Core strengths demonstrated:</b> "
+                f"{', '.join(s.lower() for s in unique_strengths[:4])}"
             )
-            for strength in all_strengths:
-                elements.append(
-                    Paragraph(f"\u2022 {strength}", bullet_style)
+            if len(unique_strengths) > 4:
+                strengths_narrative += (
+                    f", and {', '.join(s.lower() for s in unique_strengths[4:])}"
                 )
+            strengths_narrative += "."
+            elements.append(Paragraph(strengths_narrative, body_style))
             elements.append(Spacer(1, 0.1 * inch))
 
-        # Top improvements
+        # Improvements as prioritized narrative (not bullets)
+        all_improvements: list[str] = []
+        for result in results:
+            all_improvements.extend(result.improvements)
+
         if all_improvements:
-            elements.append(
-                Paragraph("<b>Priority Improvements:</b>", body_style)
+            unique_improvements = list(dict.fromkeys(all_improvements))[:5]
+            improvements_narrative = (
+                f"<b>Priority focus areas:</b> "
+                f"{'; '.join(s.lower() for s in unique_improvements[:3])}"
             )
-            for improvement in all_improvements:
-                elements.append(
-                    Paragraph(f"\u2022 {improvement}", bullet_style)
+            if len(unique_improvements) > 3:
+                improvements_narrative += (
+                    f". Additional areas to develop: "
+                    f"{'; '.join(s.lower() for s in unique_improvements[3:])}"
                 )
+            improvements_narrative += "."
+            elements.append(Paragraph(improvements_narrative, body_style))
+            elements.append(Spacer(1, 0.1 * inch))
+
+        # Coaching next step
+        sorted_results = sorted(results, key=lambda r: r.score)
+        if sorted_results:
+            weakest = sorted_results[0]
+            weakest_name = _get_dimension_display_name(weakest.dimension)
+            next_step = (
+                f"<b>Recommended next step:</b> For the next presentation or recording, "
+                f"make {weakest_name} the primary focus area. "
+            )
+            if weakest.improvements:
+                next_step += (
+                    f"Specifically: {weakest.improvements[0].lower()}. "
+                )
+            next_step += (
+                "Concentrating on one dimension at a time produces faster, "
+                "more sustainable improvement than trying to fix everything at once."
+            )
+            elements.append(Paragraph(next_step, body_style))
             elements.append(Spacer(1, 0.1 * inch))
 
         return elements
