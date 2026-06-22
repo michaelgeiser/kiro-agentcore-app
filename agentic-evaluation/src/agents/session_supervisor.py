@@ -17,6 +17,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
+import boto3
 from pydantic import ValidationError
 
 from agents.coaching_supervisor import CoachingSupervisor
@@ -31,7 +32,7 @@ from models.data_models import (
     get_evaluation_result_path,
 )
 from services.error_notifier import ErrorNotifier
-from services.report_generator import ReportGenerator
+from services.report_generator import ReportGenerator, SubmissionMetadata
 from services.retry import _compute_delay
 from services.sqs_consumer import SQSConsumer
 from services.status_manager import StatusManager
@@ -251,11 +252,19 @@ class SessionSupervisor:
             )
 
         # Step 8: Generate report via ReportGenerator
+        # Build submission metadata for the report header
+        report_metadata = self._build_report_metadata(
+            submission_id=submission_id,
+            user_id=handoff.user_id,
+            presentation_title=handoff.presentation_title,
+        )
+
         try:
             report_path = self._report_generator.generate(
                 submission_id=submission_id,
                 user_id=handoff.user_id,
                 results=stored_results,
+                metadata=report_metadata,
             )
         except Exception as exc:
             logger.error(
@@ -519,6 +528,102 @@ class SessionSupervisor:
             "pacing",
             "persuasion",
         ]
+
+    def _build_report_metadata(
+        self,
+        submission_id: str,
+        user_id: str,
+        presentation_title: str,
+    ) -> SubmissionMetadata | None:
+        """Build submission metadata for the coaching report header.
+
+        Queries DynamoDB for the full submission record to get description,
+        file name, and upload date. Attempts to look up the user's display
+        name from Cognito; falls back to user_id if unavailable.
+
+        Args:
+            submission_id: The submission identifier.
+            user_id: The Cognito user sub (UUID).
+            presentation_title: Title from the handoff message.
+
+        Returns:
+            SubmissionMetadata instance, or None if metadata cannot be built.
+        """
+        try:
+            # Query DynamoDB for the full submission record
+            table = self._status_manager._table
+            response = table.get_item(Key={"submission_id": submission_id})
+            item = response.get("Item", {})
+
+            description = item.get("description")
+            file_name = item.get("original_file_name")
+            upload_date = item.get("upload_date")
+
+            # Attempt to get user display name from Cognito
+            user_name = self._get_user_display_name(user_id)
+
+            return SubmissionMetadata(
+                user_name=user_name,
+                presentation_title=presentation_title,
+                description=description,
+                file_name=file_name,
+                upload_date=upload_date,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to build report metadata for submission_id=%s: %s. "
+                "Report will use fallback header.",
+                submission_id,
+                exc,
+            )
+            return None
+
+    def _get_user_display_name(self, user_id: str) -> str:
+        """Look up the user's display name from Cognito.
+
+        Attempts to retrieve the user's email or name attribute from
+        Cognito. Falls back to user_id if the lookup fails.
+
+        Args:
+            user_id: The Cognito user sub (UUID).
+
+        Returns:
+            The user's display name (email or name), or user_id as fallback.
+        """
+        try:
+            import os
+
+            user_pool_id = os.environ.get("COGNITO_USER_POOL_ID", "")
+            if not user_pool_id:
+                logger.debug("COGNITO_USER_POOL_ID not set, using user_id as name")
+                return user_id
+
+            cognito_client = boto3.client("cognito-idp")
+            response = cognito_client.admin_get_user(
+                UserPoolId=user_pool_id,
+                Username=user_id,
+            )
+
+            # Try to find name or email in user attributes
+            attributes = {
+                attr["Name"]: attr["Value"]
+                for attr in response.get("UserAttributes", [])
+            }
+
+            # Prefer name, then email, then user_id
+            return (
+                attributes.get("name")
+                or attributes.get("email")
+                or user_id
+            )
+        except Exception as exc:
+            logger.debug(
+                "Cognito user lookup failed for user_id=%s: %s. "
+                "Using user_id as display name.",
+                user_id,
+                exc,
+            )
+            return user_id
 
     def _store_evaluation_results(
         self,

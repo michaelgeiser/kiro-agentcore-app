@@ -13,6 +13,7 @@ from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
+    PageBreak,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -21,6 +22,65 @@ from reportlab.platypus import (
 from models.data_models import EvaluationResult, get_report_path
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Dimension Display Name Mapping
+# ---------------------------------------------------------------------------
+
+DIMENSION_DISPLAY_NAMES: dict[str, str] = {
+    "delivery": "Delivery",
+    "structure": "Structure",
+    "executive_presence": "Executive Presence",
+    "technical_communication": "Technical Communication",
+    "audience_engagement": "Audience Engagement",
+    "pacing": "Pacing",
+    "persuasion": "Persuasion",
+}
+
+
+def _get_dimension_display_name(dimension: str) -> str:
+    """Get the human-readable display name for a dimension.
+
+    Args:
+        dimension: The raw dimension key (e.g. 'executive_presence').
+
+    Returns:
+        The formatted display name (e.g. 'Executive Presence').
+    """
+    return DIMENSION_DISPLAY_NAMES.get(
+        dimension, dimension.replace("_", " ").title()
+    )
+
+
+# ---------------------------------------------------------------------------
+# Submission Metadata (passed to report generator)
+# ---------------------------------------------------------------------------
+
+
+class SubmissionMetadata:
+    """Holds submission metadata for inclusion in the coaching report header.
+
+    Attributes:
+        user_name: Display name of the user (from Cognito or fallback).
+        presentation_title: Title of the presentation.
+        description: Optional description of the presentation.
+        file_name: Original uploaded file name.
+        upload_date: ISO 8601 date string of when the file was uploaded.
+    """
+
+    def __init__(
+        self,
+        user_name: str,
+        presentation_title: str,
+        description: str | None = None,
+        file_name: str | None = None,
+        upload_date: str | None = None,
+    ) -> None:
+        self.user_name = user_name
+        self.presentation_title = presentation_title
+        self.description = description
+        self.file_name = file_name
+        self.upload_date = upload_date
 
 
 class ReportGenerator:
@@ -47,6 +107,7 @@ class ReportGenerator:
         submission_id: str,
         user_id: str,
         results: list[EvaluationResult],
+        metadata: SubmissionMetadata | None = None,
     ) -> str:
         """Generate a PDF coaching report and upload it to S3.
 
@@ -54,6 +115,7 @@ class ReportGenerator:
             submission_id: Unique identifier for the submission.
             user_id: Unique identifier for the user.
             results: Pre-loaded EvaluationResult objects from all agents.
+            metadata: Optional submission metadata for the report header.
 
         Returns:
             The S3 key path where the report was stored.
@@ -66,7 +128,7 @@ class ReportGenerator:
             len(results),
         )
 
-        pdf_buffer = self._build_pdf(submission_id, results)
+        pdf_buffer = self._build_pdf(submission_id, results, metadata)
 
         s3_key = get_report_path(user_id, submission_id)
         self._upload_to_s3(pdf_buffer, s3_key)
@@ -82,12 +144,14 @@ class ReportGenerator:
         self,
         submission_id: str,
         results: list[EvaluationResult],
+        metadata: SubmissionMetadata | None = None,
     ) -> io.BytesIO:
         """Build the PDF document in memory.
 
         Args:
             submission_id: Submission identifier for the report title.
             results: Evaluation results to include in the report.
+            metadata: Optional submission metadata for the report header.
 
         Returns:
             BytesIO buffer containing the generated PDF.
@@ -103,9 +167,23 @@ class ReportGenerator:
         )
 
         styles = getSampleStyleSheet()
-        title_style = styles["Title"]
-        heading_style = styles["Heading1"]
-        subheading_style = styles["Heading2"]
+        title_style = ParagraphStyle(
+            "ReportTitle",
+            parent=styles["Title"],
+            spaceAfter=6,
+        )
+        heading_style = ParagraphStyle(
+            "ReportHeading",
+            parent=styles["Heading1"],
+            spaceBefore=6,
+            spaceAfter=4,
+        )
+        subheading_style = ParagraphStyle(
+            "ReportSubheading",
+            parent=styles["Heading2"],
+            spaceBefore=6,
+            spaceAfter=3,
+        )
         body_style = styles["BodyText"]
         bullet_style = ParagraphStyle(
             "BulletItem",
@@ -115,59 +193,130 @@ class ReportGenerator:
             spaceBefore=2,
             spaceAfter=2,
         )
+        # Style for metadata info lines
+        info_style = ParagraphStyle(
+            "InfoItem",
+            parent=body_style,
+            spaceBefore=1,
+            spaceAfter=1,
+        )
 
         story: list[Any] = []
 
         # --- Title ---
         story.append(Paragraph("Presentation Coaching Report", title_style))
-        story.append(Spacer(1, 0.2 * inch))
-        story.append(
-            Paragraph(f"Submission: {submission_id}", body_style)
-        )
-        story.append(Spacer(1, 0.3 * inch))
+        story.append(Spacer(1, 0.1 * inch))
+
+        # --- Submission Info (replaces old "Submission: {id}") ---
+        if metadata:
+            story.append(
+                Paragraph(
+                    f"<b>User:</b> {metadata.user_name}", info_style
+                )
+            )
+            story.append(
+                Paragraph(
+                    f"<b>Presentation Title:</b> {metadata.presentation_title}",
+                    info_style,
+                )
+            )
+            if metadata.description:
+                story.append(
+                    Paragraph(
+                        f"<b>Description:</b> {metadata.description}",
+                        info_style,
+                    )
+                )
+            if metadata.file_name:
+                story.append(
+                    Paragraph(
+                        f"<b>Presentation File:</b> {metadata.file_name}",
+                        info_style,
+                    )
+                )
+            if metadata.upload_date:
+                story.append(
+                    Paragraph(
+                        f"<b>Uploaded:</b> {metadata.upload_date}",
+                        info_style,
+                    )
+                )
+        else:
+            # Fallback when no metadata is provided (backward compat)
+            story.append(
+                Paragraph(f"Submission: {submission_id}", body_style)
+            )
+
+        story.append(Spacer(1, 0.15 * inch))
 
         # --- Executive Summary ---
         story.extend(
-            self._build_executive_summary(results, heading_style, body_style)
+            self._build_executive_summary(results, heading_style, body_style, bullet_style)
         )
 
-        # --- Per-Dimension Detailed Feedback ---
+        # --- Per-Dimension Detailed Feedback (starts on new page) ---
+        story.append(PageBreak())
         story.extend(
             self._build_dimension_sections(
                 results, heading_style, subheading_style, body_style, bullet_style
             )
         )
 
-        # --- Overall Coaching Assessment ---
+        # --- Overall Coaching Assessment (starts on new page) ---
+        story.append(PageBreak())
         story.extend(
             self._build_coaching_assessment(
                 results, heading_style, body_style, bullet_style
             )
         )
 
-        doc.build(story)
+        doc.build(story, onFirstPage=self._add_page_number, onLaterPages=self._add_page_number)
         buffer.seek(0)
         return buffer
+
+    @staticmethod
+    def _add_page_number(canvas, doc):
+        """Add page number to the footer of each page.
+
+        Args:
+            canvas: ReportLab canvas.
+            doc: The document template.
+        """
+        page_num = canvas.getPageNumber()
+        text = f"Page {page_num}"
+        canvas.saveState()
+        canvas.setFont("Helvetica", 9)
+        canvas.drawCentredString(
+            LETTER[0] / 2.0,
+            0.5 * inch,
+            text,
+        )
+        canvas.restoreState()
 
     def _build_executive_summary(
         self,
         results: list[EvaluationResult],
         heading_style: ParagraphStyle,
         body_style: ParagraphStyle,
+        bullet_style: ParagraphStyle,
     ) -> list[Any]:
         """Build the Executive Summary section.
+
+        Creates a concise summary designed to fit on the first page, including
+        the overall score, per-dimension scores, top strengths, and key
+        improvement areas.
 
         Args:
             results: All evaluation results.
             heading_style: Style for the section heading.
             body_style: Style for body text.
+            bullet_style: Style for bullet items.
 
         Returns:
             List of flowable elements for the executive summary.
         """
         elements: list[Any] = []
         elements.append(Paragraph("Executive Summary", heading_style))
-        elements.append(Spacer(1, 0.1 * inch))
 
         if results:
             avg_score = sum(r.score for r in results) / len(results)
@@ -176,28 +325,72 @@ class ReportGenerator:
 
         dimension_count = len(results)
 
+        # Overall score summary
         elements.append(
             Paragraph(
-                f"This report covers <b>{dimension_count}</b> evaluation "
+                f"This report evaluates <b>{dimension_count}</b> "
                 f"dimension{'s' if dimension_count != 1 else ''} with an "
                 f"overall average score of <b>{avg_score:.1f}/10.0</b>.",
                 body_style,
             )
         )
-        elements.append(Spacer(1, 0.1 * inch))
+        elements.append(Spacer(1, 0.08 * inch))
 
+        # Per-dimension score table
         if results:
-            dimension_summary = ", ".join(
-                f"{r.dimension} ({r.score:.1f})" for r in results
-            )
-            elements.append(
-                Paragraph(
-                    f"Dimensions evaluated: {dimension_summary}",
-                    body_style,
-                )
-            )
+            # Build a compact score summary
+            score_lines = []
+            for r in results:
+                display_name = _get_dimension_display_name(r.dimension)
+                score_lines.append(f"{display_name}: <b>{r.score:.1f}</b>/10.0")
 
-        elements.append(Spacer(1, 0.3 * inch))
+            dimension_summary = " &nbsp;|&nbsp; ".join(score_lines)
+            elements.append(
+                Paragraph(dimension_summary, body_style)
+            )
+            elements.append(Spacer(1, 0.1 * inch))
+
+        # Top strengths (limit to keep on first page)
+        all_strengths: list[str] = []
+        all_improvements: list[str] = []
+        for r in results:
+            all_strengths.extend(r.strengths)
+            all_improvements.extend(r.improvements)
+
+        if all_strengths:
+            elements.append(
+                Paragraph("<b>Key Strengths:</b>", body_style)
+            )
+            for strength in all_strengths[:5]:
+                elements.append(
+                    Paragraph(f"\u2022 {strength}", bullet_style)
+                )
+            if len(all_strengths) > 5:
+                elements.append(
+                    Paragraph(
+                        f"<i>... and {len(all_strengths) - 5} more (see detailed sections)</i>",
+                        bullet_style,
+                    )
+                )
+            elements.append(Spacer(1, 0.08 * inch))
+
+        # Priority improvements (limit to keep on first page)
+        if all_improvements:
+            elements.append(
+                Paragraph("<b>Priority Improvements:</b>", body_style)
+            )
+            for improvement in all_improvements[:5]:
+                elements.append(
+                    Paragraph(f"\u2022 {improvement}", bullet_style)
+                )
+            if len(all_improvements) > 5:
+                elements.append(
+                    Paragraph(
+                        f"<i>... and {len(all_improvements) - 5} more (see detailed sections)</i>",
+                        bullet_style,
+                    )
+                )
+
         return elements
 
     def _build_dimension_sections(
@@ -224,12 +417,12 @@ class ReportGenerator:
         elements.append(
             Paragraph("Per-Dimension Detailed Feedback", heading_style)
         )
-        elements.append(Spacer(1, 0.1 * inch))
 
         for result in results:
+            display_name = _get_dimension_display_name(result.dimension)
             elements.append(
                 Paragraph(
-                    f"{result.dimension} (Score: {result.score:.1f}/10.0)",
+                    f"{display_name} (Score: {result.score:.1f}/10.0)",
                     subheading_style,
                 )
             )
@@ -307,7 +500,6 @@ class ReportGenerator:
         elements.append(
             Paragraph("Overall Coaching Assessment", heading_style)
         )
-        elements.append(Spacer(1, 0.1 * inch))
 
         # Aggregate all strengths and improvements
         all_strengths: list[str] = []

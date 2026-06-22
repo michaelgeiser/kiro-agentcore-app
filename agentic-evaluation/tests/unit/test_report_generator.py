@@ -255,7 +255,7 @@ class TestReportGeneratorBuildPDF:
         assert "Improvement" in text
 
     def test_build_pdf_all_dimensions_present_in_content(self):
-        """PDF with all 7 dimensions contains each dimension name."""
+        """PDF with all 7 dimensions contains each dimension display name."""
         generator = ReportGenerator(bucket_name="unused")
         results = [
             _make_evaluation_result(dimension=dim, agent_id=agent_id)
@@ -265,9 +265,19 @@ class TestReportGeneratorBuildPDF:
         pdf_buffer = generator._build_pdf("sub-all", results)
         text = _extract_pdf_text(pdf_buffer.getvalue())
 
-        for dim, _ in ALL_DIMENSIONS:
-            assert dim in text, (
-                f"Dimension '{dim}' not found in PDF content"
+        # Dimensions are now displayed with formatted names
+        expected_display_names = [
+            "Delivery",
+            "Structure",
+            "Executive Presence",
+            "Technical Communication",
+            "Audience Engagement",
+            "Pacing",
+            "Persuasion",
+        ]
+        for display_name in expected_display_names:
+            assert display_name in text, (
+                f"Dimension '{display_name}' not found in PDF content"
             )
 
     def test_build_pdf_returns_valid_pdf_header(self):
