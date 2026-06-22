@@ -221,6 +221,8 @@ class AgenticEvaluationStack(Stack):
                                 "s3:*",
                                 "dynamodb:*",
                                 "sns:*",
+                                "cognito-idp:AdminGetUser",
+                                "cognito-idp:ListUserPools",
                                 "ssm:GetParameter",
                                 "ssm:GetParameters",
                                 "ssm:GetParametersByPath",
@@ -284,6 +286,7 @@ class AgenticEvaluationStack(Stack):
                 "MAX_CONCURRENT_EVALUATIONS": "5",
                 "EVALUATION_MODEL_ID": "us.anthropic.claude-sonnet-4-6",
                 "COACHING_SUPERVISOR_MODEL_ID": "us.anthropic.claude-sonnet-4-6",
+                "COGNITO_USER_POOL_NAME": f"{resource_prefix}-users",
             },
         )
 

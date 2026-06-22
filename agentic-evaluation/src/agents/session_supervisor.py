@@ -585,6 +585,13 @@ class SessionSupervisor:
         formats them as "Name (email)". Falls back to user_id if the
         lookup fails.
 
+        Name resolution order:
+        1. "name" attribute (full name)
+        2. "given_name" + "family_name" (first + last)
+        3. "given_name" only
+        4. "email" only
+        5. user_id (fallback)
+
         Args:
             user_id: The Cognito user sub (UUID).
 
@@ -596,11 +603,30 @@ class SessionSupervisor:
             import os
 
             user_pool_id = os.environ.get("COGNITO_USER_POOL_ID", "")
-            if not user_pool_id:
-                logger.debug("COGNITO_USER_POOL_ID not set, using user_id as name")
+            user_pool_name = os.environ.get("COGNITO_USER_POOL_NAME", "")
+
+            if not user_pool_id and not user_pool_name:
+                logger.warning(
+                    "Neither COGNITO_USER_POOL_ID nor COGNITO_USER_POOL_NAME is set. "
+                    "Cannot look up user display name for user_id=%s",
+                    user_id,
+                )
                 return user_id
 
             cognito_client = boto3.client("cognito-idp")
+
+            # If we only have the pool name, look up the pool ID
+            if not user_pool_id and user_pool_name:
+                user_pool_id = self._resolve_user_pool_id(
+                    cognito_client, user_pool_name
+                )
+                if not user_pool_id:
+                    logger.warning(
+                        "Could not resolve Cognito user pool ID from name '%s'",
+                        user_pool_name,
+                    )
+                    return user_id
+
             response = cognito_client.admin_get_user(
                 UserPoolId=user_pool_id,
                 Username=user_id,
@@ -612,7 +638,16 @@ class SessionSupervisor:
                 for attr in response.get("UserAttributes", [])
             }
 
+            # Resolve display name: name > given_name+family_name > given_name
             name = attributes.get("name")
+            if not name:
+                given_name = attributes.get("given_name", "")
+                family_name = attributes.get("family_name", "")
+                if given_name and family_name:
+                    name = f"{given_name} {family_name}"
+                elif given_name:
+                    name = given_name
+
             email = attributes.get("email")
 
             # Format as "Name (email)"
@@ -625,13 +660,40 @@ class SessionSupervisor:
             else:
                 return user_id
         except Exception as exc:
-            logger.debug(
+            logger.warning(
                 "Cognito user lookup failed for user_id=%s: %s. "
                 "Using user_id as display name.",
                 user_id,
                 exc,
             )
             return user_id
+
+    def _resolve_user_pool_id(
+        self, cognito_client: Any, pool_name: str
+    ) -> str | None:
+        """Resolve a Cognito user pool ID from its name.
+
+        Lists user pools and finds the one matching the given name.
+
+        Args:
+            cognito_client: Boto3 Cognito IDP client.
+            pool_name: The user pool name to search for.
+
+        Returns:
+            The user pool ID if found, None otherwise.
+        """
+        try:
+            paginator = cognito_client.get_paginator("list_user_pools")
+            for page in paginator.paginate(MaxResults=60):
+                for pool in page.get("UserPools", []):
+                    if pool.get("Name") == pool_name:
+                        return pool["Id"]
+            return None
+        except Exception as exc:
+            logger.warning(
+                "Failed to list Cognito user pools: %s", exc
+            )
+            return None
 
     def _store_evaluation_results(
         self,

@@ -15,6 +15,8 @@ Reads configuration from environment variables:
     AWS_REGION: AWS region (default: us-east-1)
     LOCAL_MODE: Always "true" when using this runner
     DEPLOYMENT_ENV: Environment name (default: dev)
+    COGNITO_USER_POOL_ID: Cognito User Pool ID (direct, takes priority)
+    COGNITO_USER_POOL_NAME: Cognito User Pool name (looked up if ID not set)
     IDLE_TIMEOUT_MINUTES: Minutes of inactivity before graceful exit (default: 30)
     MAX_CONCURRENT_EVALUATIONS: Max parallel message processing (default: 5)
 
