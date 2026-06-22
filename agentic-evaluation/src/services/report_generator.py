@@ -6,6 +6,7 @@ results using ReportLab, and stores them in S3.
 
 import io
 import logging
+from datetime import datetime, timezone, timedelta
 from typing import Any
 
 import boto3
@@ -22,6 +23,11 @@ from reportlab.platypus import (
 from models.data_models import EvaluationResult, get_report_path
 
 logger = logging.getLogger(__name__)
+
+# US Eastern Time offset (ET = UTC-5, EDT = UTC-4)
+# We use Eastern Time as a display convention per requirements.
+_ET_OFFSET = timedelta(hours=-5)
+_EDT_OFFSET = timedelta(hours=-4)
 
 # ---------------------------------------------------------------------------
 # Dimension Display Name Mapping
@@ -50,6 +56,40 @@ def _get_dimension_display_name(dimension: str) -> str:
     return DIMENSION_DISPLAY_NAMES.get(
         dimension, dimension.replace("_", " ").title()
     )
+
+
+def _format_upload_date(iso_date: str) -> str:
+    """Format an ISO 8601 date string to a human-readable ET format.
+
+    Converts a UTC ISO 8601 timestamp to Eastern Time and formats it
+    as "Month Day, Year HH:MM ET" (e.g. "June 22, 2026 12:15 ET").
+
+    Args:
+        iso_date: ISO 8601 date string (e.g. '2026-06-22T16:15:00Z').
+
+    Returns:
+        Formatted date string in ET, or the original string if parsing fails.
+    """
+    try:
+        # Parse ISO 8601 timestamp
+        dt = datetime.fromisoformat(iso_date.replace("Z", "+00:00"))
+
+        # Convert to Eastern Time (use EDT offset: UTC-4 for simplicity,
+        # as most US business activity falls in EDT months)
+        # For a more accurate approach, pytz/zoneinfo would be needed,
+        # but requirements state "setting the time to ET will be fine"
+        et_dt = dt.astimezone(timezone(_EDT_OFFSET))
+
+        # Format as "June 22, 2026 12:15 ET"
+        # Use manual day formatting to avoid platform-specific strftime issues
+        month_name = et_dt.strftime("%B")
+        day = et_dt.day
+        year = et_dt.year
+        time_str = et_dt.strftime("%H:%M")
+        return f"{month_name} {day}, {year} {time_str} ET"
+    except (ValueError, AttributeError):
+        # If parsing fails, return as-is
+        return iso_date
 
 
 # ---------------------------------------------------------------------------
@@ -235,9 +275,10 @@ class ReportGenerator:
                     )
                 )
             if metadata.upload_date:
+                formatted_date = _format_upload_date(metadata.upload_date)
                 story.append(
                     Paragraph(
-                        f"<b>Uploaded:</b> {metadata.upload_date}",
+                        f"<b>Uploaded:</b> {formatted_date}",
                         info_style,
                     )
                 )

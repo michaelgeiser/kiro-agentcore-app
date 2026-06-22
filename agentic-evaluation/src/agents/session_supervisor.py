@@ -579,16 +579,18 @@ class SessionSupervisor:
             return None
 
     def _get_user_display_name(self, user_id: str) -> str:
-        """Look up the user's display name from Cognito.
+        """Look up the user's display name and email from Cognito.
 
-        Attempts to retrieve the user's email or name attribute from
-        Cognito. Falls back to user_id if the lookup fails.
+        Retrieves the user's name and email attributes from Cognito and
+        formats them as "Name (email)". Falls back to user_id if the
+        lookup fails.
 
         Args:
             user_id: The Cognito user sub (UUID).
 
         Returns:
-            The user's display name (email or name), or user_id as fallback.
+            Formatted string like "Michael Geiser (mgeiser@mgeiser.net)",
+            or user_id as fallback.
         """
         try:
             import os
@@ -604,18 +606,24 @@ class SessionSupervisor:
                 Username=user_id,
             )
 
-            # Try to find name or email in user attributes
+            # Extract user attributes
             attributes = {
                 attr["Name"]: attr["Value"]
                 for attr in response.get("UserAttributes", [])
             }
 
-            # Prefer name, then email, then user_id
-            return (
-                attributes.get("name")
-                or attributes.get("email")
-                or user_id
-            )
+            name = attributes.get("name")
+            email = attributes.get("email")
+
+            # Format as "Name (email)"
+            if name and email:
+                return f"{name} ({email})"
+            elif name:
+                return name
+            elif email:
+                return email
+            else:
+                return user_id
         except Exception as exc:
             logger.debug(
                 "Cognito user lookup failed for user_id=%s: %s. "
