@@ -6,6 +6,7 @@ results using ReportLab, and stores them in S3.
 
 import io
 import logging
+import os
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
@@ -28,6 +29,12 @@ logger = logging.getLogger(__name__)
 # We use Eastern Time as a display convention per requirements.
 _ET_OFFSET = timedelta(hours=-5)
 _EDT_OFFSET = timedelta(hours=-4)
+
+# Model used for generating executive summary narrative
+_REPORT_MODEL_ID = os.environ.get(
+    "REPORT_MODEL_ID",
+    os.environ.get("EVALUATION_MODEL_ID", "us.anthropic.claude-sonnet-4-6"),
+)
 
 # ---------------------------------------------------------------------------
 # Dimension Display Name Mapping
@@ -90,6 +97,63 @@ def _format_upload_date(iso_date: str) -> str:
     except (ValueError, AttributeError):
         # If parsing fails, return as-is
         return iso_date
+
+
+# ---------------------------------------------------------------------------
+# Executive Summary System Prompt
+# ---------------------------------------------------------------------------
+
+_EXECUTIVE_SUMMARY_SYSTEM_PROMPT = """You are a presentation coaching expert writing the executive summary \
+section of a coaching report. Your job is to synthesize evaluation data into a \
+concise, insightful narrative that helps the presenter understand their \
+performance and what to focus on next.
+
+Write in plain prose paragraphs. Do NOT use bullet points, numbered lists, \
+headers, or markdown formatting. Do NOT use bold or italic markup. Write \
+flowing, natural paragraphs that read like expert coaching feedback.
+
+Your executive summary MUST include these elements in 3-4 short paragraphs:
+
+1. COACHING DIAGNOSIS AND SCORE INTERPRETATION (first paragraph):
+   - Open with a one-sentence coaching diagnosis that captures the overall \
+character of the presentation (e.g., "This was a technically clear and \
+conversational presentation, but it needs stronger audience engagement and a \
+more memorable close.")
+   - Include the overall average score and interpret what it means in plain \
+language. A 5.9 might be "solid but unpolished" or "technically credible but \
+not yet persuasive." A 7.5 might be "strong fundamentals with room to sharpen \
+impact." Do not just restate the number.
+
+2. STRENGTHS AS NARRATIVE (second paragraph):
+   - Combine the strongest points into one flowing paragraph. Do not list \
+them. Weave them into a narrative about what the presenter does well. Focus on \
+the pattern, not individual items. For example: "The real strength here is \
+clean delivery combined with strong technical command and a conversational \
+tone that makes complex concepts accessible."
+
+3. HIGHEST-LEVERAGE IMPROVEMENTS (third paragraph):
+   - Identify the 2-3 changes most likely to move the overall score. Do not \
+list every issue. Pick the improvements that cut across multiple dimensions. \
+Explain WHY these matter more than other issues. Frame them as opportunities, \
+not failures.
+
+4. NEXT-PRACTICE TARGET (end of third or fourth paragraph):
+   - End with a concrete coaching assignment for the next recording or \
+presentation. Be specific and actionable. Example: "For the next recording, \
+focus on a stronger opening hook, one moment of audience interaction, and a \
+30-second close that recaps value and gives a clear next step."
+
+CONSTRAINTS:
+- Keep the total summary to 3-4 paragraphs that fit on approximately one page.
+- Use dimension display names (Delivery, Structure, Executive Presence, etc.) \
+when referencing specific areas.
+- Be direct and confident in your coaching voice. You are an expert.
+- Do not hedge excessively or use filler phrases like "overall" repeatedly.
+- Do not start sentences with "The presenter" or "The speaker" more than once.
+- Write at a professional coaching level, not an academic assessment level.
+- Do not include any XML tags, markdown, or formatting in your response.
+- Output ONLY the executive summary text, nothing else.
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -341,11 +405,11 @@ class ReportGenerator:
         body_style: ParagraphStyle,
         bullet_style: ParagraphStyle,
     ) -> list[Any]:
-        """Build the Executive Summary section.
+        """Build the Executive Summary section using LLM-generated narrative.
 
-        Creates a concise summary designed to fit on the first page, including
-        the overall score, per-dimension scores, top strengths, and key
-        improvement areas.
+        Calls an LLM to synthesize a coaching-style narrative executive summary
+        from the evaluation results. Falls back to a basic score summary if the
+        LLM call fails.
 
         Args:
             results: All evaluation results.
@@ -359,14 +423,143 @@ class ReportGenerator:
         elements: list[Any] = []
         elements.append(Paragraph("Executive Summary", heading_style))
 
-        if results:
-            avg_score = sum(r.score for r in results) / len(results)
-        else:
-            avg_score = 0.0
+        if not results:
+            elements.append(
+                Paragraph("No evaluation results available.", body_style)
+            )
+            return elements
 
+        avg_score = sum(r.score for r in results) / len(results)
+
+        # Try to generate a narrative executive summary via LLM
+        narrative = self._generate_executive_summary_narrative(results, avg_score)
+
+        if narrative:
+            # Split narrative into paragraphs and render
+            paragraphs = [p.strip() for p in narrative.split("\n\n") if p.strip()]
+            for para in paragraphs:
+                elements.append(Paragraph(para, body_style))
+                elements.append(Spacer(1, 0.08 * inch))
+        else:
+            # Fallback: basic static summary if LLM fails
+            elements.extend(
+                self._build_fallback_executive_summary(
+                    results, avg_score, body_style, bullet_style
+                )
+            )
+
+        return elements
+
+    def _generate_executive_summary_narrative(
+        self,
+        results: list[EvaluationResult],
+        avg_score: float,
+    ) -> str | None:
+        """Generate a narrative executive summary using an LLM.
+
+        Provides structured evaluation data to the LLM and asks it to
+        produce a coaching-style narrative summary.
+
+        Args:
+            results: All evaluation results.
+            avg_score: The overall average score.
+
+        Returns:
+            The generated narrative text, or None if the call fails.
+        """
+        try:
+            from strands import Agent
+
+            # Build structured data for the LLM
+            dimension_data = []
+            for r in results:
+                display_name = _get_dimension_display_name(r.dimension)
+                dimension_data.append({
+                    "dimension": display_name,
+                    "score": r.score,
+                    "strengths": r.strengths,
+                    "improvements": r.improvements,
+                    "findings": [
+                        {
+                            "category": f.category,
+                            "detail": f.detail,
+                            "severity": f.severity,
+                            "suggestion": f.suggestion,
+                        }
+                        for f in r.findings
+                    ],
+                })
+
+            prompt = (
+                f"Generate an executive summary for a presentation coaching report.\n\n"
+                f"Overall average score: {avg_score:.1f}/10.0\n"
+                f"Number of dimensions evaluated: {len(results)}\n\n"
+                f"Per-dimension evaluation data:\n"
+            )
+            for d in dimension_data:
+                prompt += (
+                    f"\n--- {d['dimension']} (Score: {d['score']:.1f}/10.0) ---\n"
+                    f"Strengths: {', '.join(d['strengths']) if d['strengths'] else 'None noted'}\n"
+                    f"Improvements: {', '.join(d['improvements']) if d['improvements'] else 'None noted'}\n"
+                )
+                if d["findings"]:
+                    prompt += "Key findings:\n"
+                    for f in d["findings"][:3]:
+                        prompt += f"  - [{f['severity'].upper()}] {f['category']}: {f['detail']}\n"
+
+            prompt += (
+                f"\nWrite the executive summary now. "
+                f"Remember: narrative prose, no bullet points, no headers, "
+                f"3-4 paragraphs maximum, and end with a concrete next-practice target."
+            )
+
+            agent = Agent(
+                system_prompt=_EXECUTIVE_SUMMARY_SYSTEM_PROMPT,
+                model=_REPORT_MODEL_ID,
+            )
+
+            response = agent(prompt)
+            narrative = str(response).strip()
+
+            if len(narrative) < 50:
+                logger.warning(
+                    "Executive summary narrative too short (%d chars), using fallback",
+                    len(narrative),
+                )
+                return None
+
+            return narrative
+
+        except Exception as exc:
+            logger.warning(
+                "Failed to generate LLM executive summary: %s. Using fallback.",
+                exc,
+            )
+            return None
+
+    def _build_fallback_executive_summary(
+        self,
+        results: list[EvaluationResult],
+        avg_score: float,
+        body_style: ParagraphStyle,
+        bullet_style: ParagraphStyle,
+    ) -> list[Any]:
+        """Build a basic fallback executive summary without LLM.
+
+        Used when the LLM narrative generation fails.
+
+        Args:
+            results: All evaluation results.
+            avg_score: The overall average score.
+            body_style: Style for body text.
+            bullet_style: Style for bullet items.
+
+        Returns:
+            List of flowable elements.
+        """
+        elements: list[Any] = []
         dimension_count = len(results)
 
-        # Overall score summary
         elements.append(
             Paragraph(
                 f"This report evaluates <b>{dimension_count}</b> "
@@ -377,60 +570,15 @@ class ReportGenerator:
         )
         elements.append(Spacer(1, 0.08 * inch))
 
-        # Per-dimension score table
+        # Per-dimension scores
         if results:
-            # Build a compact score summary
             score_lines = []
             for r in results:
                 display_name = _get_dimension_display_name(r.dimension)
                 score_lines.append(f"{display_name}: <b>{r.score:.1f}</b>/10.0")
-
             dimension_summary = " &nbsp;|&nbsp; ".join(score_lines)
-            elements.append(
-                Paragraph(dimension_summary, body_style)
-            )
+            elements.append(Paragraph(dimension_summary, body_style))
             elements.append(Spacer(1, 0.1 * inch))
-
-        # Top strengths (limit to keep on first page)
-        all_strengths: list[str] = []
-        all_improvements: list[str] = []
-        for r in results:
-            all_strengths.extend(r.strengths)
-            all_improvements.extend(r.improvements)
-
-        if all_strengths:
-            elements.append(
-                Paragraph("<b>Key Strengths:</b>", body_style)
-            )
-            for strength in all_strengths[:5]:
-                elements.append(
-                    Paragraph(f"\u2022 {strength}", bullet_style)
-                )
-            if len(all_strengths) > 5:
-                elements.append(
-                    Paragraph(
-                        f"<i>... and {len(all_strengths) - 5} more (see detailed sections)</i>",
-                        bullet_style,
-                    )
-                )
-            elements.append(Spacer(1, 0.08 * inch))
-
-        # Priority improvements (limit to keep on first page)
-        if all_improvements:
-            elements.append(
-                Paragraph("<b>Priority Improvements:</b>", body_style)
-            )
-            for improvement in all_improvements[:5]:
-                elements.append(
-                    Paragraph(f"\u2022 {improvement}", bullet_style)
-                )
-            if len(all_improvements) > 5:
-                elements.append(
-                    Paragraph(
-                        f"<i>... and {len(all_improvements) - 5} more (see detailed sections)</i>",
-                        bullet_style,
-                    )
-                )
 
         return elements
 
