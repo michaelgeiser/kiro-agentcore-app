@@ -12,7 +12,9 @@ Models have short production lifecycles. This document ensures you can locate an
 
 | Model ID | Provider | Purpose | Module |
 |----------|----------|---------|--------|
-| `anthropic.claude-sonnet-4-6` | Anthropic (via Bedrock) | Evaluation reasoning — all 7 evaluation agents + Coaching Supervisor | Agentic Evaluation |
+| `us.anthropic.claude-sonnet-4-6` | Anthropic (via Bedrock) | Evaluation reasoning — all 7 evaluation agents | Agentic Evaluation |
+| `us.anthropic.claude-sonnet-4-6` | Anthropic (via Bedrock) | Coaching Supervisor — agent orchestration | Agentic Evaluation |
+| `us.anthropic.claude-sonnet-4-6` | Anthropic (via Bedrock) | Executive Summary narrative generation (Report Generator) | Agentic Evaluation |
 | `amazon.nova-2-multimodal-embeddings-v1:0` | Amazon (via Bedrock) | Audio chunk embedding (vectorization) | Preparation Workflow |
 
 ---
@@ -53,6 +55,25 @@ Each evaluation agent (delivery, structure, executive_presence, technical_commun
 
 **Note:** The `audience_engagement_evaluator.py`, `pacing_evaluator.py`, and `persuasion_evaluator.py` files follow the same pattern as `delivery_evaluator.py`. If they don't yet have the `EVALUATION_MODEL_ID` variable, they use the Strands SDK default — which should be updated to match.
 
+### Report Executive Summary Generator
+
+The Report Generator calls an LLM to produce a narrative executive summary from evaluation results. This generates a coaching-style narrative (diagnosis, score interpretation, strengths narrative, highest-leverage improvements, and next-practice target) rather than a static bullet list.
+
+| Attribute | Value |
+|-----------|-------|
+| **Current Model** | `us.anthropic.claude-sonnet-4-6` |
+| **Where Set (runtime)** | Environment variable `REPORT_MODEL_ID` (falls back to `EVALUATION_MODEL_ID` if not set) |
+| **Where Set (infra-as-code)** | Not separately configured — uses `EVALUATION_MODEL_ID` from the ECS container environment |
+| **Code that reads it** | `agentic-evaluation/src/services/report_generator.py` → module-level `_REPORT_MODEL_ID` variable |
+| **Code that uses it** | `agentic-evaluation/src/services/report_generator.py` → `_generate_executive_summary_narrative()` → `Agent(model=_REPORT_MODEL_ID)` |
+| **Fallback behavior** | If the LLM call fails, the report uses a static fallback summary (scores only, no narrative) |
+
+**To use a different model for report generation only** (e.g., a faster/cheaper model):
+```python
+# In the CDK stack environment dict:
+"REPORT_MODEL_ID": "us.anthropic.claude-haiku-3-20240307",
+```
+
 ---
 
 ## 2. Preparation Workflow Module — Embedding Model
@@ -74,7 +95,7 @@ Converts audio chunks into vector embeddings for the evaluation agents to retrie
 
 ## How to Change a Model
 
-### Changing the Evaluation Reasoning Model (all agents)
+### Changing the Evaluation Reasoning Model (all agents + report summary)
 
 **Scenario:** Anthropic releases Claude Sonnet 5, and you want all evaluation agents to use it.
 
@@ -85,6 +106,7 @@ Converts audio chunks into vector embeddings for the evaluation agents to retrie
        ...
        "EVALUATION_MODEL_ID": "anthropic.claude-5-sonnet-20260101",
        "COACHING_SUPERVISOR_MODEL_ID": "anthropic.claude-5-sonnet-20260101",
+       # REPORT_MODEL_ID will inherit from EVALUATION_MODEL_ID unless set separately
        ...
    }
    ```
@@ -172,7 +194,7 @@ aws ecs update-service ...
 
 ```
 1. Environment variable (highest priority)
-   EVALUATION_MODEL_ID, COACHING_SUPERVISOR_MODEL_ID
+   EVALUATION_MODEL_ID, COACHING_SUPERVISOR_MODEL_ID, REPORT_MODEL_ID
 
 2. CDK stack environment dict (set at deploy time)
    agentic-evaluation/infra/agentic_evaluation_stack.py
@@ -182,6 +204,9 @@ aws ecs update-service ...
 4. Code-level default in each evaluator file (lowest priority)
    os.environ.get("EVALUATION_MODEL_ID", "<default-here>")
 ```
+
+Note: `REPORT_MODEL_ID` falls back to `EVALUATION_MODEL_ID` if not set,
+which falls back to `"us.anthropic.claude-sonnet-4-6"` as the code default.
 
 For the preparation workflow:
 ```
@@ -199,18 +224,13 @@ For the preparation workflow:
 
 ## Verification Commands
 
-### Check current model in use (evaluation agents):
+### Check current models in use (evaluation agents):
 ```bash
-# From ECS task definition
+# From ECS task definition — all model env vars
 aws ecs describe-task-definition \
   --task-definition prescoach-dev-kiro-eval-task \
-  --query 'taskDefinition.containerDefinitions[0].environment[?name==`EVALUATION_MODEL_ID`].value' \
-  --output text --region us-east-1
-
-aws ecs describe-task-definition \
-  --task-definition prescoach-dev-kiro-eval-task \
-  --query 'taskDefinition.containerDefinitions[0].environment[?name==`COACHING_SUPERVISOR_MODEL_ID`].value' \
-  --output text --region us-east-1
+  --query 'taskDefinition.containerDefinitions[0].environment[?contains(name,`MODEL`)].{Name:name,Value:value}' \
+  --output table --region us-east-1
 ```
 
 ### Check current model in use (embedding):
@@ -247,6 +267,7 @@ When a model is announced as deprecated:
 - [ ] Update `agentic-evaluation/infra/agentic_evaluation_stack.py` (env vars)
 - [ ] Update `agentic-evaluation/src/deployment/agentcore_config.py` (defaults)
 - [ ] Update all evaluator files' default strings
+- [ ] Update `agentic-evaluation/src/services/report_generator.py` `_REPORT_MODEL_ID` default (if different from EVALUATION_MODEL_ID)
 - [ ] Update `preparation-workflow/infra/preparation_workflow_stack.py` (if embedding model)
 - [ ] Update `preparation-workflow/src/services/embedding.py` DEFAULT_MODEL_ID
 - [ ] Update SSM parameter via CLI (for immediate effect without redeploy)
