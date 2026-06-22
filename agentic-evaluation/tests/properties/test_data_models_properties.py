@@ -51,6 +51,7 @@ def valid_handoff_message(draw):
         submission_id=draw(non_empty_text),
         user_id=draw(non_empty_text),
         s3_file_key=draw(non_empty_text),
+        transcript_s3_key=draw(non_empty_text),
         vector_store_location=draw(non_empty_text),
         chunk_count=draw(positive_int),
         presentation_title=draw(non_empty_text),

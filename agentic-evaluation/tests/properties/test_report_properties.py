@@ -134,10 +134,13 @@ def test_report_contains_all_required_sections(
     )
 
     # 3. Each dimension present in the input should appear in the report
+    #    Dimensions are displayed with formatted names (e.g. 'executive_presence' -> 'Executive Presence')
+    from services.report_generator import _get_dimension_display_name
     dimensions_in_input = {r.dimension for r in results}
     for dimension in dimensions_in_input:
-        assert dimension in pdf_text, (
-            f"PDF missing dimension '{dimension}' feedback section"
+        display_name = _get_dimension_display_name(dimension)
+        assert display_name in pdf_text, (
+            f"PDF missing dimension '{display_name}' feedback section"
         )
 
     # 4. Strengths section present

@@ -34,6 +34,7 @@ class TestHandoffMessage:
             submission_id="sub-12345",
             user_id="user-abc",
             s3_file_key="uploads/user-abc/file.pdf",
+            transcript_s3_key="processed/user-abc/sub-12345/transcript.json",
             vector_store_location="s3://bucket/vectors/sub-12345",
             chunk_count=5,
             presentation_title="My Presentation",
@@ -41,6 +42,7 @@ class TestHandoffMessage:
         assert msg.submission_id == "sub-12345"
         assert msg.user_id == "user-abc"
         assert msg.s3_file_key == "uploads/user-abc/file.pdf"
+        assert msg.transcript_s3_key == "processed/user-abc/sub-12345/transcript.json"
         assert msg.vector_store_location == "s3://bucket/vectors/sub-12345"
         assert msg.chunk_count == 5
         assert msg.presentation_title == "My Presentation"
@@ -51,6 +53,7 @@ class TestHandoffMessage:
             submission_id="sub-1",
             user_id="u",
             s3_file_key="k",
+            transcript_s3_key="t",
             vector_store_location="v",
             chunk_count=1,
             presentation_title="t",
@@ -58,17 +61,16 @@ class TestHandoffMessage:
         assert msg.chunk_count == 1
 
     def test_chunk_count_zero_rejected(self):
-        """chunk_count of 0 is rejected (must be >= 1)."""
-        with pytest.raises(ValidationError) as exc_info:
-            HandoffMessage(
-                submission_id="sub-1",
-                user_id="u",
-                s3_file_key="k",
-                vector_store_location="v",
-                chunk_count=0,
-                presentation_title="t",
-            )
-        assert "chunk_count" in str(exc_info.value)
+        """chunk_count of 0 is accepted (default value, ge=0)."""
+        msg = HandoffMessage(
+            submission_id="sub-1",
+            user_id="u",
+            s3_file_key="k",
+            transcript_s3_key="t",
+            chunk_count=0,
+            presentation_title="t",
+        )
+        assert msg.chunk_count == 0
 
     def test_chunk_count_negative_rejected(self):
         """Negative chunk_count is rejected."""
@@ -77,6 +79,7 @@ class TestHandoffMessage:
                 submission_id="sub-1",
                 user_id="u",
                 s3_file_key="k",
+                transcript_s3_key="t",
                 vector_store_location="v",
                 chunk_count=-1,
                 presentation_title="t",
@@ -89,6 +92,7 @@ class TestHandoffMessage:
                 submission_id="",
                 user_id="u",
                 s3_file_key="k",
+                transcript_s3_key="t",
                 vector_store_location="v",
                 chunk_count=1,
                 presentation_title="t",
@@ -102,6 +106,7 @@ class TestHandoffMessage:
                 submission_id="s",
                 user_id="",
                 s3_file_key="k",
+                transcript_s3_key="t",
                 vector_store_location="v",
                 chunk_count=1,
                 presentation_title="t",
@@ -114,22 +119,24 @@ class TestHandoffMessage:
                 submission_id="s",
                 user_id="u",
                 s3_file_key="",
+                transcript_s3_key="t",
                 vector_store_location="v",
                 chunk_count=1,
                 presentation_title="t",
             )
 
-    def test_empty_vector_store_location_rejected(self):
-        """Empty string for vector_store_location is rejected."""
-        with pytest.raises(ValidationError):
-            HandoffMessage(
-                submission_id="s",
-                user_id="u",
-                s3_file_key="k",
-                vector_store_location="",
-                chunk_count=1,
-                presentation_title="t",
-            )
+    def test_empty_vector_store_location_accepted(self):
+        """Empty string for vector_store_location is accepted (default value)."""
+        msg = HandoffMessage(
+            submission_id="s",
+            user_id="u",
+            s3_file_key="k",
+            transcript_s3_key="t",
+            vector_store_location="",
+            chunk_count=1,
+            presentation_title="t",
+        )
+        assert msg.vector_store_location == ""
 
     def test_empty_presentation_title_rejected(self):
         """Empty string for presentation_title is rejected."""
@@ -138,6 +145,7 @@ class TestHandoffMessage:
                 submission_id="s",
                 user_id="u",
                 s3_file_key="k",
+                transcript_s3_key="t",
                 vector_store_location="v",
                 chunk_count=1,
                 presentation_title="",
@@ -150,6 +158,7 @@ class TestHandoffMessage:
                 submission_id="sub-1",
                 user_id="u",
                 # s3_file_key missing
+                transcript_s3_key="t",
                 vector_store_location="v",
                 chunk_count=1,
                 presentation_title="t",
@@ -161,6 +170,7 @@ class TestHandoffMessage:
             submission_id="s",
             user_id="u",
             s3_file_key="k",
+            transcript_s3_key="t",
             vector_store_location="v",
             chunk_count=999999,
             presentation_title="t",
@@ -178,7 +188,7 @@ class TestProcessingStatus:
 
     def test_all_expected_values_exist(self):
         """ProcessingStatus has all expected members."""
-        expected = {"PENDING", "PROCESSING", "EVALUATING", "REPORT_GENERATING", "COMPLETED", "FAILED"}
+        expected = {"PENDING", "PROCESSING", "WAITING", "EVALUATING", "REPORT_GENERATING", "COMPLETED", "FAILED"}
         actual = {member.name for member in ProcessingStatus}
         assert actual == expected
 

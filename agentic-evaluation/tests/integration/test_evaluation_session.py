@@ -168,6 +168,7 @@ def valid_handoff_message():
         "submission_id": "sub-integration-001",
         "user_id": "user-test-abc",
         "s3_file_key": "uploads/integration-test.pptx",
+        "transcript_s3_key": "processed/user-test-abc/sub-integration-001/transcript.json",
         "vector_store_location": "vs-bucket/embeddings/sub-integration-001",
         "chunk_count": 5,
         "presentation_title": "Integration Test Presentation",

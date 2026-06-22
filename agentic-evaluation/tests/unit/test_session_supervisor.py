@@ -61,6 +61,7 @@ def valid_raw_message():
         "submission_id": "sub-12345",
         "user_id": "user-abc",
         "s3_file_key": "uploads/presentation.pptx",
+        "transcript_s3_key": "processed/user-abc/sub-12345/transcript.json",
         "vector_store_location": "vs-bucket/embeddings/sub-12345",
         "chunk_count": 10,
         "presentation_title": "Quarterly Business Review",
