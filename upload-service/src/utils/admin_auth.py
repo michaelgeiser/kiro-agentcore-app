@@ -34,13 +34,25 @@ def verify_admin(event: dict) -> tuple[bool, str | None]:
         logger.warning("JWT claims missing 'sub' claim")
         return (False, None)
 
-    # cognito:groups may be a space-separated string or a list
+    # cognito:groups may come in several formats from API Gateway v2:
+    # - A Python list: ["administrators"] (unlikely from APIGW, but handle it)
+    # - A space-separated string: "administrators" or "administrators users"
+    # - A bracketed string: "[administrators]" or "[administrators, users]"
+    # - A JSON array string: '["administrators"]'
     groups_claim = claims.get("cognito:groups", "")
 
     if isinstance(groups_claim, list):
         groups = groups_claim
     elif isinstance(groups_claim, str):
-        groups = groups_claim.split() if groups_claim else []
+        # Strip brackets if present (API Gateway v2 format)
+        cleaned = groups_claim.strip()
+        if cleaned.startswith("[") and cleaned.endswith("]"):
+            cleaned = cleaned[1:-1]
+        # Split by comma or space, strip whitespace from each
+        if "," in cleaned:
+            groups = [g.strip().strip('"').strip("'") for g in cleaned.split(",")]
+        else:
+            groups = cleaned.split() if cleaned else []
     else:
         groups = []
 
