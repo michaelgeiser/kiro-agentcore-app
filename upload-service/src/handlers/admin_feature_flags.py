@@ -10,7 +10,7 @@ from typing import Any
 import boto3
 from botocore.exceptions import ClientError
 
-from src.utils.admin_auth import verify_admin
+from utils.admin_auth import verify_admin
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
