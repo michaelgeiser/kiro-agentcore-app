@@ -14,20 +14,31 @@ import { adminApi } from '../admin-api.js';
  * @type {Array<{displayName: string, modelId: string}>}
  */
 export const MODEL_OPTIONS = [
-  // Amazon Nova models
-  { displayName: 'Amazon Nova Pro CRI', modelId: 'us.amazon.nova-pro-v1:0' },
+  // Amazon Nova models (current generation)
+  { displayName: 'Amazon Nova Premier (US CRI)', modelId: 'us.amazon.nova-premier-v1:0' },
+  { displayName: 'Amazon Nova Pro (US CRI)', modelId: 'us.amazon.nova-pro-v1:0' },
   { displayName: 'Amazon Nova Pro (Single Region)', modelId: 'amazon.nova-pro-v1:0' },
-  { displayName: 'Amazon Nova Lite CRI', modelId: 'us.amazon.nova-lite-v1:0' },
+  { displayName: 'Amazon Nova Lite (US CRI)', modelId: 'us.amazon.nova-lite-v1:0' },
   { displayName: 'Amazon Nova Lite (Single Region)', modelId: 'amazon.nova-lite-v1:0' },
-  { displayName: 'Amazon Nova Micro CRI', modelId: 'us.amazon.nova-micro-v1:0' },
+  { displayName: 'Amazon Nova Micro (US CRI)', modelId: 'us.amazon.nova-micro-v1:0' },
   { displayName: 'Amazon Nova Micro (Single Region)', modelId: 'amazon.nova-micro-v1:0' },
-  // Anthropic Claude models
-  { displayName: 'Claude Sonnet 4 CRI', modelId: 'us.anthropic.claude-sonnet-4-6' },
-  { displayName: 'Claude Sonnet 4 (Single Region)', modelId: 'anthropic.claude-sonnet-4-6' },
-  { displayName: 'Claude Haiku 3.5 CRI', modelId: 'us.anthropic.claude-3-5-haiku-20241022-v1:0' },
-  { displayName: 'Claude Haiku 3.5 (Single Region)', modelId: 'anthropic.claude-3-5-haiku-20241022-v1:0' },
-  { displayName: 'Claude Sonnet 3.5 v2 CRI', modelId: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0' },
-  { displayName: 'Claude Sonnet 3.5 v2 (Single Region)', modelId: 'anthropic.claude-3-5-sonnet-20241022-v2:0' },
+  // Anthropic Claude models (current generation)
+  { displayName: 'Claude Sonnet 4.6 (US CRI)', modelId: 'us.anthropic.claude-sonnet-4-6' },
+  { displayName: 'Claude Sonnet 4.6 (Single Region)', modelId: 'anthropic.claude-sonnet-4-6' },
+  { displayName: 'Claude Sonnet 4.5 (US CRI)', modelId: 'us.anthropic.claude-sonnet-4-5-20250514-v1:0' },
+  { displayName: 'Claude Sonnet 4.5 (Single Region)', modelId: 'anthropic.claude-sonnet-4-5-20250514-v1:0' },
+  { displayName: 'Claude Sonnet 4 (US CRI)', modelId: 'us.anthropic.claude-sonnet-4-20250514-v1:0' },
+  { displayName: 'Claude Sonnet 4 (Single Region)', modelId: 'anthropic.claude-sonnet-4-20250514-v1:0' },
+  { displayName: 'Claude Haiku 4.5 (US CRI)', modelId: 'us.anthropic.claude-haiku-4-5-20250514-v1:0' },
+  { displayName: 'Claude Haiku 4.5 (Single Region)', modelId: 'anthropic.claude-haiku-4-5-20250514-v1:0' },
+  { displayName: 'Claude Opus 4.6 (US CRI)', modelId: 'us.anthropic.claude-opus-4-6' },
+  { displayName: 'Claude Opus 4.6 (Single Region)', modelId: 'anthropic.claude-opus-4-6' },
+  { displayName: 'Claude Opus 4.7 (US CRI)', modelId: 'us.anthropic.claude-opus-4-7' },
+  { displayName: 'Claude Opus 4.7 (Single Region)', modelId: 'anthropic.claude-opus-4-7' },
+  { displayName: 'Claude Opus 4.8 (US CRI)', modelId: 'us.anthropic.claude-opus-4-8' },
+  { displayName: 'Claude Opus 4.8 (Single Region)', modelId: 'anthropic.claude-opus-4-8' },
+  { displayName: 'Claude Sonnet 5 (US CRI)', modelId: 'us.anthropic.claude-sonnet-5' },
+  { displayName: 'Claude Sonnet 5 (Single Region)', modelId: 'anthropic.claude-sonnet-5' },
 ];
 
 /**
