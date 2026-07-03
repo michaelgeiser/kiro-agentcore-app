@@ -9,7 +9,6 @@
  */
 
 import { createElement } from '../utils/dom.js';
-import { openEnvVarsLightbox } from './env-vars.js';
 
 /** @type {number|null} */
 let _hideTimeout = null;
@@ -46,8 +45,9 @@ export function renderAdminMenu(navContainer) {
     className: 'admin-menu__item',
     textContent: 'Environment Variables',
     role: 'menuitem',
-    onClick: () => {
+    onClick: async () => {
       _hideDropdown(dropdown, trigger);
+      const { openEnvVarsLightbox } = await import('./env-vars.js');
       openEnvVarsLightbox();
     },
   });
@@ -81,7 +81,11 @@ export function renderAdminMenu(navContainer) {
   // Assemble and append
   menuContainer.appendChild(trigger);
   menuContainer.appendChild(dropdown);
-  navContainer.appendChild(menuContainer);
+
+  // Wrap in <li> since navContainer is a <ul>
+  const listItem = document.createElement('li');
+  listItem.appendChild(menuContainer);
+  navContainer.insertBefore(listItem, navContainer.firstChild);
 }
 
 /**
