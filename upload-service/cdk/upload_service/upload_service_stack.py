@@ -234,6 +234,99 @@ class UploadServiceStack(Stack):
             s3.NotificationKeyFilter(prefix="uploads/"),
         )
 
+        # --- Admin Lambda Functions ---
+        admin_env_vars_lambda = _lambda.Function(
+            self,
+            "AdminEnvVarsLambda",
+            function_name=f"{resource_prefix}-admin-env-vars",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="handlers.admin_env_vars.handler",
+            code=lambda_code,
+            environment={
+                "SSM_PREFIX": f"/{app_name}/{env_name}/admin/env-vars/",
+                "ECS_CLUSTER": f"{resource_prefix}-eval-cluster",
+                "ECS_SERVICE": f"{resource_prefix}-eval-service",
+                "TASK_FAMILY": f"{resource_prefix}-eval-task",
+            },
+            timeout=Duration.seconds(30),
+        )
+
+        admin_feature_flags_lambda = _lambda.Function(
+            self,
+            "AdminFeatureFlagsLambda",
+            function_name=f"{resource_prefix}-admin-feature-flags",
+            runtime=_lambda.Runtime.PYTHON_3_12,
+            handler="handlers.admin_feature_flags.handler",
+            code=lambda_code,
+            environment={
+                "SSM_PREFIX": f"/{app_name}/{env_name}/feature-flags/",
+            },
+            timeout=Duration.seconds(30),
+        )
+
+        # --- Admin IAM Policies ---
+        # SSM read/write for admin env vars and feature flags prefixes
+        admin_env_vars_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["ssm:GetParameter", "ssm:PutParameter"],
+                resources=[
+                    f"arn:aws:ssm:{self.region}:{self.account}:parameter/{app_name}/{env_name}/admin/env-vars/*",
+                ],
+            )
+        )
+
+        admin_feature_flags_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["ssm:GetParameter", "ssm:PutParameter"],
+                resources=[
+                    f"arn:aws:ssm:{self.region}:{self.account}:parameter/{app_name}/{env_name}/feature-flags/*",
+                ],
+            )
+        )
+
+        # ECS permissions for admin-env-vars Lambda (scoped to evaluation cluster/service)
+        admin_env_vars_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "ecs:DescribeTaskDefinition",
+                    "ecs:RegisterTaskDefinition",
+                ],
+                resources=["*"],  # Task definitions don't support resource-level restrictions
+            )
+        )
+
+        admin_env_vars_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "ecs:UpdateService",
+                    "ecs:DescribeServices",
+                ],
+                resources=[
+                    f"arn:aws:ecs:{self.region}:{self.account}:service/{resource_prefix}-eval-cluster/{resource_prefix}-eval-service",
+                ],
+            )
+        )
+
+        # ECS task definition requires iam:PassRole for task execution role
+        admin_env_vars_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["iam:PassRole"],
+                resources=[
+                    f"arn:aws:iam::{self.account}:role/{resource_prefix}-*",
+                ],
+                conditions={
+                    "StringEquals": {
+                        "iam:PassedToService": "ecs-tasks.amazonaws.com"
+                    }
+                },
+            )
+        )
+
         # --- HTTP API Gateway v2 ---
         http_api = apigwv2.CfnApi(
             self,
@@ -242,7 +335,7 @@ class UploadServiceStack(Stack):
             protocol_type="HTTP",
             cors_configuration=apigwv2.CfnApi.CorsProperty(
                 allow_origins=["https://kiro.geiserai.com"],
-                allow_methods=["GET", "POST", "DELETE"],
+                allow_methods=["GET", "POST", "PUT", "DELETE"],
                 allow_headers=["Content-Type", "Authorization"],
                 max_age=86400,  # 1 day in seconds
             ),
@@ -347,6 +440,79 @@ class UploadServiceStack(Stack):
             "ApiGwInvokeDeleteSubmission",
             principal=iam.ServicePrincipal("apigateway.amazonaws.com"),
             source_arn=f"arn:aws:execute-api:{self.region}:{self.account}:{http_api.ref}/*/*/submissions/*",
+        )
+
+        # --- Admin Lambda Integrations ---
+        admin_env_vars_integration = apigwv2.CfnIntegration(
+            self,
+            "AdminEnvVarsIntegration",
+            api_id=http_api.ref,
+            integration_type="AWS_PROXY",
+            integration_uri=admin_env_vars_lambda.function_arn,
+            payload_format_version="2.0",
+        )
+
+        admin_feature_flags_integration = apigwv2.CfnIntegration(
+            self,
+            "AdminFeatureFlagsIntegration",
+            api_id=http_api.ref,
+            integration_type="AWS_PROXY",
+            integration_uri=admin_feature_flags_lambda.function_arn,
+            payload_format_version="2.0",
+        )
+
+        # --- Admin Routes ---
+        apigwv2.CfnRoute(
+            self,
+            "GetAdminEnvVarsRoute",
+            api_id=http_api.ref,
+            route_key="GET /admin/environment-variables",
+            authorization_type="JWT",
+            authorizer_id=jwt_authorizer.ref,
+            target=f"integrations/{admin_env_vars_integration.ref}",
+        )
+
+        apigwv2.CfnRoute(
+            self,
+            "PutAdminEnvVarsRoute",
+            api_id=http_api.ref,
+            route_key="PUT /admin/environment-variables",
+            authorization_type="JWT",
+            authorizer_id=jwt_authorizer.ref,
+            target=f"integrations/{admin_env_vars_integration.ref}",
+        )
+
+        apigwv2.CfnRoute(
+            self,
+            "GetAdminFeatureFlagsRoute",
+            api_id=http_api.ref,
+            route_key="GET /admin/feature-flags",
+            authorization_type="JWT",
+            authorizer_id=jwt_authorizer.ref,
+            target=f"integrations/{admin_feature_flags_integration.ref}",
+        )
+
+        apigwv2.CfnRoute(
+            self,
+            "PutAdminFeatureFlagRoute",
+            api_id=http_api.ref,
+            route_key="PUT /admin/feature-flags/{flag-name}",
+            authorization_type="JWT",
+            authorizer_id=jwt_authorizer.ref,
+            target=f"integrations/{admin_feature_flags_integration.ref}",
+        )
+
+        # --- Grant API Gateway permission to invoke Admin Lambdas ---
+        admin_env_vars_lambda.add_permission(
+            "ApiGwInvokeAdminEnvVars",
+            principal=iam.ServicePrincipal("apigateway.amazonaws.com"),
+            source_arn=f"arn:aws:execute-api:{self.region}:{self.account}:{http_api.ref}/*/*/admin/environment-variables",
+        )
+
+        admin_feature_flags_lambda.add_permission(
+            "ApiGwInvokeAdminFeatureFlags",
+            principal=iam.ServicePrincipal("apigateway.amazonaws.com"),
+            source_arn=f"arn:aws:execute-api:{self.region}:{self.account}:{http_api.ref}/*/*/admin/feature-flags*",
         )
 
         # --- Outputs ---

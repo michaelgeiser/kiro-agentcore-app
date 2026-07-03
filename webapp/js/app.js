@@ -9,6 +9,8 @@ import { Router } from './router.js';
 import { auth, isAdmin } from './auth.js';
 import { render as renderUpload } from './views/upload.js';
 import { render as renderList } from './views/list.js';
+import { render as renderFeatureFlags } from './views/feature-flags.js';
+import { renderAdminMenu } from './views/admin-menu.js';
 import { showToast } from './utils/dom.js';
 
 /**
@@ -97,18 +99,17 @@ async function init() {
 
   const outlet = document.getElementById('app-outlet');
   const router = new Router(
-    { upload: renderUpload, list: renderList, home: renderHome },
-    outlet
+    { upload: renderUpload, list: renderList, home: renderHome, 'feature-flags': renderFeatureFlags },
+    outlet,
+    { guardFn: isAdmin, guardedRoutes: ['feature-flags'], fallbackRoute: 'upload' }
   );
   router.start();
 
-  // 3.5. Show Administrator label if user is in the administrators group
+  // 3.5. Render admin menu if user is in the administrators group
   if (isAdmin()) {
-    const navLinks = document.querySelector('.nav-links');
-    if (navLinks) {
-      const adminLabel = document.createElement('li');
-      adminLabel.innerHTML = '<span style="color: red; font-weight: bold;">Administrator</span>';
-      navLinks.insertBefore(adminLabel, navLinks.firstChild);
+    const navLinksContainer = document.querySelector('.nav-links');
+    if (navLinksContainer) {
+      renderAdminMenu(navLinksContainer);
     }
   }
 

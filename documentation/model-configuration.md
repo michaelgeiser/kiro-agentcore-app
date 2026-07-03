@@ -95,6 +95,12 @@ Converts audio chunks into vector embeddings for the evaluation agents to retrie
 
 ## How to Change a Model
 
+### Preferred Method: Administration Panel
+
+The preferred method for changing model IDs at runtime is the **Administration Panel** (see `documentation/admin-panel.md`). The admin panel provides a dropdown of valid model options and triggers ECS redeployment automatically. Administrators can update `SESSION_SUPERVISOR_MODEL_ID`, `COACHING_SUPERVISOR_MODEL_ID`, and `EVALUATION_MODEL_ID` through the Environment Variables lightbox without any CLI commands or code changes. Changes are persisted to SSM Parameter Store and a new ECS deployment is triggered immediately.
+
+Use the manual methods below only when the admin panel is unavailable or when updating infrastructure-as-code defaults for fresh deployments.
+
 ### Changing the Evaluation Reasoning Model (all agents + report summary)
 
 **Scenario:** Anthropic releases Claude Sonnet 5, and you want all evaluation agents to use it.
@@ -193,15 +199,18 @@ aws ecs update-service ...
 ## Model Configuration Hierarchy (Precedence)
 
 ```
-1. Environment variable (highest priority)
+1. Administration Panel (highest priority — updates SSM + triggers ECS redeploy)
+   See documentation/admin-panel.md
+
+2. Environment variable (set at deploy time or via direct ECS update)
    EVALUATION_MODEL_ID, COACHING_SUPERVISOR_MODEL_ID, REPORT_MODEL_ID
 
-2. CDK stack environment dict (set at deploy time)
+3. CDK stack environment dict (set at deploy time)
    agentic-evaluation/infra/agentic_evaluation_stack.py
 
-3. agentcore_config.py _ENVIRONMENT_DEFAULTS (per-environment)
+4. agentcore_config.py _ENVIRONMENT_DEFAULTS (per-environment)
 
-4. Code-level default in each evaluator file (lowest priority)
+5. Code-level default in each evaluator file (lowest priority)
    os.environ.get("EVALUATION_MODEL_ID", "<default-here>")
 ```
 

@@ -158,4 +158,95 @@ describe('Router', () => {
       expect(() => router.start()).not.toThrow();
     });
   });
+
+  describe('admin route guards', () => {
+    it('renders guarded route when guardFn returns true', () => {
+      window.location.hash = 'feature-flags';
+
+      const uploadView = vi.fn();
+      const featureFlagsView = vi.fn((el) => { el.textContent = 'Feature Flags'; });
+
+      const router = new Router(
+        { upload: uploadView, 'feature-flags': featureFlagsView },
+        outlet,
+        { guardFn: () => true, guardedRoutes: ['feature-flags'] }
+      );
+      router.start();
+
+      expect(featureFlagsView).toHaveBeenCalledWith(outlet);
+      expect(uploadView).not.toHaveBeenCalled();
+    });
+
+    it('redirects to fallback route when guardFn returns false', () => {
+      window.location.hash = 'feature-flags';
+
+      const uploadView = vi.fn();
+      const featureFlagsView = vi.fn();
+
+      const router = new Router(
+        { upload: uploadView, 'feature-flags': featureFlagsView },
+        outlet,
+        { guardFn: () => false, guardedRoutes: ['feature-flags'] }
+      );
+      router.start();
+
+      expect(featureFlagsView).not.toHaveBeenCalled();
+      expect(window.location.hash).toBe('#upload');
+    });
+
+    it('blocks direct URL navigation to admin routes for non-admins', () => {
+      const uploadView = vi.fn();
+      const featureFlagsView = vi.fn();
+
+      const router = new Router(
+        { upload: uploadView, 'feature-flags': featureFlagsView },
+        outlet,
+        { guardFn: () => false, guardedRoutes: ['feature-flags'] }
+      );
+      router.start();
+      uploadView.mockClear();
+
+      // Simulate direct navigation via hash change
+      window.location.hash = 'feature-flags';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+
+      expect(featureFlagsView).not.toHaveBeenCalled();
+      expect(window.location.hash).toBe('#upload');
+    });
+
+    it('does not gate non-guarded routes', () => {
+      window.location.hash = 'list';
+
+      const uploadView = vi.fn();
+      const listView = vi.fn((el) => { el.textContent = 'List Page'; });
+      const featureFlagsView = vi.fn();
+
+      const router = new Router(
+        { upload: uploadView, list: listView, 'feature-flags': featureFlagsView },
+        outlet,
+        { guardFn: () => false, guardedRoutes: ['feature-flags'] }
+      );
+      router.start();
+
+      expect(listView).toHaveBeenCalledWith(outlet);
+      expect(uploadView).not.toHaveBeenCalled();
+    });
+
+    it('uses custom fallbackRoute when specified', () => {
+      window.location.hash = 'feature-flags';
+
+      const homeView = vi.fn();
+      const featureFlagsView = vi.fn();
+
+      const router = new Router(
+        { home: homeView, 'feature-flags': featureFlagsView },
+        outlet,
+        { guardFn: () => false, guardedRoutes: ['feature-flags'], fallbackRoute: 'home' }
+      );
+      router.start();
+
+      expect(featureFlagsView).not.toHaveBeenCalled();
+      expect(window.location.hash).toBe('#home');
+    });
+  });
 });

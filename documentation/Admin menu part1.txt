@@ -1,0 +1,47 @@
+
+Please suggest alternate ways of implementing if I suggest an implementation and you have a better idea. We'll collaborate on it and deteremine what I want after considereing your suggestions.
+
+I want to add a page to the Frontend UI and the have the appropriate lambda services in the backend
+
+if the person has the Administrator role, make red "Administrator" text in the head open a menu on mouse over. I want this to have two pages, page one will be "Environment variables". Page two will be "Feature Flags." I am also specifying this page as well. 
+I want these to have a similar style as the rest of site but instead of black, use a medium dark gray background for all Administration pages. Adjust other colors in the style as needed to visibility
+
+Let's rename "Administrator" to "Administration"
+
+when clicked, open a page and diplay all environment variables in a lightbox dialog
+give the options to change the values and then persist and to Cancel (which just closes the dialog
+
+Let me know what I need to do to get the applications to pick up the new values
+
+
+for the variables 
+SESSION_SUPERVISOR_MODEL_ID
+COACHING_SUPERVISOR_MODEL_ID
+EVALUATION_MODEL_ID
+I want the inputs to be a dropdown box on each variable. populate it the non-legacy models for all Amazon and and Antrhropic LLM
+The key should be the value to use in the API and the Display should be a human friendly name
+for example:
+value: us.amazon.nova-pro-v1:0 display: Amazon Nova Pro CRI
+value: amazon.nova-pro-v1:0 display: Amazon Nova Pro Single Region
+
+Show CRI and Single region for models where available
+select the entry in the dropdown that matches the currently set value. 
+If the currently set value is no longer valid, default to an "unselected" option (which will have to exist) but do not let the form be submitted without all values having valid entries.
+
+If any other variables should be enumerated values like this, I want them implemented that way
+
+Ask me if you have any questions on any additional enumerations or anything else
+
+The page will maintain an "Changed Flag" for each variable to indicate if the value has been updated.
+if the value was changed but changed back to the original value, do not set the flag
+
+The write function will update any changed values
+
+
+I also want to implement a page to control the Feature Flags
+It will also be based from the Adinistration menu
+I want it to show all feature flags and their state.
+Use a control with a visual something like the on/off switch in an Android or iPhone that has a text "On" and "Off" indicator; I do not want a simple checkbox
+
+
+

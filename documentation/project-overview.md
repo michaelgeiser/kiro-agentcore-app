@@ -25,6 +25,7 @@ Frontend: Static SPA on CloudFront + Cognito authentication
 Backend API: API Gateway + Lambda + DynamoDB
 Preparation: Step Functions + Lambda (10 functions) + SQS + Bedrock Embeddings + Amazon Transcribe
 Evaluation: ECS Fargate Spot + Strands Agents SDK + Bedrock Claude Sonnet
+Administration Panel: Role-gated interface for managing runtime environment variables and feature flags without redeployment
 Storage: S3 (uploads, chunks, embeddings, evaluation results, PDF reports)
 Messaging: SQS FIFO queues with dead-letter queues
 Notifications: SNS error topic + CloudWatch alarms
@@ -62,6 +63,15 @@ Infrastructure as Code: AWS CDK (Python) for all stacks. Fully automated CI/CD v
 ## Current State
 
 The infrastructure is complete and deployed. The end-to-end pipeline runs: upload → preparation → handoff → evaluation → report generation → completion. The PDF coaching report includes user identification from Cognito, presentation metadata, an LLM-generated narrative executive summary, per-dimension detailed feedback with formatted display names, and an overall coaching assessment. Page numbers appear on every page, and major sections start on new pages for readability. Remaining work is application-level fixes to the evaluation agents' content retrieval (currently using a wrong API for vector store access) and response parsing (the coaching supervisor's agent orchestration returns results in a format the parser doesn't handle). These are documented in remaining-issues.md.
+
+## Administration Panel
+
+The platform includes a role-gated Administration Panel accessible only to users in the Cognito "administrators" group. The panel provides two management interfaces:
+
+- **Environment Variables** — View and modify runtime configuration (model IDs, concurrency limits, timeouts) through a lightbox dialog. Changes are persisted to SSM Parameter Store and trigger an ECS service force-new-deployment so running tasks pick up updated values within minutes.
+- **Feature Flags** — Toggle platform features on/off (video processing, batch processing, embeddings, local mode) with immediate persistence to SSM Parameter Store.
+
+The admin panel uses a distinct visual theme (medium dark gray background) to differentiate it from the standard user experience. See `documentation/admin-panel.md` for full details on the administration feature, API endpoints, security model, and supported configuration options.
 
 ## Repository Structure
 
