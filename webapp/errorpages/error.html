@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error | Presentation Coach</title>
+    <style>
+        /* ==========================================================================
+           Theme tokens (mirrored from css/theme.css for standalone error page)
+           ========================================================================== */
+        :root {
+            --color-primary: #4da6ff;
+            --color-secondary: #9aa0a6;
+            --color-background: #000000;
+            --color-surface: #1a1a1a;
+            --color-text: #e8eaed;
+            --color-text-muted: #9aa0a6;
+            --color-error: #f28b82;
+            --color-success: #81c995;
+            --color-border: #333333;
+
+            --font-heading: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            --font-body: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+            --font-size-xs: 0.75rem;
+            --font-size-sm: 0.875rem;
+            --font-size-base: 1rem;
+            --font-size-md: 1.125rem;
+            --font-size-lg: 1.5rem;
+            --font-size-xl: 2rem;
+
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-full: 9999px;
+        }
+
+        /* --- Reset & Base --- */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            font-size: 100%;
+        }
+
+        body {
+            font-family: var(--font-body);
+            font-size: var(--font-size-base);
+            color: var(--color-text);
+            background-color: var(--color-background);
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- Header --- */
+        header {
+            background-color: var(--color-background);
+            border-bottom: 1px solid var(--color-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-sm) var(--spacing-md);
+            max-width: 1920px;
+            margin: 0 auto;
+        }
+
+        .nav-brand {
+            font-family: var(--font-heading);
+            font-size: var(--font-size-md);
+            font-weight: 700;
+            color: var(--color-primary);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .nav-brand:hover {
+            text-decoration: underline;
+        }
+
+        .nav-brand img {
+            vertical-align: middle;
+            margin-right: 12px;
+        }
+
+        /* --- Main Content --- */
+        main {
+            flex: 1;
+            width: 100%;
+            max-width: 1920px;
+            margin: 0 auto;
+            padding: var(--spacing-md);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- Error Layout --- */
+        .error-container {
+            text-align: center;
+            padding: var(--spacing-xl) var(--spacing-md);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .error-icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: var(--spacing-lg);
+            border-radius: var(--radius-full);
+            background-color: var(--color-surface);
+            border: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .error-icon svg {
+            width: 40px;
+            height: 40px;
+            stroke: var(--color-error);
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .error-code {
+            font-family: var(--font-heading);
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--color-primary);
+            margin: 0;
+            line-height: 1;
+        }
+
+        .error-title {
+            font-family: var(--font-heading);
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            color: var(--color-text);
+            margin: var(--spacing-md) 0 var(--spacing-sm);
+        }
+
+        .error-description {
+            font-family: var(--font-body);
+            font-size: var(--font-size-base);
+            color: var(--color-secondary);
+            margin-bottom: var(--spacing-lg);
+            max-width: 500px;
+        }
+
+        /* --- Button (matches .btn-primary) --- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-family: var(--font-body);
+            font-size: var(--font-size-base);
+            font-weight: 500;
+            line-height: 1.5;
+            border: 2px solid transparent;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .btn:focus-visible {
+            outline: 3px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: #000000;
+            border-color: var(--color-primary);
+        }
+
+        .btn-primary:hover {
+            background-color: #3d96ef;
+            border-color: #3d96ef;
+        }
+
+        .btn-primary:active {
+            background-color: #2d86df;
+            border-color: #2d86df;
+        }
+
+        /* --- Debug Toggle --- */
+        .debug-toggle {
+            display: block;
+            margin-top: var(--spacing-lg);
+            font-family: var(--font-body);
+            font-size: var(--font-size-xs);
+            color: var(--color-secondary);
+            opacity: 0.6;
+            cursor: pointer;
+            text-decoration: underline;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+
+        .debug-toggle:hover {
+            opacity: 1;
+            color: var(--color-text);
+        }
+
+        .debug-toggle:focus-visible {
+            outline: 3px solid var(--color-primary);
+            outline-offset: 2px;
+            border-radius: var(--radius-sm);
+        }
+
+        /* --- Debug Panel --- */
+        .debug-panel {
+            display: none;
+            text-align: left;
+            margin-top: var(--spacing-md);
+            padding: var(--spacing-md);
+            background-color: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: var(--font-size-xs);
+            width: 100%;
+            max-width: 600px;
+            word-break: break-all;
+            color: var(--color-text);
+        }
+
+        .debug-panel dt {
+            font-weight: 600;
+            margin-top: var(--spacing-sm);
+            color: var(--color-primary);
+        }
+
+        .debug-panel dt:first-child {
+            margin-top: 0;
+        }
+
+        .debug-panel dd {
+            margin: 2px 0 0 0;
+            color: var(--color-text-muted);
+        }
+
+        .debug-note {
+            margin-top: var(--spacing-md);
+            font-size: var(--font-size-xs);
+            font-family: var(--font-body);
+            color: var(--color-secondary);
+            opacity: 0.7;
+        }
+
+        /* --- Footer --- */
+        footer {
+            text-align: center;
+            padding: var(--spacing-md);
+            font-size: var(--font-size-sm);
+            color: var(--color-text-muted);
+            border-top: 1px solid var(--color-border);
+        }
+
+        footer a {
+            color: var(--color-primary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* --- Responsive --- */
+        @media (min-width: 768px) {
+            main {
+                padding: var(--spacing-lg);
+            }
+
+            nav {
+                padding: var(--spacing-md) var(--spacing-lg);
+            }
+
+            .nav-brand {
+                font-size: var(--font-size-lg);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            main {
+                padding: var(--spacing-xl);
+            }
+
+            nav {
+                padding: var(--spacing-md) var(--spacing-lg);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                transition: none !important;
+                animation: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav aria-label="Main navigation">
+            <a href="/" class="nav-brand">
+                <img src="/assets/square-1024x1024-AI-PC.png" alt="Presentation Coach Logo" width="40" height="40">Presentation Coach
+            </a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="error-container">
+            <div class="error-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            </div>
+            <p class="error-code" id="error-code">Error</p>
+            <h1 class="error-title" id="error-title">Something Went Wrong</h1>
+            <p class="error-description" id="error-description">An unexpected error occurred.</p>
+            <a href="/" class="btn btn-primary">Back to Home</a>
+            <button class="debug-toggle" type="button" aria-expanded="false" onclick="toggleDebug()">Show debug info</button>
+            <div id="debug-panel" class="debug-panel" aria-hidden="true">
+                <dl>
+                    <dt>Status</dt>
+                    <dd id="dbg-status"></dd>
+                    <dt>S3 Error Code</dt>
+                    <dd id="dbg-s3code"></dd>
+                    <dt>S3 Message</dt>
+                    <dd id="dbg-s3message"></dd>
+                    <dt>Key (requested path)</dt>
+                    <dd id="dbg-key"></dd>
+                    <dt>Requested URL</dt>
+                    <dd id="dbg-url"></dd>
+                    <dt>Referrer</dt>
+                    <dd id="dbg-referrer"></dd>
+                    <dt>Timestamp</dt>
+                    <dd id="dbg-time"></dd>
+                    <dt>User Agent</dt>
+                    <dd id="dbg-ua"></dd>
+                </dl>
+                <p class="debug-note">
+                    Note: RequestId and HostId are not available with CloudFront custom error responses.
+                    See /errorpagesalt/ for the Lambda@Edge approach that captures full AWS error details.
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>
+            <a href="https://www.geisersoft.com/" target="_blank" rel="noopener noreferrer">
+                <img src="/assets/icons/GeiserSoft.svg" alt="GeiserSoft Logo" width="40" height="40" style="vertical-align: middle;">
+            </a>
+            &copy; 2026 Geisersoft Presentation Coaching Platform
+        </p>
+    </footer>
+
+    <script>
+        // Toggle debug panel with proper ARIA state
+        function toggleDebug() {
+            var panel = document.getElementById('debug-panel');
+            var btn = document.querySelector('.debug-toggle');
+            var isHidden = panel.style.display === 'none' || panel.style.display === '';
+            panel.style.display = isHidden ? 'block' : 'none';
+            panel.setAttribute('aria-hidden', !isHidden);
+            btn.setAttribute('aria-expanded', isHidden);
+            btn.textContent = isHidden ? 'Hide debug info' : 'Show debug info';
+        }
+
+        // Error definitions keyed by HTTP status code
+        // These are the error codes CloudFront allows custom error pages for
+        var errors = {
+            '400': {
+                title: 'Bad Request',
+                s3Code: 'InvalidArgument',
+                s3Message: 'The request was malformed.',
+                description: 'The request was malformed or contained invalid parameters. Double-check the URL and try again.'
+            },
+            '403': {
+                title: 'Forbidden',
+                s3Code: 'AccessDenied',
+                s3Message: 'Access Denied.',
+                description: 'You don\'t have permission to access this resource. If you believe this is a mistake, please contact us.'
+            },
+            '404': {
+                title: 'Page Not Found',
+                s3Code: 'NoSuchKey',
+                s3Message: 'The specified key does not exist.',
+                description: 'The resource you requested doesn\'t exist, was moved, or maybe it was just a dream you had during an on-call shift.'
+            },
+            '405': {
+                title: 'Method Not Allowed',
+                s3Code: 'MethodNotAllowed',
+                s3Message: 'The specified method is not allowed against this resource.',
+                description: 'The HTTP method used is not supported for this resource.'
+            },
+            '414': {
+                title: 'URI Too Long',
+                s3Code: 'InvalidURI',
+                s3Message: 'The URI exceeded the maximum allowed length.',
+                description: 'The requested URL is too long for the server to process. Try shortening it.'
+            },
+            '416': {
+                title: 'Range Not Satisfiable',
+                s3Code: 'InvalidRange',
+                s3Message: 'The requested range is not satisfiable.',
+                description: 'The requested byte range is not available for this resource.'
+            },
+            '500': {
+                title: 'Internal Server Error',
+                s3Code: 'InternalError',
+                s3Message: 'We encountered an internal error. Please try again.',
+                description: 'Something broke on our end. We\'re looking into it — please try again in a moment.'
+            },
+            '501': {
+                title: 'Not Implemented',
+                s3Code: 'NotImplemented',
+                s3Message: 'The requested functionality is not implemented.',
+                description: 'The server does not support the functionality required to fulfill this request.'
+            },
+            '502': {
+                title: 'Bad Gateway',
+                s3Code: 'BadGateway',
+                s3Message: 'The server received an invalid response from the upstream server.',
+                description: 'The server received an invalid response from an upstream service. Please try again shortly.'
+            },
+            '503': {
+                title: 'Service Unavailable',
+                s3Code: 'ServiceUnavailable',
+                s3Message: 'Service is temporarily unavailable. Please reduce your request rate.',
+                description: 'The service is temporarily unavailable due to maintenance or high load. Please try again later.'
+            },
+            '504': {
+                title: 'Gateway Timeout',
+                s3Code: 'GatewayTimeout',
+                s3Message: 'The gateway did not receive a timely response from the upstream server.',
+                description: 'The server didn\'t respond in time. Please try again in a moment.'
+            }
+        };
+
+        // Determine the error code
+        var params = new URLSearchParams(window.location.search);
+        var statusCode = params.get('status') || '404';
+
+        // Look up the error details
+        var errorInfo = errors[statusCode] || {
+            title: 'Unknown Error',
+            s3Code: 'Unknown',
+            s3Message: 'An unknown error occurred.',
+            description: 'An unexpected error occurred. Please try again or contact us if the problem persists.'
+        };
+
+        // Set page content
+        document.getElementById('error-code').textContent = statusCode;
+        document.getElementById('error-title').textContent = errorInfo.title;
+        document.getElementById('error-description').textContent = errorInfo.description;
+        document.title = statusCode + ' - ' + errorInfo.title + ' | Presentation Coach';
+
+        // Populate debug panel
+        document.getElementById('dbg-status').textContent = statusCode + ' ' + errorInfo.title;
+        document.getElementById('dbg-s3code').textContent = errorInfo.s3Code;
+        document.getElementById('dbg-s3message').textContent = errorInfo.s3Message;
+        document.getElementById('dbg-key').textContent = window.location.pathname.replace(/^\/errorpages\/error\.html$/, '') || params.get('key') || '(from URL: ' + (document.referrer || window.location.href) + ')';
+        document.getElementById('dbg-url').textContent = params.get('originalurl') || document.referrer || window.location.href;
+        document.getElementById('dbg-referrer').textContent = document.referrer || '(none)';
+        document.getElementById('dbg-time').textContent = new Date().toISOString();
+        document.getElementById('dbg-ua').textContent = navigator.userAgent;
+    </script>
+</body>
+</html>
