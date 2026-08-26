@@ -76,6 +76,11 @@ COGNITO_DOMAIN=$(extract_output "CognitoDomain")
 COGNITO_CLIENT_ID=$(extract_output "CognitoAppClientId")
 API_ENDPOINT=$(extract_output "ApiEndpoint")
 
+# CloudFront domain that proxies Cognito requests (avoids SChannel TLS issues on Windows).
+# Override via environment variable for different environments.
+# See: documentation/cloudfront-cognito-proxy-fix.md
+CLOUDFRONT_DOMAIN="${CLOUDFRONT_DOMAIN:-kiro.geiserai.com}"
+
 # --- Generate config.js ---
 
 mkdir -p "$(dirname "${CONFIG_OUTPUT}")"
@@ -85,8 +90,10 @@ cat > "${CONFIG_OUTPUT}" << EOF
 // Stack: ${STACK_NAME}
 // Run: scripts/generate-frontend-config.sh ${STACK_NAME} to regenerate
 export const CONFIG = {
-  // From CfnOutput "CognitoDomain" - Cognito Hosted UI Domain URL
-  cognitoDomain: '${COGNITO_DOMAIN}',
+  // Cognito auth requests proxied through CloudFront to avoid SChannel TLS issues.
+  // Direct Cognito domain: ${COGNITO_DOMAIN}
+  // See: documentation/cloudfront-cognito-proxy-fix.md
+  cognitoDomain: 'https://${CLOUDFRONT_DOMAIN}/cognito',
 
   // From CfnOutput "CognitoAppClientId" - Cognito User Pool App Client ID
   clientId: '${COGNITO_CLIENT_ID}',
@@ -97,6 +104,6 @@ export const CONFIG = {
 EOF
 
 echo "Successfully generated: ${CONFIG_OUTPUT}"
-echo "  cognitoDomain: ${COGNITO_DOMAIN}"
+echo "  cognitoDomain: https://${CLOUDFRONT_DOMAIN}/cognito (proxied, direct: ${COGNITO_DOMAIN})"
 echo "  clientId:      ${COGNITO_CLIENT_ID}"
 echo "  apiBaseUrl:    ${API_ENDPOINT}"
