@@ -8,7 +8,7 @@ Windows clients using SChannel encounter TLS handshake failures when connecting 
 
 - CloudFront distribution `E38F17UQPVUDDG` serves the SPA from S3
 - Distribution is **not managed by CDK** — it exists externally (console/CLI created)
-- Cognito domain: `https://prescoach-dev-local01.auth.<region>.amazoncognito.com`
+- Cognito domain: look up via CloudFormation Outputs → `CognitoDomain` key (see Step 0)
 - SPA auth code in `webapp/js/auth.js` calls Cognito directly at endpoints:
   - `{cognitoDomain}/oauth2/authorize` (login redirect)
   - `{cognitoDomain}/oauth2/token` (token exchange)
@@ -18,6 +18,39 @@ Windows clients using SChannel encounter TLS handshake failures when connecting 
 ## Solution Overview
 
 Add a `/cognito/*` behavior on the existing CloudFront distribution that proxies requests to the Cognito Hosted UI origin. Update the SPA to use `https://kiro.geiserai.com/cognito` instead of the direct Cognito domain.
+
+---
+
+## Step 0: Look Up Your Actual Cognito Hosted UI Domain
+
+**Who:** You (manual)
+
+Before configuring CloudFront, you need the exact Cognito Hosted UI hostname. Do NOT guess this — a wrong hostname causes DNS failures (NXDOMAIN) or 502 errors.
+
+**Option A — CloudFormation Outputs (fastest):**
+
+1. AWS Console → CloudFormation → Stacks
+2. Click your stack (e.g., `prescoach-dev-local01`)
+3. Go to the **Outputs** tab
+4. Find the key **`CognitoDomain`** — its value is the full URL (e.g., `https://prescoach-dev-local01.auth.us-east-1.amazoncognito.com`)
+5. Strip the `https://` — the bare hostname is what you need for CloudFront
+
+**Option B — Cognito Console:**
+
+1. AWS Console → Amazon Cognito → User pools
+2. Click into your user pool
+3. In the left sidebar, look for **"Domain"** or **"Branding"** (location varies by console version)
+4. The domain is displayed there
+
+**Option C — AWS CLI:**
+
+```bash
+aws cloudformation describe-stacks --stack-name prescoach-dev-local01 --query "Stacks[0].Outputs[?OutputKey=='CognitoDomain'].OutputValue" --output text
+```
+
+**Verify the domain resolves before proceeding:** Open the hostname in a browser or run `nslookup <hostname>`. If you get NXDOMAIN, the prefix or region is wrong.
+
+Write down the hostname. You'll use it in Step 1 below.
 
 ---
 
@@ -31,7 +64,7 @@ Add a `/cognito/*` behavior on the existing CloudFront distribution that proxies
 
 | Field | Value |
 |-------|-------|
-| Origin domain | `prescoach-dev-local01.auth.<region>.amazoncognito.com` |
+| Origin domain | The hostname from Step 0 (e.g., `prescoach-dev-local01.auth.us-east-1.amazoncognito.com`) |
 | Origin name | `cognito-hosted-ui` |
 | Protocol | HTTPS only |
 | HTTPS port | 443 |
@@ -59,7 +92,7 @@ Add a `/cognito/*` behavior on the existing CloudFront distribution that proxies
 | Cache policy | `CachingDisabled` (managed policy) |
 | Origin request policy | `AllViewerExceptHostHeader` (managed policy ID: `b689b0a8-53d0-40ab-baf2-68738e2966ac`) |
 
-**Why `AllViewerExceptHostHeader`:** CloudFront must send `Host: prescoach-dev-local01.auth.<region>.amazoncognito.com` to the origin (not `Host: kiro.geiserai.com`). The `AllViewerExceptHostHeader` policy forwards all viewer headers except `Host`, which lets CloudFront substitute the origin's hostname. This is critical — Cognito rejects requests with an incorrect `Host` header.
+**Why `AllViewerExceptHostHeader`:** CloudFront must send the Cognito origin's actual hostname as the `Host` header (not `Host: kiro.geiserai.com`). The `AllViewerExceptHostHeader` policy forwards all viewer headers except `Host`, which lets CloudFront substitute the origin's hostname. This is critical — Cognito rejects requests with an incorrect `Host` header.
 
 **Why `CachingDisabled`:** Every Cognito request is session-specific. Caching would break auth flows.
 
@@ -183,7 +216,7 @@ aws cloudfront create-invalidation --distribution-id E38F17UQPVUDDG --paths "/*"
 
 ## Important Note: Hosted UI Redirects
 
-The Cognito `/oauth2/authorize` endpoint returns a **302 redirect** to the Hosted UI login page. That redirect's `Location` header will point to `https://prescoach-dev-local01.auth.<region>.amazoncognito.com/login?...` — this takes the browser directly to Cognito again, bypassing the proxy.
+The Cognito `/oauth2/authorize` endpoint returns a **302 redirect** to the Hosted UI login page. That redirect's `Location` header will point to the direct Cognito domain (e.g., `https://<your-prefix>.auth.<region>.amazoncognito.com/login?...`) — this takes the browser directly to Cognito again, bypassing the proxy.
 
 **This means:** The proxy approach works perfectly for the **token endpoint** (`/oauth2/token`) and **logout** — which are backend API calls made via `fetch()` from your SPA. But the initial login redirect (which is a browser navigation) will still hit Cognito directly for the Hosted UI page.
 
@@ -197,6 +230,7 @@ The Cognito `/oauth2/authorize` endpoint returns a **302 redirect** to the Hoste
 
 | Step | Who | What |
 |------|-----|------|
+| 0 | You (Console/CLI) | Look up your actual Cognito Hosted UI domain |
 | 1 | You (Console) | Add Cognito origin to CloudFront |
 | 2 | You (Console) | Add `/cognito/*` cache behavior |
 | 3 | You (Console) | Create and attach CloudFront Function for path rewrite |
