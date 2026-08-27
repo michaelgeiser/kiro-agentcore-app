@@ -63,6 +63,7 @@ class SubmissionMetadata:
     Attributes:
         user_name: Display name of the user.
         presentation_title: Title of the presentation.
+        description: Optional description entered by the user.
         file_name: Original uploaded file name.
         upload_date: ISO 8601 UTC timestamp of when the file was uploaded.
         audio_duration_seconds: Duration of the audio in seconds.
@@ -73,6 +74,7 @@ class SubmissionMetadata:
 
     user_name: str
     presentation_title: str
+    description: str = ""
     file_name: str = ""
     upload_date: str = ""
     audio_duration_seconds: float = 0.0
@@ -769,6 +771,7 @@ class CoachingSupervisor:
         report = SynthesizedReport(
             user_name=metadata.user_name[:100],
             presentation_title=metadata.presentation_title[:200],
+            description=metadata.description[:500] if metadata.description else "",
             file_name=metadata.file_name[:255],
             upload_date=metadata.upload_date or datetime.now(timezone.utc).isoformat(),
             audio_duration_seconds=metadata.audio_duration_seconds,

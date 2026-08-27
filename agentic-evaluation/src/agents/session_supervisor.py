@@ -730,6 +730,7 @@ class SessionSupervisor:
             return SynthesisMetadata(
                 user_name=report_metadata.user_name or user_id,
                 presentation_title=report_metadata.presentation_title or "Untitled",
+                description=report_metadata.description or "",
                 file_name=report_metadata.file_name or "",
                 upload_date=report_metadata.upload_date or "",
                 audio_duration_seconds=0.0,

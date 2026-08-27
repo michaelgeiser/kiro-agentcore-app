@@ -201,6 +201,7 @@ class SynthesizedReport(BaseModel):
     # Submission metadata
     user_name: str = Field(..., max_length=100)
     presentation_title: str = Field(..., max_length=200)
+    description: str = Field(default="", max_length=500)
     file_name: str = Field(..., max_length=255)
     upload_date: str  # ISO 8601 UTC
     audio_duration_seconds: float = Field(..., ge=0.0)

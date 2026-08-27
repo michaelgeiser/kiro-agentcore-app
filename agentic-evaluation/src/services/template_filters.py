@@ -18,10 +18,10 @@ from datetime import datetime
 # ---------------------------------------------------------------------------
 
 _SCORE_BAND_COLORS: dict[str, str] = {
-    "Developing": "#D32F2F",   # Red-ish
-    "Competent": "#F9A825",    # Yellow-ish
-    "Effective": "#388E3C",    # Green-ish
-    "Exceptional": "#1565C0",  # Blue/gold-ish
+    "Developing": "#d32f2f",   # Red
+    "Competent": "#f57c00",    # Orange
+    "Effective": "#388e3c",    # Green
+    "Exceptional": "#1565c0",  # Blue
 }
 
 

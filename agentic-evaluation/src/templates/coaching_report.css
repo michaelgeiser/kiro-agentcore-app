@@ -289,6 +289,28 @@ h4 { font-size: 10pt; font-weight: 600; }
     padding-top: 8pt;
 }
 
+/* === Executive Summary Page === */
+.executive-summary-page h2 {
+    margin-bottom: 16pt;
+}
+
+.exec-summary-content {
+    font-family: var(--font-body);
+    font-size: 11pt;
+    line-height: 1.7;
+    margin-bottom: 20pt;
+}
+
+.exec-summary-verdict {
+    font-family: var(--font-body);
+    font-size: 11pt;
+    font-style: italic;
+    line-height: 1.6;
+    border-left: 3pt solid var(--color-effective);
+    padding-left: 12pt;
+    color: var(--color-text-secondary);
+}
+
 /* === Three Moves Page === */
 .three-moves-header {
     margin-bottom: 12pt;
@@ -637,6 +659,19 @@ h4 { font-size: 10pt; font-weight: 600; }
     padding: 40pt 20pt;
 }
 
+.progress-placeholder .progress-notice {
+    font-family: var(--font-ui);
+    font-size: 10pt;
+    font-weight: 600;
+    color: var(--color-medium);
+    background: #fff3e0;
+    border: 1px solid #ffe0b2;
+    border-radius: 4pt;
+    padding: 10pt 16pt;
+    margin-bottom: 16pt;
+    text-align: left;
+}
+
 .progress-placeholder .empty-state-message {
     font-family: var(--font-body);
     font-size: 12pt;
@@ -661,6 +696,36 @@ h4 { font-size: 10pt; font-weight: 600; }
 .progress-pip.filled {
     background: var(--color-effective);
     border-color: var(--color-effective);
+}
+
+.progress-preview {
+    text-align: left;
+    border: 1px solid var(--color-border);
+    border-radius: 4pt;
+    padding: 12pt;
+    margin: 20pt 0;
+    background: var(--color-bg-light);
+}
+
+.progress-preview .preview-label {
+    font-family: var(--font-ui);
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    margin-bottom: 8pt;
+}
+
+.progress-preview .preview-chart {
+    margin: 8pt 0;
+}
+
+.progress-preview .preview-caption {
+    font-family: var(--font-body);
+    font-size: 9pt;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    margin-top: 8pt;
 }
 
 .progress-flag {

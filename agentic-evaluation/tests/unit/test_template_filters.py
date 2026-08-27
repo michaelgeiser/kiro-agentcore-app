@@ -101,16 +101,16 @@ class TestScoreBandColor:
     """Tests for score_band_color filter."""
 
     def test_developing(self) -> None:
-        assert score_band_color("Developing") == "#D32F2F"
+        assert score_band_color("Developing") == "#d32f2f"
 
     def test_competent(self) -> None:
-        assert score_band_color("Competent") == "#F9A825"
+        assert score_band_color("Competent") == "#f57c00"
 
     def test_effective(self) -> None:
-        assert score_band_color("Effective") == "#388E3C"
+        assert score_band_color("Effective") == "#388e3c"
 
     def test_exceptional(self) -> None:
-        assert score_band_color("Exceptional") == "#1565C0"
+        assert score_band_color("Exceptional") == "#1565c0"
 
     def test_unknown_band_returns_gray(self) -> None:
         assert score_band_color("Unknown") == "#757575"

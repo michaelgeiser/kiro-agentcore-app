@@ -1183,7 +1183,9 @@ class ReportGeneratorV2:
         try:
             # Serialize the report to a dict for template context
             # The template expects variables at the top level (e.g., {{ presentation_title }})
-            context = report.model_dump(mode="python")
+            # Use mode="json" so enums are serialized to their string values
+            # (e.g., ScoreBand.COMPETENT → "Competent", Severity.HIGH → "high")
+            context = report.model_dump(mode="json")
             html = template.render(**context)
         except jinja2.UndefinedError as exc:
             logger_v2.error(
