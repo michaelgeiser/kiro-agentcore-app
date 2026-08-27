@@ -782,7 +782,7 @@ class CoachingSupervisor:
             description=metadata.description[:500] if metadata.description else "",
             file_name=metadata.file_name[:255],
             upload_date=metadata.upload_date or datetime.now(timezone.utc).isoformat(),
-            audio_duration_seconds=metadata.audio_duration_seconds,
+            audio_duration_seconds=metadata.audio_duration_seconds or talk_timeline.total_duration_seconds,
             report_id=report_id,
             speaker_identified=metadata.speaker_identified,
             overall_score=overall_score,
