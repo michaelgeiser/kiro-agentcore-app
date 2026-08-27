@@ -22,17 +22,21 @@
 
     <!-- Brand Bar -->
     <div class="brand-bar">
-        <div class="brand-left">
+        <div class="brand-logo-container">
             <img src="CoachingReport_logo.png" alt="Logo" class="brand-logo"/>
-            <span class="brand-name">Coaching Report</span>
         </div>
-        <span class="report-date">{{ upload_date | format_date }}</span>
+        <div class="brand-bar-inner">
+            <span class="brand-name">Coaching Report</span>
+            <span class="report-date">{{ upload_date | format_date }}</span>
+        </div>
     </div>
 
     <!-- Submission Metadata -->
     <div class="metadata">
         <div class="meta-row">
             <span class="meta-item"><span class="meta-label">Speaker:</span> {{ user_name }}</span>
+        </div>
+        <div class="meta-row">
             <span class="meta-item"><span class="meta-label">File:</span> {{ file_name }}</span>
         </div>
         <div class="meta-row">
@@ -107,7 +111,7 @@
     <div class="talk-timeline">
         <div class="timeline-header">
             <span class="timeline-label">Talk Timeline</span>
-            <span class="timeline-duration">{{ audio_duration_seconds | format_duration }}</span>
+            <span class="timeline-duration">Presentation duration: {{ audio_duration_seconds | format_duration }}</span>
         </div>
         <svg width="100%" height="40" viewBox="0 0 500 40" preserveAspectRatio="none">
             <!-- Open segment -->
@@ -155,11 +159,11 @@
                     <text x="{{ bar_width + 4 }}" y="12" font-family="DejaVu Sans Mono, monospace" font-size="7" fill="#333">{{ "%.1f" | format(dim.score) }}</text>
                 </svg>
             </span>
-            <span class="dimension-bar-delta">—</span>
         </div>
         {% endfor %}
-        <div style="font-family: var(--font-ui); font-size: 7pt; color: #999; text-align: right; margin-top: 2pt;">
-            Effective starts at 6.5 ↑
+        <div class="dimension-bars-legend">
+            <span class="legend-spacer"></span>
+            <span class="legend-marker">Effective starts at 6.5 ↑</span>
         </div>
     </div>
 
