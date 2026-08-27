@@ -768,6 +768,14 @@ class CoachingSupervisor:
             overall_score, score_band, three_moves
         )
 
+        # Generate LLM-based executive summary and coaching assessment
+        executive_summary = self._generate_executive_summary(
+            results, overall_score, score_band, dimensions, three_moves
+        )
+        coaching_assessment = self._generate_coaching_assessment(
+            results, overall_score, score_band, dimensions
+        )
+
         report = SynthesizedReport(
             user_name=metadata.user_name[:100],
             presentation_title=metadata.presentation_title[:200],
@@ -782,6 +790,8 @@ class CoachingSupervisor:
             distance_to_next_band=distance_to_next,
             two_sentence_verdict=two_sentence_verdict,
             lede_paragraph=lede_paragraph,
+            executive_summary=executive_summary,
+            coaching_assessment=coaching_assessment,
             dimensions=dimensions,
             three_moves=three_moves,
             strengths_to_protect=strengths_to_protect,
@@ -1297,6 +1307,264 @@ class CoachingSupervisor:
             lede = " ".join(words[:120])
 
         return lede
+
+    def _generate_executive_summary(
+        self,
+        results: list[EvaluationResult],
+        overall_score: float,
+        score_band: ScoreBand,
+        dimensions: list[DimensionEntry],
+        three_moves: list[ThreeMove],
+    ) -> str:
+        """Generate a rich, multi-paragraph executive summary via LLM.
+
+        Produces a coaching-style narrative that diagnoses the presentation,
+        identifies strengths as a pattern, calls out the highest-leverage
+        improvements, and ends with a concrete next-practice target.
+
+        Args:
+            results: Original evaluation results from specialist agents.
+            overall_score: The overall computed score.
+            score_band: The classified score band.
+            dimensions: Assembled dimension entries.
+            three_moves: The three move plan.
+
+        Returns:
+            Multi-paragraph executive summary text. Falls back to a short
+            template-based summary if the LLM call fails.
+        """
+        try:
+            from strands import Agent
+
+            system_prompt = (
+                "You are a presentation coaching expert writing the executive summary "
+                "section of a coaching report. Write in plain prose paragraphs — no "
+                "bullet points, numbered lists, headers, or markdown. Write flowing, "
+                "natural paragraphs that read like expert coaching feedback.\n\n"
+                "Your executive summary MUST include these elements in 4-5 paragraphs:\n\n"
+                "1. COACHING DIAGNOSIS (first paragraph): Open with a one-sentence "
+                "diagnosis capturing the overall character of the presentation. Include "
+                "the score and interpret what it means — do not just restate the number. "
+                "Describe the gap between where the presenter is and where they could be.\n\n"
+                "2. STRENGTHS AS NARRATIVE (second paragraph): Combine the strongest "
+                "points into one flowing paragraph about what the presenter does well. "
+                "Focus on the pattern across dimensions, not individual items. Be specific "
+                "with evidence from findings.\n\n"
+                "3. HIGHEST-LEVERAGE IMPROVEMENTS (third paragraph): Identify the 2-3 "
+                "changes most likely to move the overall score. Explain WHY these matter "
+                "more than other issues. Reference specific findings and dimensions. "
+                "Frame as opportunities, not failures.\n\n"
+                "4. CROSS-DIMENSION IMPACT (fourth paragraph): Explain how the weakest "
+                "dimensions are dragging down the whole and how fixing them lifts "
+                "multiple scores simultaneously.\n\n"
+                "5. NEXT-PRACTICE TARGET (final paragraph): End with a concrete coaching "
+                "assignment for the next recording. Be very specific — name exact changes "
+                "to make in the first 30 seconds, specific phrases to remove, and one "
+                "structural addition.\n\n"
+                "CONSTRAINTS:\n"
+                "- Use second-person voice ('you', 'your') throughout.\n"
+                "- Be direct and confident. You are an expert coach.\n"
+                "- Reference dimension names when discussing specific areas.\n"
+                "- Keep total to 4-5 substantial paragraphs (approximately 400-600 words).\n"
+                "- Do not include any XML tags, markdown, or formatting.\n"
+                "- Output ONLY the executive summary text."
+            )
+
+            # Build structured data for the prompt
+            dim_summary = []
+            for d in dimensions:
+                findings_text = ""
+                for f in d.findings[:3]:
+                    findings_text += f"    [{f.severity.value.upper()}] {f.title}: {f.explanation}\n"
+                strengths_text = ", ".join(d.strengths) if d.strengths else "None noted"
+                dim_summary.append(
+                    f"  {d.dimension_name} (Score: {d.score:.1f}/10, Band: {d.score_band.value})\n"
+                    f"    Verdict: {d.one_sentence_verdict}\n"
+                    f"    Strengths: {strengths_text}\n"
+                    f"    Findings:\n{findings_text}"
+                )
+
+            moves_text = "\n".join(
+                f"  {i+1}. {m.title} (+{m.projected_impact_score:.1f}) — Lifts: {', '.join(m.dimensions_lifted)}"
+                for i, m in enumerate(three_moves)
+            )
+
+            prompt = (
+                f"Generate an executive summary for a presentation coaching report.\n\n"
+                f"Overall score: {overall_score:.1f}/10.0 (Band: {score_band.value})\n"
+                f"Dimensions evaluated: {len(dimensions)}\n\n"
+                f"Per-dimension data:\n" + "\n".join(dim_summary) + "\n\n"
+                f"Three Moves (highest-leverage changes):\n{moves_text}\n\n"
+                f"Write the executive summary now."
+            )
+
+            agent = Agent(
+                system_prompt=system_prompt,
+                model=self._model_id,
+            )
+
+            response = agent(prompt)
+            narrative = str(response).strip()
+
+            if len(narrative) < 100:
+                logger.warning(
+                    "Executive summary too short (%d chars), using fallback.",
+                    len(narrative),
+                )
+                return self._fallback_executive_summary(overall_score, score_band, dimensions)
+
+            logger.info("LLM executive summary generated (%d chars)", len(narrative))
+            return narrative
+
+        except Exception as exc:
+            logger.error(
+                "Failed to generate executive summary: %s. Using fallback.",
+                exc,
+                exc_info=True,
+            )
+            return self._fallback_executive_summary(overall_score, score_band, dimensions)
+
+    def _fallback_executive_summary(
+        self,
+        overall_score: float,
+        score_band: ScoreBand,
+        dimensions: list[DimensionEntry],
+    ) -> str:
+        """Template-based fallback when LLM executive summary fails."""
+        weakest = dimensions[0] if dimensions else None
+        strongest = dimensions[-1] if dimensions else None
+        return (
+            f"You scored {overall_score:.1f} out of 10, placing you in the "
+            f"{score_band.value} band. "
+            f"{'Your weakest area is ' + weakest.dimension_name.lower() + ' at ' + f'{weakest.score:.1f}' + '. ' if weakest else ''}"
+            f"{'Your strongest area is ' + strongest.dimension_name.lower() + ' at ' + f'{strongest.score:.1f}' + '. ' if strongest else ''}"
+            f"See the Three Moves section for the highest-leverage improvements."
+        )
+
+    def _generate_coaching_assessment(
+        self,
+        results: list[EvaluationResult],
+        overall_score: float,
+        score_band: ScoreBand,
+        dimensions: list[DimensionEntry],
+    ) -> str:
+        """Generate overall coaching assessment narrative via LLM.
+
+        Provides a holistic coaching perspective that synthesizes all findings
+        into actionable guidance with prioritization.
+
+        Args:
+            results: Original evaluation results.
+            overall_score: The overall computed score.
+            score_band: The classified score band.
+            dimensions: Assembled dimension entries.
+
+        Returns:
+            Multi-paragraph coaching assessment. Falls back to a template
+            if the LLM call fails.
+        """
+        try:
+            from strands import Agent
+
+            system_prompt = (
+                "You are a presentation coaching expert writing the 'Overall Coaching "
+                "Assessment' section of a coaching report. This section provides a "
+                "holistic coaching perspective — it is NOT a repeat of the executive "
+                "summary. It focuses on:\n\n"
+                "1. The overall coaching trajectory — where this presenter is in their "
+                "development arc and what level they are working toward.\n"
+                "2. Core strengths to protect — what is working well that should not be "
+                "lost while fixing weaknesses.\n"
+                "3. Priority focus areas — the 2-3 things that will have the highest "
+                "return on practice time, explained in coaching terms.\n"
+                "4. A coaching philosophy note — why these specific priorities matter "
+                "more than other issues at this stage.\n\n"
+                "CONSTRAINTS:\n"
+                "- Write 2-3 paragraphs in plain prose, second-person voice.\n"
+                "- Be direct and confident. You are an expert coach.\n"
+                "- No bullet points, headers, or markdown.\n"
+                "- Keep to approximately 150-250 words.\n"
+                "- Output ONLY the assessment text."
+            )
+
+            # Summarize the data
+            dim_lines = "\n".join(
+                f"  {d.dimension_name}: {d.score:.1f}/10 ({d.score_band.value}) — {d.one_sentence_verdict}"
+                for d in dimensions
+            )
+
+            all_strengths = []
+            all_improvements = []
+            for r in results:
+                all_strengths.extend(r.strengths[:2])
+                all_improvements.extend(r.improvements[:2])
+
+            prompt = (
+                f"Generate an overall coaching assessment.\n\n"
+                f"Overall score: {overall_score:.1f}/10 (Band: {score_band.value})\n\n"
+                f"Dimensions:\n{dim_lines}\n\n"
+                f"Top strengths: {', '.join(all_strengths[:6])}\n"
+                f"Priority improvements: {', '.join(all_improvements[:5])}\n\n"
+                f"Write the coaching assessment now."
+            )
+
+            agent = Agent(
+                system_prompt=system_prompt,
+                model=self._model_id,
+            )
+
+            response = agent(prompt)
+            assessment = str(response).strip()
+
+            if len(assessment) < 50:
+                logger.warning(
+                    "Coaching assessment too short (%d chars), using fallback.",
+                    len(assessment),
+                )
+                return self._fallback_coaching_assessment(overall_score, score_band)
+
+            logger.info("LLM coaching assessment generated (%d chars)", len(assessment))
+            return assessment
+
+        except Exception as exc:
+            logger.error(
+                "Failed to generate coaching assessment: %s. Using fallback.",
+                exc,
+                exc_info=True,
+            )
+            return self._fallback_coaching_assessment(overall_score, score_band)
+
+    def _fallback_coaching_assessment(
+        self,
+        overall_score: float,
+        score_band: ScoreBand,
+    ) -> str:
+        """Template-based fallback when LLM coaching assessment fails."""
+        if overall_score >= 8.0:
+            return (
+                "You are performing at a high level across multiple dimensions. "
+                "At this stage, focus on refining the specific areas noted in the "
+                "dimension cards — small adjustments will create outsized impact."
+            )
+        elif overall_score >= 6.0:
+            return (
+                "You have solid fundamentals and clear strengths to build on. "
+                "The gap between where you are and high impact is about sharpening "
+                "specific skills that multiply the effectiveness of what already works. "
+                "Focus on the two lowest-scoring dimensions for maximum return."
+            )
+        elif overall_score >= 4.0:
+            return (
+                "You show promise with identifiable strengths, but several dimensions "
+                "need focused work. Prioritize — not everything needs to improve at once. "
+                "The weakest dimensions represent where improvement will be most noticeable."
+            )
+        else:
+            return (
+                "There are fundamental areas that need attention before higher-level "
+                "dimensions can shine. Focus on the core skills identified in the "
+                "dimension cards and practice with structured feedback."
+            )
 
     def _rank_findings(
         self, findings: list[SynthesizedFinding]

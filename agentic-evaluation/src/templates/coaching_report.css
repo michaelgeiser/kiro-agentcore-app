@@ -294,21 +294,23 @@ h4 { font-size: 10pt; font-weight: 600; }
     margin-bottom: 16pt;
 }
 
-.exec-summary-content {
+.exec-paragraph {
     font-family: var(--font-body);
-    font-size: 11pt;
+    font-size: 10.5pt;
     line-height: 1.7;
-    margin-bottom: 20pt;
+    margin-bottom: 12pt;
 }
 
-.exec-summary-verdict {
+/* === Overall Coaching Assessment Page === */
+.coaching-assessment-page h2 {
+    margin-bottom: 16pt;
+}
+
+.assessment-paragraph {
     font-family: var(--font-body);
-    font-size: 11pt;
-    font-style: italic;
-    line-height: 1.6;
-    border-left: 3pt solid var(--color-effective);
-    padding-left: 12pt;
-    color: var(--color-text-secondary);
+    font-size: 10.5pt;
+    line-height: 1.7;
+    margin-bottom: 12pt;
 }
 
 /* === Three Moves Page === */

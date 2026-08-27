@@ -218,14 +218,31 @@
 
     <h2>Executive Summary</h2>
 
-    <div class="exec-summary-content">{{ lede_paragraph }}</div>
-
-    <div class="exec-summary-verdict">{{ two_sentence_verdict }}</div>
+    {% for paragraph in executive_summary.split('\n\n') %}
+    {% if paragraph.strip() %}
+    <p class="exec-paragraph">{{ paragraph.strip() }}</p>
+    {% endif %}
+    {% endfor %}
 
 </div>
 
 <!-- ============================================================
-     PAGE 3: THREE MOVES
+     PAGE 3: OVERALL COACHING ASSESSMENT
+     ============================================================ -->
+<div class="page-section coaching-assessment-page">
+
+    <h2>Overall Coaching Assessment</h2>
+
+    {% for paragraph in coaching_assessment.split('\n\n') %}
+    {% if paragraph.strip() %}
+    <p class="assessment-paragraph">{{ paragraph.strip() }}</p>
+    {% endif %}
+    {% endfor %}
+
+</div>
+
+<!-- ============================================================
+     PAGE 4: THREE MOVES
      ============================================================ -->
 <div class="page-section three-moves-page">
 

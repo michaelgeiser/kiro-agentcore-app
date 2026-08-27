@@ -216,6 +216,8 @@ class SynthesizedReport(BaseModel):
     # Narrative
     two_sentence_verdict: str  # max 80 words enforced by validator
     lede_paragraph: str  # max 120 words enforced by validator
+    executive_summary: str = ""  # LLM-generated multi-paragraph coaching narrative
+    coaching_assessment: str = ""  # Overall coaching assessment narrative
 
     # Dimensions
     dimensions: list[DimensionEntry] = Field(..., min_length=7, max_length=7)
