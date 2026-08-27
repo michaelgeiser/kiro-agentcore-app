@@ -313,11 +313,11 @@ def test_pdf_page_ordering_follows_specification(report: SynthesizedReport) -> N
 
     # Define section markers we expect to find in the PDF text.
     # These correspond to visible headings/content rendered in the template.
+    # Use markers specific enough to avoid false positives from report content.
     section_markers = [
         ("Scorecard", "Coaching Report"),  # Brand bar text on scorecard page
         ("Three Moves", "Your Three Moves"),  # H2 heading on three moves page
         ("Dimension Cards", "/10"),  # Score display on dimension cards (e.g., "7.2\n/10")
-        ("Progress", "Progress"),  # H2 heading on progress placeholder page
         ("How This Was Scored", "How This Was Scored"),  # H2 heading on scoring page
     ]
 
@@ -340,12 +340,11 @@ def test_pdf_page_ordering_follows_specification(report: SynthesizedReport) -> N
         f"{[t[:200] for t in page_texts]}"
     )
 
-    # Verify ordering: Scorecard < Three Moves < Dimension Cards < Progress < How Scored
+    # Verify ordering: Scorecard < Three Moves < Dimension Cards < How Scored
     ordering_pairs = [
         ("Scorecard", "Three Moves"),
         ("Three Moves", "Dimension Cards"),
-        ("Dimension Cards", "Progress"),
-        ("Progress", "How This Was Scored"),
+        ("Dimension Cards", "How This Was Scored"),
     ]
 
     for earlier, later in ordering_pairs:
