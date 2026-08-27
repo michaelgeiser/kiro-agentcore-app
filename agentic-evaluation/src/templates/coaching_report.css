@@ -98,8 +98,11 @@ h4 { font-size: 10pt; font-weight: 600; }
 }
 
 .brand-logo-container .brand-logo {
-    height: 48pt;
-    width: auto;
+    height: 48pt !important;
+    width: auto !important;
+    max-width: none;
+    max-height: none;
+    display: inline-block;
 }
 
 .brand-bar-inner {
@@ -253,13 +256,12 @@ h4 { font-size: 10pt; font-weight: 600; }
 }
 
 .dimension-bars-legend .legend-marker {
-    flex: 1;
-    margin: 0 8pt;
+    margin-left: 8pt;
+    padding-left: calc(65% - 120pt);
     font-family: var(--font-ui);
     font-size: 7pt;
     color: #999;
-    /* Position at 65% (6.5/10) of the bar area */
-    padding-left: 63%;
+    white-space: nowrap;
 }
 
 /* === Severity Chips === */
