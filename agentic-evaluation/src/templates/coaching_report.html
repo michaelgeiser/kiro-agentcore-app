@@ -313,7 +313,7 @@
         <div class="dimension-info">
             <div class="dimension-name">{{ dim.dimension_name }}</div>
             <div class="dimension-verdict">{{ dim.one_sentence_verdict }}</div>
-            <div class="dimension-rank">
+            <div class="dimension-rank {% if dim.is_weakest %}rank-weakest{% endif %}">
                 {% if dim.is_weakest %}Weakest dimension{% else %}Rank {{ dim.rank }} of 7{% endif %}
                 · {{ dim.severity_counts.high }} high-severity finding{{ "s" if dim.severity_counts.high != 1 else "" }}
             </div>
