@@ -55,6 +55,36 @@ ALL_DIMENSION_NAMES = [
     "Persuasion",
 ]
 
+# Mapping from internal evaluator dimension names to display names
+_DIMENSION_DISPLAY_NAMES: dict[str, str] = {
+    "delivery": "Delivery",
+    "structure": "Structure",
+    "executive_presence": "Executive Presence",
+    "technical_communication": "Technical Communication",
+    "audience_engagement": "Audience Engagement",
+    "pacing": "Pacing",
+    "persuasion": "Persuasion",
+}
+
+
+def _normalize_dimension_name(name: str) -> str:
+    """Normalize a dimension name to its display form.
+
+    Handles both internal evaluator names (lowercase/underscore)
+    and display names (title case with spaces).
+
+    Args:
+        name: Dimension name in any form.
+
+    Returns:
+        Display name (e.g., "Executive Presence").
+    """
+    # If it's already a display name, return as-is
+    if name in ALL_DIMENSION_NAMES:
+        return name
+    # Look up in the mapping
+    return _DIMENSION_DISPLAY_NAMES.get(name, name)
+
 
 @dataclass(frozen=True)
 class SubmissionMetadata:
@@ -854,19 +884,20 @@ class CoachingSupervisor:
             if len(unique_dimensions) >= 3:
                 # Collapsed finding — attribute to lowest-score dimension
                 entries_sorted = sorted(entries, key=lambda e: e[1])
-                primary_dimension = entries_sorted[0][0]
+                primary_dimension = _normalize_dimension_name(entries_sorted[0][0])
                 collapsed_finding = self._build_collapsed_finding(category, entries)
                 findings_by_dim[primary_dimension].append(collapsed_finding)
             else:
                 # Non-collapsed — each finding stays in its own dimension
                 for dimension, score, finding in entries:
                     synthesized = self._finding_to_synthesized(finding, score)
-                    findings_by_dim[dimension].append(synthesized)
+                    findings_by_dim[_normalize_dimension_name(dimension)].append(synthesized)
 
         # Ensure all dimensions that returned results have an entry
         for result in results:
-            if result.dimension not in findings_by_dim:
-                findings_by_dim[result.dimension] = []
+            normalized = _normalize_dimension_name(result.dimension)
+            if normalized not in findings_by_dim:
+                findings_by_dim[normalized] = []
 
         # Sort each dimension's findings by projected_impact_score descending
         for dim in findings_by_dim:
@@ -936,7 +967,8 @@ class CoachingSupervisor:
         # Build dimension data from results
         dim_data: dict[str, dict] = {}
         for result in results:
-            dim_data[result.dimension] = {
+            normalized = _normalize_dimension_name(result.dimension)
+            dim_data[normalized] = {
                 "score": result.score,
                 "strengths": result.strengths[:3],
             }
