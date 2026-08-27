@@ -1,0 +1,761 @@
+/* Coaching Report v2 - CSS for WeasyPrint PDF rendering */
+/* US Letter: 8.5 x 11 inches */
+
+/* === Page Setup === */
+@page {
+    size: 8.5in 11in;
+    margin: 0.75in 0.75in 1in 0.75in;
+
+    @bottom-center {
+        content: counter(page) " / " counter(pages);
+        font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif;
+        font-size: 8pt;
+        color: #666;
+    }
+
+    @bottom-left {
+        content: "Coaching Report";
+        font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif;
+        font-size: 8pt;
+        color: #666;
+    }
+
+    @bottom-right {
+        font-family: "DejaVu Sans Mono", "Liberation Mono", "Courier New", monospace;
+        font-size: 7pt;
+        color: #999;
+    }
+}
+
+/* === Font Fallback Chains === */
+:root {
+    --font-ui: "DejaVu Sans", "Liberation Sans", Arial, sans-serif;
+    --font-body: "DejaVu Serif", "Liberation Serif", "Times New Roman", serif;
+    --font-mono: "DejaVu Sans Mono", "Liberation Mono", "Courier New", monospace;
+
+    /* Colors */
+    --color-developing: #d32f2f;
+    --color-competent: #f57c00;
+    --color-effective: #388e3c;
+    --color-exceptional: #1565c0;
+    --color-alert: #d32f2f;
+    --color-success: #388e3c;
+    --color-high: #d32f2f;
+    --color-medium: #f57c00;
+    --color-low: #1976d2;
+    --color-strength: #388e3c;
+    --color-muted: #666;
+    --color-border: #e0e0e0;
+    --color-bg-light: #f5f5f5;
+    --color-bg-alert: #ffebee;
+    --color-text: #212121;
+    --color-text-secondary: #616161;
+}
+
+/* === Base Typography === */
+body {
+    font-family: var(--font-body);
+    font-size: 10pt;
+    line-height: 1.4;
+    color: var(--color-text);
+    margin: 0;
+    padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-ui);
+    margin-top: 0;
+    line-height: 1.2;
+}
+
+h1 { font-size: 18pt; font-weight: 700; }
+h2 { font-size: 14pt; font-weight: 600; }
+h3 { font-size: 12pt; font-weight: 600; }
+h4 { font-size: 10pt; font-weight: 600; }
+
+/* === Layout Utilities === */
+.page-section {
+    page-break-before: always;
+}
+
+.page-section:first-child {
+    page-break-before: avoid;
+}
+
+.no-break {
+    break-inside: avoid;
+}
+
+/* === Header / Brand Bar === */
+.brand-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--color-text);
+    padding-bottom: 8pt;
+    margin-bottom: 12pt;
+    font-family: var(--font-ui);
+}
+
+.brand-bar .brand-name {
+    font-size: 12pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1pt;
+}
+
+.brand-bar .report-date {
+    font-size: 9pt;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+}
+
+/* === Metadata Section === */
+.metadata {
+    font-family: var(--font-ui);
+    font-size: 9pt;
+    color: var(--color-text-secondary);
+    margin-bottom: 12pt;
+}
+
+.metadata .meta-item {
+    display: inline-block;
+    margin-right: 16pt;
+}
+
+.metadata .meta-label {
+    font-weight: 600;
+}
+
+/* === Scorecard Page === */
+.scorecard-gauge {
+    text-align: center;
+    margin: 12pt 0;
+}
+
+.scorecard-gauge .score-value {
+    font-family: var(--font-mono);
+    font-size: 36pt;
+    font-weight: 700;
+}
+
+.scorecard-gauge .band-label {
+    font-family: var(--font-ui);
+    font-size: 11pt;
+    font-weight: 600;
+    margin-top: 4pt;
+}
+
+.scorecard-gauge .distance-label {
+    font-family: var(--font-ui);
+    font-size: 9pt;
+    color: var(--color-text-secondary);
+}
+
+.band-developing { color: var(--color-developing); }
+.band-competent { color: var(--color-competent); }
+.band-effective { color: var(--color-effective); }
+.band-exceptional { color: var(--color-exceptional); }
+
+.verdict {
+    font-family: var(--font-body);
+    font-size: 11pt;
+    font-style: italic;
+    margin: 10pt 0;
+    text-align: center;
+}
+
+/* === Talk Timeline === */
+.talk-timeline {
+    margin: 12pt 0;
+}
+
+.talk-timeline .timeline-label {
+    font-family: var(--font-ui);
+    font-size: 8pt;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 4pt;
+}
+
+/* === Dimension Bars === */
+.dimension-bars {
+    margin: 12pt 0;
+}
+
+.dimension-bar-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6pt;
+    font-family: var(--font-ui);
+    font-size: 8.5pt;
+}
+
+.dimension-bar-name {
+    width: 120pt;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dimension-bar-svg {
+    flex: 1;
+    margin: 0 8pt;
+}
+
+.dimension-bar-delta {
+    width: 30pt;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 8pt;
+    color: var(--color-muted);
+}
+
+/* === Severity Chips === */
+.severity-chips {
+    display: flex;
+    gap: 8pt;
+    margin: 10pt 0;
+    font-family: var(--font-ui);
+    font-size: 8pt;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2pt 8pt;
+    border-radius: 10pt;
+    font-weight: 600;
+}
+
+.chip-high { background: #ffcdd2; color: var(--color-high); }
+.chip-medium { background: #ffe0b2; color: var(--color-medium); }
+.chip-low { background: #bbdefb; color: var(--color-low); }
+.chip-strength { background: #c8e6c9; color: var(--color-strength); }
+
+/* === Transcript Metrics Panel === */
+.metrics-panel {
+    background: var(--color-bg-light);
+    border: 1px solid var(--color-border);
+    border-radius: 4pt;
+    padding: 10pt;
+    margin: 12pt 0;
+}
+
+.metrics-panel .panel-title {
+    font-family: var(--font-ui);
+    font-size: 9pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-text-secondary);
+    margin-bottom: 8pt;
+}
+
+.metrics-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6pt 16pt;
+}
+
+.metric-item {
+    width: calc(50% - 8pt);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 8.5pt;
+}
+
+.metric-label {
+    font-family: var(--font-ui);
+    color: var(--color-text-secondary);
+}
+
+.metric-value {
+    font-family: var(--font-mono);
+    font-weight: 600;
+}
+
+.metric-value.in-range { color: var(--color-success); }
+.metric-value.out-of-range { color: var(--color-alert); }
+
+/* === Lede Paragraph === */
+.lede {
+    font-family: var(--font-body);
+    font-size: 9.5pt;
+    line-height: 1.5;
+    margin-top: 12pt;
+    border-top: 1px solid var(--color-border);
+    padding-top: 8pt;
+}
+
+/* === Three Moves Page === */
+.three-moves-header {
+    margin-bottom: 12pt;
+}
+
+.diagnosis {
+    font-family: var(--font-body);
+    font-size: 10pt;
+    line-height: 1.5;
+    margin-bottom: 16pt;
+    color: var(--color-text-secondary);
+}
+
+.move-card {
+    break-inside: avoid;
+    border: 1px solid var(--color-border);
+    border-radius: 4pt;
+    padding: 12pt;
+    margin-bottom: 12pt;
+}
+
+.move-card .move-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8pt;
+    margin-bottom: 6pt;
+}
+
+.move-card .move-impact {
+    font-family: var(--font-mono);
+    font-size: 14pt;
+    font-weight: 700;
+    color: var(--color-effective);
+}
+
+.move-card .move-title {
+    font-family: var(--font-ui);
+    font-size: 11pt;
+    font-weight: 600;
+}
+
+.move-card .move-advice {
+    font-family: var(--font-body);
+    font-size: 9.5pt;
+    line-height: 1.5;
+    margin: 6pt 0;
+}
+
+.move-card .dimensions-lifted {
+    font-family: var(--font-ui);
+    font-size: 8pt;
+    color: var(--color-text-secondary);
+}
+
+.strengths-panel {
+    break-inside: avoid;
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: 4pt;
+    padding: 10pt;
+    margin-top: 16pt;
+}
+
+.strengths-panel .panel-title {
+    font-family: var(--font-ui);
+    font-size: 9pt;
+    font-weight: 700;
+    color: var(--color-strength);
+    margin-bottom: 6pt;
+}
+
+.strengths-panel ul {
+    margin: 0;
+    padding-left: 16pt;
+    font-size: 9.5pt;
+    line-height: 1.5;
+}
+
+.three-moves-footnote {
+    font-family: var(--font-ui);
+    font-size: 7.5pt;
+    color: var(--color-muted);
+    margin-top: 16pt;
+    border-top: 1px solid var(--color-border);
+    padding-top: 6pt;
+}
+
+/* === Dimension Card Pages === */
+.dimension-card {
+    margin-bottom: 16pt;
+}
+
+.dimension-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12pt;
+    margin-bottom: 10pt;
+}
+
+.score-block {
+    text-align: center;
+    padding: 8pt 12pt;
+    border-radius: 4pt;
+    border: 1px solid var(--color-border);
+    min-width: 60pt;
+}
+
+.score-block.alert-bg {
+    background: var(--color-bg-alert);
+    border-color: var(--color-alert);
+}
+
+.score-block .score-large {
+    font-family: var(--font-mono);
+    font-size: 24pt;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.score-block .score-suffix {
+    font-family: var(--font-mono);
+    font-size: 10pt;
+    color: var(--color-muted);
+}
+
+.score-block .score-band-label {
+    font-family: var(--font-ui);
+    font-size: 8pt;
+    font-weight: 600;
+    margin-top: 2pt;
+}
+
+.dimension-info {
+    flex: 1;
+}
+
+.dimension-info .dimension-name {
+    font-family: var(--font-ui);
+    font-size: 14pt;
+    font-weight: 700;
+    margin-bottom: 2pt;
+}
+
+.dimension-info .dimension-verdict {
+    font-family: var(--font-body);
+    font-size: 9.5pt;
+    color: var(--color-text-secondary);
+    margin-bottom: 4pt;
+}
+
+.dimension-info .dimension-rank {
+    font-family: var(--font-ui);
+    font-size: 8pt;
+    color: var(--color-muted);
+}
+
+/* === Dimension Timeline Strip === */
+.dimension-timeline {
+    margin: 8pt 0;
+}
+
+/* === What is Working === */
+.strengths-section {
+    margin: 10pt 0;
+    break-inside: avoid;
+}
+
+.strengths-section h4 {
+    color: var(--color-strength);
+    margin-bottom: 4pt;
+}
+
+.strengths-section ul {
+    margin: 0;
+    padding-left: 16pt;
+    font-size: 9.5pt;
+    line-height: 1.6;
+}
+
+/* === Findings === */
+.finding {
+    break-inside: avoid;
+    border-left: 3pt solid var(--color-border);
+    padding: 8pt 0 8pt 10pt;
+    margin-bottom: 10pt;
+}
+
+.finding.severity-high { border-left-color: var(--color-high); }
+.finding.severity-medium { border-left-color: var(--color-medium); }
+.finding.severity-low { border-left-color: var(--color-low); }
+
+.finding-header {
+    display: flex;
+    align-items: center;
+    gap: 6pt;
+    margin-bottom: 4pt;
+}
+
+.finding-severity-tag {
+    font-family: var(--font-ui);
+    font-size: 7pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 1pt 4pt;
+    border-radius: 2pt;
+}
+
+.tag-high { background: #ffcdd2; color: var(--color-high); }
+.tag-medium { background: #ffe0b2; color: var(--color-medium); }
+.tag-low { background: #bbdefb; color: var(--color-low); }
+
+.finding-title {
+    font-family: var(--font-ui);
+    font-size: 9.5pt;
+    font-weight: 600;
+}
+
+.finding-explanation {
+    font-family: var(--font-body);
+    font-size: 9pt;
+    line-height: 1.5;
+    margin: 4pt 0;
+}
+
+.finding-evidence {
+    font-family: var(--font-mono);
+    font-size: 8pt;
+    background: var(--color-bg-light);
+    padding: 4pt 8pt;
+    border-radius: 2pt;
+    margin: 4pt 0;
+    color: var(--color-text-secondary);
+}
+
+.finding-evidence .timestamp {
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.finding-suggestion {
+    font-family: var(--font-body);
+    font-size: 9pt;
+    line-height: 1.4;
+    margin: 4pt 0;
+    color: var(--color-text-secondary);
+}
+
+.finding-tags {
+    font-family: var(--font-ui);
+    font-size: 7.5pt;
+    color: var(--color-muted);
+    margin-top: 4pt;
+}
+
+/* === Swap Pair === */
+.swap-pair {
+    break-inside: avoid;
+    margin: 12pt 0;
+    border: 1px solid var(--color-border);
+    border-radius: 4pt;
+    overflow: hidden;
+}
+
+.swap-pair .swap-title {
+    font-family: var(--font-ui);
+    font-size: 9pt;
+    font-weight: 700;
+    padding: 6pt 10pt;
+    background: var(--color-bg-light);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.swap-pair .swap-content {
+    display: flex;
+}
+
+.swap-pair .you-said,
+.swap-pair .try-instead {
+    flex: 1;
+    padding: 8pt 10pt;
+    font-size: 9pt;
+    line-height: 1.5;
+}
+
+.swap-pair .you-said {
+    background: #fff3e0;
+    border-right: 1px solid var(--color-border);
+    font-family: var(--font-mono);
+    font-size: 8.5pt;
+}
+
+.swap-pair .try-instead {
+    background: #e8f5e9;
+    font-family: var(--font-body);
+}
+
+.swap-pair .swap-label {
+    font-family: var(--font-ui);
+    font-size: 7pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    margin-bottom: 4pt;
+}
+
+/* === Practice Drill === */
+.practice-drill {
+    break-inside: avoid;
+    background: #e3f2fd;
+    border: 1px solid #90caf9;
+    border-radius: 4pt;
+    padding: 10pt;
+    margin: 12pt 0;
+}
+
+.practice-drill .drill-header {
+    display: flex;
+    align-items: center;
+    gap: 6pt;
+    margin-bottom: 6pt;
+}
+
+.practice-drill .drill-title {
+    font-family: var(--font-ui);
+    font-size: 9pt;
+    font-weight: 700;
+}
+
+.practice-drill .drill-time {
+    font-family: var(--font-mono);
+    font-size: 8pt;
+    background: #bbdefb;
+    padding: 1pt 6pt;
+    border-radius: 8pt;
+}
+
+.practice-drill .drill-instructions {
+    font-family: var(--font-body);
+    font-size: 9pt;
+    line-height: 1.5;
+}
+
+/* === Progress Page === */
+.progress-placeholder {
+    text-align: center;
+    padding: 40pt 20pt;
+}
+
+.progress-placeholder .empty-state-message {
+    font-family: var(--font-body);
+    font-size: 12pt;
+    color: var(--color-text-secondary);
+    margin-bottom: 16pt;
+}
+
+.progress-pips {
+    display: flex;
+    justify-content: center;
+    gap: 8pt;
+    margin: 16pt 0;
+}
+
+.progress-pip {
+    width: 12pt;
+    height: 12pt;
+    border-radius: 50%;
+    border: 2pt solid var(--color-border);
+}
+
+.progress-pip.filled {
+    background: var(--color-effective);
+    border-color: var(--color-effective);
+}
+
+.progress-flag {
+    font-family: var(--font-ui);
+    font-size: 8pt;
+    color: var(--color-muted);
+    border: 1px dashed var(--color-border);
+    padding: 8pt 12pt;
+    border-radius: 4pt;
+    display: inline-block;
+    margin-top: 12pt;
+}
+
+/* === How This Was Scored Page === */
+.scoring-page h2 {
+    margin-bottom: 12pt;
+}
+
+.band-definitions {
+    margin: 12pt 0;
+}
+
+.band-def {
+    display: flex;
+    align-items: baseline;
+    gap: 8pt;
+    margin-bottom: 6pt;
+    font-size: 9pt;
+}
+
+.band-def .band-range {
+    font-family: var(--font-mono);
+    font-size: 8pt;
+    min-width: 50pt;
+    font-weight: 600;
+}
+
+.band-def .band-name {
+    font-family: var(--font-ui);
+    font-weight: 600;
+    min-width: 70pt;
+}
+
+.band-def .band-desc {
+    font-family: var(--font-body);
+    color: var(--color-text-secondary);
+}
+
+.methodology {
+    font-family: var(--font-body);
+    font-size: 9.5pt;
+    line-height: 1.6;
+    margin: 12pt 0;
+}
+
+.provenance-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+    margin: 12pt 0;
+}
+
+.provenance-table th,
+.provenance-table td {
+    padding: 4pt 8pt;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.provenance-table th {
+    font-family: var(--font-ui);
+    font-weight: 600;
+    background: var(--color-bg-light);
+    width: 35%;
+}
+
+.provenance-table td {
+    font-family: var(--font-mono);
+    font-size: 8pt;
+    word-break: break-all;
+}
+
+.disclaimer {
+    font-family: var(--font-ui);
+    font-size: 8pt;
+    color: var(--color-muted);
+    border: 1px solid var(--color-border);
+    border-radius: 4pt;
+    padding: 8pt 10pt;
+    margin-top: 16pt;
+    line-height: 1.5;
+}
+
+/* === Footer Override (report_id in bottom-right via string-set) === */
+.report-id-footer {
+    string-set: reportid content();
+    display: none;
+}

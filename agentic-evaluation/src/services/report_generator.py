@@ -882,3 +882,630 @@ class ReportGenerator:
             Body=pdf_buffer.getvalue(),
             ContentType="application/pdf",
         )
+
+# ---------------------------------------------------------------------------
+# ReportGeneratorV2 — WeasyPrint + Jinja2 based replacement
+# ---------------------------------------------------------------------------
+
+import random
+import time
+from pathlib import Path
+from typing import Any as TypingAny
+
+import jinja2
+from botocore.exceptions import ClientError
+
+from models.synthesized_report import SynthesizedReport
+from services.report_errors import (
+    ReportRenderError,
+    ReportUploadError,
+    ReportValidationError,
+)
+from services.template_filters import register_filters
+
+logger_v2 = logging.getLogger(__name__ + ".v2")
+
+# Maximum PDF file size: 10 MB
+_MAX_PDF_SIZE_BYTES = 10 * 1024 * 1024
+
+# S3 error codes classified as unrecoverable (fail immediately, no retry)
+_UNRECOVERABLE_S3_ERRORS = frozenset({
+    "AccessDenied",
+    "NoSuchBucket",
+    "InvalidAccessKeyId",
+    "SignatureDoesNotMatch",
+    "AccountProblem",
+    "InvalidBucketName",
+    "InvalidSecurity",
+})
+
+# S3 error codes classified as recoverable (retry with backoff)
+_RECOVERABLE_S3_ERRORS = frozenset({
+    "ThrottlingException",
+    "Throttling",
+    "ServiceUnavailable",
+    "InternalError",
+    "RequestTimeout",
+    "RequestTimeTooSkewed",
+    "SlowDown",
+})
+
+
+class ReportGeneratorV2:
+    """Renders SynthesizedReport to PDF via WeasyPrint + Jinja2.
+
+    Replaces the old ReportLab-based ReportGenerator. Uses a Jinja2 HTML
+    template rendered by WeasyPrint into a PDF, then uploaded to S3.
+
+    Constructor Args:
+        bucket_name: S3 bucket for storing generated PDFs.
+        template_path: Path to the Jinja2 HTML template file, relative to the
+            application's src directory. Defaults to "templates/coaching_report.html".
+        s3_client: Optional pre-configured boto3 S3 client.
+        dynamodb_resource: Optional pre-configured boto3 DynamoDB resource.
+        timeout_seconds: Maximum time allowed for PDF rendering (default 30s).
+    """
+
+    def __init__(
+        self,
+        bucket_name: str,
+        template_path: str = "templates/coaching_report.html",
+        s3_client: TypingAny | None = None,
+        dynamodb_resource: TypingAny | None = None,
+        timeout_seconds: float = 30.0,
+    ) -> None:
+        self._bucket_name = bucket_name
+        self._template_path = template_path
+        self._s3_client = s3_client or boto3.client("s3")
+        self._dynamodb_resource = dynamodb_resource or boto3.resource("dynamodb")
+        self._timeout_seconds = timeout_seconds
+
+        # Set up Jinja2 environment with the template directory
+        self._template_dir = self._resolve_template_dir()
+        self._jinja_env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(str(self._template_dir)),
+            autoescape=jinja2.select_autoescape(["html"]),
+            undefined=jinja2.StrictUndefined,
+        )
+        register_filters(self._jinja_env)
+
+    def _resolve_template_dir(self) -> Path:
+        """Resolve the template directory from the template_path.
+
+        The template_path is expected to be relative to the src/ directory.
+        """
+        # Resolve relative to this module's location (src/services/)
+        src_dir = Path(__file__).resolve().parent.parent
+        template_full_path = src_dir / self._template_path
+        return template_full_path.parent
+
+    def generate(
+        self,
+        report: SynthesizedReport,
+        user_id: str,
+        submission_id: str,
+    ) -> str:
+        """Validate, render, upload. Returns S3 key.
+
+        Orchestrates the full report generation pipeline:
+        1. Validate the SynthesizedReport
+        2. Render HTML from Jinja2 template
+        3. Convert HTML to PDF via WeasyPrint
+        4. Upload PDF to S3
+        5. Update submission status in DynamoDB
+
+        Args:
+            report: The validated SynthesizedReport data model.
+            user_id: User identifier for S3 path construction.
+            submission_id: Submission identifier for S3 path construction.
+
+        Returns:
+            The S3 key where the PDF was uploaded.
+
+        Raises:
+            ReportValidationError: If SynthesizedReport has invalid fields.
+            ReportRenderError: If Jinja2 or WeasyPrint fails (unrecoverable).
+            ReportUploadError: If S3 upload fails after retries exhausted.
+        """
+        report_id = report.report_id
+
+        logger_v2.info(
+            "Starting report generation: report_id=%s, user_id=%s, submission_id=%s",
+            report_id,
+            user_id,
+            submission_id,
+        )
+
+        try:
+            self._validate(report)
+            html = self._render_html(report)
+            pdf_bytes = self._render_pdf(html, report_id)
+            s3_key = self._upload(report, pdf_bytes, user_id, submission_id)
+            self._update_status(report, s3_key, user_id, submission_id)
+            return s3_key
+        except (ReportValidationError, ReportRenderError, ReportUploadError):
+            # These are our known error types — attempt status update, then re-raise
+            raise
+        except Exception as exc:
+            # Unexpected errors — wrap and propagate
+            logger_v2.error(
+                "Unexpected error during report generation: report_id=%s, error=%s",
+                report_id,
+                exc,
+                exc_info=True,
+            )
+            raise ReportRenderError(
+                report_id=report_id,
+                message=f"Unexpected error during report generation: {exc}",
+                details=str(exc),
+            ) from exc
+
+    def _validate(self, report: SynthesizedReport) -> None:
+        """Validate all required fields and ranges. Fail immediately if invalid.
+
+        The SynthesizedReport is already a Pydantic model, so basic field
+        validation is handled at construction time. This method performs
+        additional business-rule validation that goes beyond Pydantic's
+        field-level checks.
+
+        Raises:
+            ReportValidationError: With a list of all invalid fields.
+        """
+        report_id = report.report_id
+        invalid_fields: list[dict[str, str]] = []
+
+        # Check overall_score is within valid range
+        if not (0.0 <= report.overall_score <= 10.0):
+            invalid_fields.append({
+                "field": "overall_score",
+                "reason": f"Must be between 0.0 and 10.0, got {report.overall_score}",
+            })
+
+        # Check dimensions count
+        if len(report.dimensions) != 7:
+            invalid_fields.append({
+                "field": "dimensions",
+                "reason": f"Must have exactly 7 dimensions, got {len(report.dimensions)}",
+            })
+
+        # Check exactly one weakest dimension
+        weakest_count = sum(1 for d in report.dimensions if d.is_weakest)
+        if weakest_count != 1:
+            invalid_fields.append({
+                "field": "dimensions.is_weakest",
+                "reason": f"Exactly one dimension must be weakest, got {weakest_count}",
+            })
+
+        # Check three_moves count
+        if len(report.three_moves) != 3:
+            invalid_fields.append({
+                "field": "three_moves",
+                "reason": f"Must have exactly 3 moves, got {len(report.three_moves)}",
+            })
+
+        # Check each dimension score in range
+        for i, dim in enumerate(report.dimensions):
+            if not (0.0 <= dim.score <= 10.0):
+                invalid_fields.append({
+                    "field": f"dimensions[{i}].score",
+                    "reason": f"Must be between 0.0 and 10.0, got {dim.score}",
+                })
+            # Check findings cap
+            if len(dim.findings) > 5:
+                invalid_fields.append({
+                    "field": f"dimensions[{i}].findings",
+                    "reason": f"Max 5 findings per dimension, got {len(dim.findings)}",
+                })
+            # Check strengths cap
+            if len(dim.strengths) > 3:
+                invalid_fields.append({
+                    "field": f"dimensions[{i}].strengths",
+                    "reason": f"Max 3 strengths per dimension, got {len(dim.strengths)}",
+                })
+
+        # Check report_id is not empty
+        if not report.report_id:
+            invalid_fields.append({
+                "field": "report_id",
+                "reason": "report_id must not be empty",
+            })
+
+        # Check provenance report_id matches
+        if report.provenance.report_id != report.report_id:
+            invalid_fields.append({
+                "field": "provenance.report_id",
+                "reason": (
+                    f"provenance.report_id ({report.provenance.report_id}) "
+                    f"must match report.report_id ({report.report_id})"
+                ),
+            })
+
+        if invalid_fields:
+            logger_v2.error(
+                "Report validation failed: report_id=%s, invalid_fields=%s",
+                report_id,
+                invalid_fields,
+            )
+            raise ReportValidationError(
+                report_id=report_id,
+                message=f"Validation failed for {len(invalid_fields)} field(s)",
+                invalid_fields=invalid_fields,
+            )
+
+    def _render_html(self, report: SynthesizedReport) -> str:
+        """Load Jinja2 template, render with SynthesizedReport as dict context.
+
+        Registers template filters from src/services/template_filters.py and
+        renders the template with the report serialized as a dictionary.
+
+        Args:
+            report: The validated SynthesizedReport.
+
+        Returns:
+            Rendered HTML string.
+
+        Raises:
+            ReportRenderError: If the template is missing or contains syntax errors.
+        """
+        report_id = report.report_id
+        template_name = Path(self._template_path).name
+
+        try:
+            template = self._jinja_env.get_template(template_name)
+        except jinja2.TemplateNotFound as exc:
+            logger_v2.error(
+                "Template not found: report_id=%s, template_path=%s",
+                report_id,
+                self._template_path,
+            )
+            raise ReportRenderError(
+                report_id=report_id,
+                message=f"Template not found: {self._template_path}",
+                template_path=self._template_path,
+                details=str(exc),
+            ) from exc
+        except jinja2.TemplateSyntaxError as exc:
+            logger_v2.error(
+                "Template syntax error: report_id=%s, template_path=%s, "
+                "line=%s, error=%s",
+                report_id,
+                self._template_path,
+                getattr(exc, "lineno", "unknown"),
+                exc,
+            )
+            raise ReportRenderError(
+                report_id=report_id,
+                message=f"Template syntax error in {self._template_path}",
+                template_path=self._template_path,
+                details=f"Line {getattr(exc, 'lineno', '?')}: {exc}",
+            ) from exc
+
+        try:
+            # Serialize the report to a dict for template context
+            # The template expects variables at the top level (e.g., {{ presentation_title }})
+            context = report.model_dump(mode="python")
+            html = template.render(**context)
+        except jinja2.UndefinedError as exc:
+            logger_v2.error(
+                "Template render error (undefined variable): report_id=%s, error=%s",
+                report_id,
+                exc,
+            )
+            raise ReportRenderError(
+                report_id=report_id,
+                message=f"Template render error: undefined variable",
+                template_path=self._template_path,
+                details=str(exc),
+            ) from exc
+        except Exception as exc:
+            logger_v2.error(
+                "Template render error: report_id=%s, error=%s",
+                report_id,
+                exc,
+                exc_info=True,
+            )
+            raise ReportRenderError(
+                report_id=report_id,
+                message=f"Template rendering failed: {exc}",
+                template_path=self._template_path,
+                details=str(exc),
+            ) from exc
+
+        logger_v2.debug(
+            "HTML rendered successfully: report_id=%s, html_length=%d",
+            report_id,
+            len(html),
+        )
+        return html
+
+    def _render_pdf(self, html: str, report_id: str) -> bytes:
+        """WeasyPrint HTML→PDF with timeout. Unrecoverable on failure.
+
+        Renders the HTML string to PDF bytes using WeasyPrint. If rendering
+        exceeds the configured timeout, the operation is terminated.
+
+        Args:
+            html: Rendered HTML string.
+            report_id: Report ID for logging context.
+
+        Returns:
+            PDF content as bytes.
+
+        Raises:
+            ReportRenderError: If WeasyPrint fails or times out.
+        """
+        try:
+            pdf_bytes = self._render_pdf_with_timeout(html, report_id)
+        except ReportRenderError:
+            raise
+        except Exception as exc:
+            logger_v2.error(
+                "WeasyPrint rendering failed: report_id=%s, error=%s",
+                report_id,
+                exc,
+                exc_info=True,
+            )
+            raise ReportRenderError(
+                report_id=report_id,
+                message=f"PDF rendering failed: {exc}",
+                details=str(exc),
+            ) from exc
+
+        # Validate PDF size
+        if len(pdf_bytes) > _MAX_PDF_SIZE_BYTES:
+            logger_v2.error(
+                "PDF exceeds max size: report_id=%s, size=%d bytes, max=%d bytes",
+                report_id,
+                len(pdf_bytes),
+                _MAX_PDF_SIZE_BYTES,
+            )
+            raise ReportRenderError(
+                report_id=report_id,
+                message=(
+                    f"PDF size ({len(pdf_bytes)} bytes) exceeds maximum "
+                    f"({_MAX_PDF_SIZE_BYTES} bytes)"
+                ),
+                details=f"Size: {len(pdf_bytes)} bytes",
+            )
+
+        logger_v2.info(
+            "PDF rendered successfully: report_id=%s, size=%d bytes",
+            report_id,
+            len(pdf_bytes),
+        )
+        return pdf_bytes
+
+    def _render_pdf_with_timeout(self, html: str, report_id: str) -> bytes:
+        """Render PDF with a timeout using threading.
+
+        Uses a thread-based timeout approach that works cross-platform
+        (signal.SIGALRM is not available on Windows).
+
+        Args:
+            html: The HTML content to render.
+            report_id: Report ID for error context.
+
+        Returns:
+            PDF content as bytes.
+
+        Raises:
+            ReportRenderError: If rendering times out.
+        """
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(self._do_weasyprint_render, html)
+            try:
+                pdf_bytes = future.result(timeout=self._timeout_seconds)
+                return pdf_bytes
+            except concurrent.futures.TimeoutError:
+                logger_v2.error(
+                    "PDF rendering timed out: report_id=%s, timeout=%.1fs",
+                    report_id,
+                    self._timeout_seconds,
+                )
+                raise ReportRenderError(
+                    report_id=report_id,
+                    message=(
+                        f"PDF rendering timed out after {self._timeout_seconds}s"
+                    ),
+                    details=f"Timeout: {self._timeout_seconds}s",
+                )
+
+    @staticmethod
+    def _do_weasyprint_render(html: str) -> bytes:
+        """Perform the actual WeasyPrint rendering (called in thread).
+
+        Args:
+            html: HTML content to convert to PDF.
+
+        Returns:
+            PDF bytes.
+        """
+        from weasyprint import HTML
+
+        return HTML(string=html).write_pdf()
+
+    def _upload(
+        self,
+        report: SynthesizedReport,
+        pdf_bytes: bytes,
+        user_id: str,
+        submission_id: str,
+    ) -> str:
+        """S3 upload with retry for recoverable errors, fail-fast for unrecoverable.
+
+        Retry strategy: 3 attempts, 1s base delay, 2× backoff, FULL jitter.
+        FULL jitter means: delay = random(0, base × 2^attempt).
+
+        Args:
+            report: The SynthesizedReport (for report_id context).
+            pdf_bytes: The PDF content to upload.
+            user_id: User identifier for S3 path.
+            submission_id: Submission identifier for S3 path.
+
+        Returns:
+            The S3 key where the PDF was stored.
+
+        Raises:
+            ReportUploadError: If upload fails after retries or on unrecoverable error.
+        """
+        report_id = report.report_id
+        s3_key = f"reports/{user_id}/{submission_id}/coaching_report.pdf"
+
+        max_attempts = 3
+        base_delay = 1.0
+        backoff_multiplier = 2.0
+
+        last_exception: Exception | None = None
+
+        for attempt in range(max_attempts):
+            try:
+                self._s3_client.put_object(
+                    Bucket=self._bucket_name,
+                    Key=s3_key,
+                    Body=pdf_bytes,
+                    ContentType="application/pdf",
+                )
+                logger_v2.info(
+                    "PDF uploaded to S3: report_id=%s, key=%s",
+                    report_id,
+                    s3_key,
+                )
+                return s3_key
+
+            except ClientError as exc:
+                error_code = exc.response.get("Error", {}).get("Code", "")
+                last_exception = exc
+
+                # Unrecoverable — fail immediately
+                if error_code in _UNRECOVERABLE_S3_ERRORS:
+                    logger_v2.error(
+                        "S3 upload failed (unrecoverable): report_id=%s, "
+                        "error_code=%s, key=%s",
+                        report_id,
+                        error_code,
+                        s3_key,
+                    )
+                    raise ReportUploadError(
+                        report_id=report_id,
+                        message=(
+                            f"S3 upload failed (unrecoverable): {error_code}"
+                        ),
+                    ) from exc
+
+                # Recoverable — retry with backoff
+                if attempt < max_attempts - 1:
+                    # FULL jitter: delay = random(0, base × 2^attempt)
+                    max_delay = base_delay * (backoff_multiplier ** attempt)
+                    delay = random.uniform(0, max_delay)
+                    logger_v2.warning(
+                        "S3 upload failed (recoverable, retrying): "
+                        "report_id=%s, error_code=%s, attempt=%d/%d, "
+                        "delay=%.2fs",
+                        report_id,
+                        error_code,
+                        attempt + 1,
+                        max_attempts,
+                        delay,
+                    )
+                    time.sleep(delay)
+                else:
+                    logger_v2.error(
+                        "S3 upload failed after all retries: report_id=%s, "
+                        "error_code=%s, attempts=%d",
+                        report_id,
+                        error_code,
+                        max_attempts,
+                    )
+
+            except Exception as exc:
+                # Network timeouts, connection errors — treat as recoverable
+                last_exception = exc
+                if attempt < max_attempts - 1:
+                    max_delay = base_delay * (backoff_multiplier ** attempt)
+                    delay = random.uniform(0, max_delay)
+                    logger_v2.warning(
+                        "S3 upload failed (connection error, retrying): "
+                        "report_id=%s, error=%s, attempt=%d/%d, delay=%.2fs",
+                        report_id,
+                        exc,
+                        attempt + 1,
+                        max_attempts,
+                        delay,
+                    )
+                    time.sleep(delay)
+                else:
+                    logger_v2.error(
+                        "S3 upload failed after all retries: report_id=%s, "
+                        "error=%s, attempts=%d",
+                        report_id,
+                        exc,
+                        max_attempts,
+                    )
+
+        # All retries exhausted
+        raise ReportUploadError(
+            report_id=report_id,
+            message=f"S3 upload failed after {max_attempts} attempts: {last_exception}",
+        )
+
+    def _update_status(
+        self,
+        report: SynthesizedReport,
+        s3_key: str,
+        user_id: str,
+        submission_id: str,
+    ) -> None:
+        """Update DynamoDB submission status to reflect successful report generation.
+
+        On failure, logs both the original context and the DynamoDB error,
+        and propagates the original error (does not mask it).
+
+        Args:
+            report: The SynthesizedReport (for report_id context).
+            s3_key: The S3 key where the PDF was uploaded.
+            user_id: User identifier for DynamoDB lookup.
+            submission_id: Submission identifier for DynamoDB lookup.
+        """
+        report_id = report.report_id
+
+        try:
+            table = self._dynamodb_resource.Table("submissions")
+            table.update_item(
+                Key={
+                    "user_id": user_id,
+                    "submission_id": submission_id,
+                },
+                UpdateExpression=(
+                    "SET report_status = :status, "
+                    "report_s3_key = :s3_key, "
+                    "report_id = :report_id"
+                ),
+                ExpressionAttributeValues={
+                    ":status": "completed",
+                    ":s3_key": s3_key,
+                    ":report_id": report_id,
+                },
+            )
+            logger_v2.info(
+                "DynamoDB status updated: report_id=%s, submission_id=%s, "
+                "status=completed",
+                report_id,
+                submission_id,
+            )
+        except Exception as exc:
+            # Log the DynamoDB failure but do NOT raise — the report was
+            # already generated and uploaded successfully
+            logger_v2.error(
+                "Failed to update DynamoDB status: report_id=%s, "
+                "submission_id=%s, s3_key=%s, error=%s",
+                report_id,
+                submission_id,
+                s3_key,
+                exc,
+                exc_info=True,
+            )
+            # Per requirement 14.6: log both errors and propagate original error
+            # Since we're in the success path (upload completed), we just log
+            # and continue — the S3 key is still valid

@@ -1,0 +1,93 @@
+
+Making the Coaching Report the Centerpiece
+
+
+Where this starts
+The hard part is already done. Seven agents are producing specific, evidence-anchored feedback with real timestamps attached, and they caught things a human coach would have to rewind three times to notice. The 0.13 transcription confidence on "Strands" as a proxy for a swallowed product name is a genuinely clever inference. Most commercial speaking tools do not get anywhere near that.
+What you have is an evaluation log with headings on it. What you need is a report, and the distance between those two things is mostly presentation. Fourteen pages of consistently reasonable observations delivered at a consistent volume with no emphasis and no structural signposting, which for a document whose whole argument is that the speaker needed emphasis and structural signposting, is a little on the nose.
+This document covers what to change and why, then hands Kiro a build sequence. The companion HTML mockup is the visual target and it renders to the six pages you should be aiming for.
+
+What is wrong with the current draft
+There is no front door
+The 5.9 appears in the fourth line of a prose paragraph. The seven dimension scores exist in the system but never appear together anywhere in fourteen pages, so a reader has to page through the whole document and assemble a picture the application already has. Nobody should have to do arithmetic to find out where they stand.
+
+Forty-five findings for 307 seconds of audio
+That is one finding every seven seconds. It is thorough and it is unusable. Nobody acts on 45 things, and a report that asks them to is telling the reader that nothing in it is particularly important. Cap the visible findings at five per dimension, sorted by severity, and keep the rest in the evaluation JSON for anyone who wants the full trace.
+
+Seven agents keep noticing the same four things
+Reducing "So" as a transition appears in Structure, Executive Presence, and Pacing. Eliminating hedging appears in Executive Presence, Technical Communication, and Persuasion. Adding pauses appears in Delivery, Executive Presence, and Pacing. Adding a real conclusion appears in Structure, Pacing, and Persuasion. That convergence is actually a strong signal that the evaluation is working, because independent agents landed in the same place. It is a bad outcome for the report, because the reader experiences it as the document repeating itself.
+That is the supervisor agent's job and it is not doing it yet. When three or more specialists raise the same underlying issue, the supervisor should collapse them into one finding, attribute it to the dimension where it costs the most points, and note the cross-dimension impact in a single line instead of writing the same paragraph four times.
+
+Findings, Strengths, and Areas for Improvement say the same thing three times
+Areas for Improvement is very close to a restatement of the suggestions already inside Findings. Somewhere around forty percent of the page count is duplication. Cut Areas for Improvement entirely. The fix belongs inside the finding it fixes.
+
+The Overall Coaching Assessment is a string join wearing a jacket
+This one is worth being blunt about because it is the section that most undermines the credibility of everything above it. The concatenation shows through in three places. There is doubled punctuation where sentences were joined ("subject matter., authentic conversational energy"). Quoted transcript text has been lowercased ("how do i actually keep track of these conversations over time"). And strength strings are comma-joined into a single sentence that runs for most of a paragraph. A reader who notices any one of those stops trusting the analysis, fairly or not.
+
+Let's delete the Overall Coaching Assessment in fvor of the new content
+
+The voice is inconsistent
+The header says Michael Geiser, the body says "the presenter (Frank Kane)," and the coaching alternates between third person and second person, sometimes inside the same paragraph. Pick second person for every word of coaching content and keep speaker identity in the metadata block where it belongs. If the name detected in the audio differs from the account holder, say so once in the header and move on. That is useful information for a drift test, not a reason to change grammatical person.
+
+Two render bugs
+"Q&A;" appears three times, which is an HTML entity being escaped once too many times on its way into the PDF. And the em dashes in agent output are rendering inconsistently against the surrounding text. Both are cosmetic and both are the kind of thing an executive reader notices immediately.
+
+
+The structure to move to about six pages, not fourteen. 
+The full evaluation stays available as JSON from the submission record for anyone who wants every finding. What follows maps one to one onto the mockup.
+
+1. Scorecard: Everything at a glance. Metadata, the overall score in a banded gauge, the talk timeline, seven ranked dimension bars against a target line, eight measured metrics, severity counts, and the two-sentence verdict.
+2. Three moves:	The narrative diagnosis in three short paragraphs, then the three highest-leverage changes ranked by projected score impact, then a panel of strengths to protect while fixing the rest.
+3 to 5. Dimensions:	Seven dimension cards, roughly two per page. Weakest first, because that is the order someone should read them in. It is ok if more pages are needed.
+6. Progress	Trend section: Empty state today, populated once the trend service ships.
+7. How this was scored: Score bands, method, and full provenance. Short, but it is what makes the whole thing feel like an instrument rather than an opinion.
+
+
+The dashboard, and the distinction that makes it work
+The single most valuable thing you can do on page one has nothing to do with charts. It is separating what was measured from what was judged, and labelling both.
+
+Speaking rate, filler counts, pause distribution, segment balance, and enunciation confidence are computed from the transcript and its word-level timings. Run the same audio again and you get the same numbers. The seven dimension scores are model output and they will move between runs even with temperature pinned. Putting those two categories in the same visual treatment quietly claims a precision the second category does not have.
+
+So the mockup gives them different homes. The gauge and the ranked bars are model judgment and they sit under a heading that says so. The eight metrics sit in their own column under "Measured, not judged," with a line underneath explaining that they reproduce exactly and the scores will not. That single sentence buys you enormous credibility with a technical audience, and it happens to be exactly the discipline your gold-data drift test depends on.
+
+WHAT GOES ON THE SCORECARD
+•	The gauge, with the four score bands drawn into the arc so 5.9 means something without a legend. Add the distance to the next band ("0.6 below Effective") because that is the number that motivates.
+•	Seven ranked bars, weakest first, with a target line at 6.5. Ranking weakest first tells the reader where to look. Alphabetical or rubric order tells them nothing.
+•	Severity counts as four chips. Fourteen high, twenty-two medium, nine low, six strengths. It sets expectations for the pages that follow.
+•	A delta column, stubbed with an em dash today and populated by the trend service later. Building the column now means the layout does not change when the data arrives.
+•	A two-sentence verdict in plain language. "Technically credible, not yet persuasive" does more work than any chart on the page.
+
+The one thing that will make people remember it
+Every finding your agents produce already carries a timestamp. 159 seconds. 240.789. The 119 to 178 second stretch where six ideas arrive in under a minute. The single 1.4 second pause at 178. That data is sitting in the output right now doing nothing, and it is the thing no other speaking tool has in this form.
+
+Put a timeline of the talk across the scorecard. Five minutes and seven seconds rendered as a horizontal band, segmented into open, body, and close so the 11 / 84 / 4 percent split is visible rather than described. Pin the high-severity findings to the moments they happened. Shade the high-density stretch in red. Mark the one good pause in green, below the line, so the reader sees a strength and a weakness in the same glance.
+
+It is buildable in an afternoon. The agents already emit the timestamps, so the renderer is a function from findings to SVG rectangles and lines. There is no new model work and no new data. Repeat a scoped version of the strip inside each dimension card showing only that dimension's findings, and the reader gets a spatial sense of where their problems live that no amount of prose delivers.
+
+This is the screenshot. When you put PresCoach in front of a hiring manager or on a slide, the timeline is the image that goes on it. A gauge is a gauge. A five-minute talk with its failure points pinned to the second is a product that clearly knows something.
+
+
+
+Rebuilding the seven dimension sections
+Right now each dimension is three flat lists of bullets in identical typography, which means nothing inside them can be more important than anything else. Replace that with a card that has an actual shape. Every dimension gets the same components in the same order, so a reader learns the pattern once on page three and reads the remaining six twice as fast.
+
+
+Score block: Large numeral, band label, delta against the previous run				Red background when the dimension is the weakest of the seven. Everything else stays petrol.
+
+Verdict: One sentence in the agent's own words naming the core problem				New required field. Force it to under 25 words. "The mechanics are clean and the emphasis is missing" is the target.
+Rank line: Where this sits among the seven and how many high findings it holds		Generated, not written by the agent.
+Timeline: strip	This dimension's findings pinned to the audio timeline				Same renderer as the scorecard, filtered by dimension.
+What is working: Up to three strengths, one line each								Hard cap at three. If an agent returns six, take the three with evidence attached.
+Findings: +/- 5 by severity, each with evidence, fix, and effort and impact tags	Every finding needs a timestamp or a quoted phrase. A finding with no evidence gets dropped, not padded.
+Say this instead: One before and after using a real line from their transcript		The single highest-value addition in this document. See below.
+Practice drill:	One concrete rehearsal exercise with a time box						Replaces the vague "practice these transitions during rehearsal" language currently scattered through the findings.
+
+Why the before and after matters more than everything else
+The current report tells the speaker to eliminate hedging. Advice like that is correct, forgettable, and impossible to act on in the moment. Show them their own sentence next to a rewritten version and the note becomes something they can hear themselves saying. You already have the transcript, so the agent has the raw material. Add it as a required field per dimension and constrain the "was" side to a verbatim quote so the agent cannot invent a strawman.
+
+This is also the field that will make people forward the report to someone else, which is worth something when the product is doubling as a portfolio piece.
+
+
+
+Three rules for the supervisor
+First, collapse any issue raised by three or more specialists into a single finding, attributed to the dimension where the rubric weight is highest, with a one-line note on cross-dimension impact. Second, rank the surviving findings globally by impact and use the top three to generate the three-move plan on page two, so that plan is derived rather than written twice. Third, enforce the caps. Five findings, three strengths, one rewrite, one drill. If a specialist returns more, the supervisor drops the ones without evidence first.

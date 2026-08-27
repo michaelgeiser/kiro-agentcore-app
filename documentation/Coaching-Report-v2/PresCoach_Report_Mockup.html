@@ -1,0 +1,767 @@
+<meta charset="utf-8">
+<title>PresCoach Coaching Report — Design Mockup</title>
+<style>
+/* ==========================================================================
+   PresCoach Coaching Report — visual design mockup v2
+   Renderer: WeasyPrint (HTML/CSS -> PDF). Page: US Letter.
+   Content width = 527pt. All SVGs use 1:1 pt coordinates, no percentage
+   widths (WeasyPrint does not constrain SVG by percentage).
+   Fonts: all open licence, installable in the render container.
+   ========================================================================== */
+:root{
+  --paper:#F8F8F6; --panel:#133039; --panel-2:#1C4A59; --panel-3:#3D7A8C;
+  --ink:#15181C; --ink-2:#4C545E; --ink-3:#7C848E;
+  --rule:#DEDCD4; --rule-2:#C6C4BA;
+  --brass:#A8762A; --brass-tint:#F4EADA;
+  --clip:#9E2B25; --clip-tint:#F5E3E1;
+  --warn:#B4772A; --warn-tint:#F7EFE1;
+  --low:#8A8479;  --low-tint:#ECEBE6;
+  --good:#2E6B57; --good-tint:#E3EDE8;
+  --f-body:"Bitstream Charter","Charter",Georgia,serif;
+  --f-ui:"TeX Gyre Heros","Helvetica Neue",Arial,sans-serif;
+  --f-num:"TeX Gyre Adventor","Century Gothic",sans-serif;
+  --f-mono:"DejaVu Sans Mono",monospace;
+}
+@page{
+  size:Letter; margin:14mm 15mm 15mm 15mm;
+  @bottom-left{ content:"PresCoach  ·  Coaching Report  ·  RPT-2026-0805-1242-MG";
+    font-family:var(--f-ui); font-size:6.2pt; color:#A3A29A; letter-spacing:.05em; }
+  @bottom-right{ content:counter(page) " / " counter(pages);
+    font-family:var(--f-mono); font-size:6.2pt; color:#A3A29A; }
+}
+*{ box-sizing:border-box; }
+html{ background:var(--paper); }
+body{ margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--f-body); font-size:9.1pt; line-height:1.46; }
+p{ margin:0 0 7pt; }
+svg{ display:block; }
+
+.eyebrow{ font-family:var(--f-ui); font-size:6.4pt; font-weight:700;
+  letter-spacing:.19em; text-transform:uppercase; color:var(--ink-3); }
+.eyebrow.dk{ color:#8FB4BE; }
+h1,h2,h3,h4{ font-family:var(--f-ui); font-weight:700; margin:0; }
+h2.section{ font-size:13pt; letter-spacing:-.01em; padding-bottom:4pt;
+  margin:0 0 10pt; border-bottom:1.6pt solid var(--panel); }
+.lede{ font-size:10.3pt; line-height:1.5; }
+.footnote{ font-size:7.6pt; color:var(--ink-3); border-top:.5pt solid var(--rule);
+  padding-top:6pt; margin-top:8pt; }
+table.lay{ width:527pt; border-collapse:collapse; }
+table.lay > tr > td, table.lay td{ vertical-align:top; padding:0; }
+.page{ page-break-after:always; }
+.page:last-child{ page-break-after:auto; }
+
+/* ---- ID bar -------------------------------------------------------------- */
+.idbar{ display:flex; align-items:center; justify-content:space-between;
+  border-bottom:.8pt solid var(--rule-2); padding-bottom:5pt; margin-bottom:9pt; }
+.brandlock{ display:flex; align-items:center; }
+.brandlock svg{ margin-right:6pt; }
+.brandname{ font-family:var(--f-num); font-size:11.4pt; font-weight:700;
+  letter-spacing:-.02em; color:var(--panel); }
+.brandname span{ color:var(--brass); }
+.ph{ font-family:var(--f-ui); font-size:5.2pt; letter-spacing:.14em;
+  text-transform:uppercase; color:#BBB9B0; margin-left:6pt;
+  border:.6pt dashed #CCCAC1; padding:1.5pt 3pt; border-radius:2pt; }
+.idbar .r{ font-family:var(--f-ui); font-size:6.6pt; color:var(--ink-3); letter-spacing:.07em; }
+
+/* ---- hero ---------------------------------------------------------------- */
+.hero{ background:var(--panel); color:#EAF1F2; border-radius:3pt;
+  padding:12pt 15pt 11pt; margin-bottom:11pt; }
+.hero-title{ font-family:var(--f-ui); font-size:16.5pt; font-weight:700;
+  letter-spacing:-.022em; color:#fff; margin:3pt 0 5pt; line-height:1.12; }
+.hero-meta{ font-family:var(--f-ui); font-size:7pt; color:#9DBFC8; line-height:1.68; }
+.hero-meta b{ color:#DCEAEE; font-weight:400; }
+.gband{ font-family:var(--f-ui); font-size:6.8pt; font-weight:700; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--brass); text-align:center; margin-top:3pt; }
+.gverdict{ font-style:italic; font-size:8.5pt; color:#BBD4DA; text-align:center;
+  line-height:1.36; margin-top:4pt; }
+.tl-head{ display:flex; justify-content:space-between; align-items:baseline;
+  border-top:.8pt solid rgba(255,255,255,.17); padding-top:8pt; margin-top:9pt; margin-bottom:3pt; }
+.tl-head .l{ font-family:var(--f-ui); font-size:6.2pt; letter-spacing:.17em;
+  text-transform:uppercase; color:#7FA6B1; }
+.tl-head .g{ font-family:var(--f-ui); font-size:6pt; color:#9DBFC8; }
+.tl-head .g i{ display:inline-block; width:5pt; height:5pt; border-radius:50%;
+  margin:0 2.5pt 0 9pt; }
+
+/* ---- metrics panel ------------------------------------------------------- */
+.mhdr{ margin-bottom:6pt; }
+table.metrics{ width:100%; border-collapse:collapse; table-layout:fixed; }
+table.metrics td{ padding:4.1pt 0; border-bottom:.5pt solid var(--rule); vertical-align:baseline; }
+table.metrics tr:last-child td{ border-bottom:0; }
+table.metrics td.k{ font-family:var(--f-ui); font-size:6.9pt; color:var(--ink-2); width:118pt; }
+table.metrics td.v{ font-family:var(--f-num); font-size:9.2pt; font-weight:700;
+  letter-spacing:-.02em; text-align:right; white-space:nowrap; width:75pt; }
+table.metrics td.v u{ font-family:var(--f-ui); font-size:6.2pt; font-weight:400;
+  color:var(--ink-3); text-decoration:none; letter-spacing:0; margin-left:2pt; }
+.v.flag{ color:var(--clip); } .v.ok{ color:var(--good); } .v.nn{ color:var(--ink-3); }
+
+table.sev{ width:100%; border-collapse:separate; border-spacing:4pt 0; margin-top:9pt; }
+table.sev td{ text-align:center; padding:5pt 0 4pt; border-radius:2pt; }
+table.sev .n{ font-family:var(--f-num); font-size:13pt; font-weight:700;
+  line-height:1; letter-spacing:-.03em; }
+table.sev .l{ font-family:var(--f-ui); font-size:5.6pt; letter-spacing:.13em;
+  text-transform:uppercase; margin-top:3pt; }
+td.sv-h{ background:var(--clip-tint); color:var(--clip); }
+td.sv-m{ background:var(--warn-tint); color:var(--warn); }
+td.sv-l{ background:var(--low-tint);  color:var(--low); }
+td.sv-s{ background:var(--good-tint); color:var(--good); }
+
+/* ---- moves --------------------------------------------------------------- */
+.move{ display:flex; border:.8pt solid var(--rule-2); border-left:3pt solid var(--brass);
+  border-radius:2pt; padding:9pt 12pt; margin-bottom:8pt; break-inside:avoid; }
+.move .gain{ width:56pt; flex-shrink:0; text-align:center; padding-right:11pt;
+  border-right:.6pt solid var(--rule); margin-right:12pt; }
+.move .gain .n{ font-family:var(--f-num); font-size:16pt; font-weight:700;
+  color:var(--good); letter-spacing:-.03em; line-height:1; }
+.move .gain .l{ font-family:var(--f-ui); font-size:5.2pt; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink-3); margin-top:4pt; line-height:1.3; }
+.move h3{ font-size:9.8pt; margin-bottom:3pt; }
+.move p{ margin:0 0 5pt; font-size:8.8pt; }
+.move .lifts{ font-family:var(--f-ui); font-size:6.3pt; color:var(--ink-3); letter-spacing:.05em; }
+.move .lifts b{ color:var(--panel-2); }
+
+/* ---- dimension card ------------------------------------------------------ */
+.dimhead{ display:flex; align-items:flex-start; margin-bottom:10pt; }
+.dimscore{ width:64pt; height:64pt; flex-shrink:0; border-radius:3pt; margin-right:13pt;
+  background:var(--panel); color:#fff; text-align:center; padding-top:10pt; }
+.dimscore.alert{ background:var(--clip); }
+.dimscore .n{ font-family:var(--f-num); font-size:23pt; font-weight:700;
+  line-height:1; letter-spacing:-.045em; }
+.dimscore .n u{ font-size:9pt; opacity:.55; text-decoration:none; letter-spacing:0; }
+.dimscore .l{ font-family:var(--f-ui); font-size:5.4pt; letter-spacing:.14em;
+  text-transform:uppercase; margin-top:6pt; opacity:.8; }
+.dimhead h2{ font-size:14.5pt; letter-spacing:-.018em; margin:1pt 0 3pt; }
+.verdict{ font-size:9.7pt; line-height:1.42; margin-bottom:5pt; }
+.verdict b{ color:var(--panel-2); }
+.rankline{ font-family:var(--f-ui); font-size:6.5pt; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--ink-3); }
+
+.strip{ background:#F1F0EA; border:.6pt solid var(--rule); border-radius:2pt;
+  padding:7pt 9pt 6pt; margin-bottom:11pt; }
+.strip .l{ font-family:var(--f-ui); font-size:5.9pt; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--ink-3); margin-bottom:5pt; }
+
+.finding{ display:flex; break-inside:avoid; margin-bottom:10pt; }
+.finding .rail{ width:3pt; border-radius:2pt; flex-shrink:0; margin-right:10pt; }
+.rail-h{ background:var(--clip); } .rail-m{ background:var(--warn); } .rail-l{ background:var(--low); }
+.fhead{ display:flex; align-items:baseline; margin-bottom:3pt; }
+.sevtag{ font-family:var(--f-ui); font-size:5.4pt; font-weight:700; letter-spacing:.13em;
+  text-transform:uppercase; padding:1.6pt 4pt; border-radius:1.5pt; margin-right:7pt; color:#fff; }
+.sevtag.h{ background:var(--clip); } .sevtag.m{ background:var(--warn); } .sevtag.l{ background:var(--low); }
+.fname{ font-family:var(--f-ui); font-size:8.7pt; font-weight:700; flex:1; }
+.effort{ font-family:var(--f-ui); font-size:5.9pt; color:var(--ink-3); letter-spacing:.07em; }
+.finding p{ font-size:8.7pt; margin:0 0 4pt; }
+
+.evidence{ border-left:2pt solid var(--rule-2); padding:2pt 0 2pt 9pt; margin:5pt 0; }
+.evidence .q{ font-style:italic; font-size:8.7pt; }
+.evidence .ts{ font-family:var(--f-mono); font-size:6.3pt; color:var(--brass);
+  display:block; margin-top:2.5pt; }
+
+.swap{ display:flex; margin:6pt 0 2pt; border-radius:2pt; overflow:hidden; break-inside:avoid; }
+.swap > div{ flex:1; padding:6pt 9pt; }
+.swap .was{ background:#F0EEE8; border-right:.6pt solid var(--rule-2); }
+.swap .now{ background:var(--good-tint); }
+.swap .k{ font-family:var(--f-ui); font-size:5.4pt; font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase; margin-bottom:3pt; }
+.swap .was .k{ color:var(--ink-3); } .swap .now .k{ color:var(--good); }
+.swap .t{ font-size:8.4pt; line-height:1.4; }
+.swap .was .t{ color:var(--ink-2); }
+
+.wins{ background:var(--good-tint); border-radius:2pt; padding:8pt 12pt;
+  margin-bottom:11pt; break-inside:avoid; }
+.wins .l{ font-family:var(--f-ui); font-size:5.9pt; font-weight:700; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--good); margin-bottom:5pt; }
+.wins ul{ margin:0; padding-left:12pt; }
+.wins li{ font-size:8.6pt; margin-bottom:3pt; }
+.wins li:last-child{ margin-bottom:0; }
+
+.drill{ background:var(--panel); color:#DCE8EA; border-radius:2pt; padding:9pt 12pt;
+  margin-top:2pt; break-inside:avoid; display:flex; align-items:flex-start; }
+.drill .clock{ font-family:var(--f-num); font-size:12.5pt; font-weight:700;
+  color:var(--brass); width:48pt; flex-shrink:0; line-height:1; }
+.drill .clock u{ display:block; font-family:var(--f-ui); font-size:5.2pt; font-weight:400;
+  letter-spacing:.12em; text-transform:uppercase; color:#7FA6B1; margin-top:4pt; text-decoration:none; }
+.drill h4{ font-size:8pt; letter-spacing:.11em; text-transform:uppercase;
+  color:#8FB4BE; margin-bottom:3pt; }
+.drill p{ margin:0; font-size:8.7pt; }
+
+/* ---- trend --------------------------------------------------------------- */
+.flagbox{ display:flex; align-items:flex-start; background:var(--brass-tint);
+  border:.8pt solid #E2D2B4; border-radius:2pt; padding:8pt 11pt; margin-bottom:11pt; }
+.flagbox .d{ width:7pt; height:7pt; border-radius:50%; background:var(--brass);
+  margin:2pt 9pt 0 0; flex-shrink:0; }
+.flagbox p{ margin:0; font-size:8.4pt; color:#6A5322; }
+.flagbox b{ color:#4A3812; }
+.tcard{ border:.8pt solid var(--rule-2); border-radius:2pt; padding:10pt 12pt; margin-bottom:9pt; }
+.tcard .hd{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7pt; }
+.tcard h3{ font-size:9.2pt; }
+.chg{ font-family:var(--f-ui); font-size:7.5pt; font-weight:700; }
+.chg.up{ color:var(--good); } .chg.flat{ color:var(--ink-3); }
+.tcard p{ font-size:8.2pt; margin:5pt 0 0; }
+.empty{ border:1pt dashed var(--rule-2); border-radius:2pt; padding:14pt 16pt;
+  text-align:center; background:#FCFCFA; }
+.empty h3{ font-size:9.6pt; margin-bottom:5pt; }
+.empty p{ font-size:8.5pt; color:var(--ink-2); max-width:310pt; margin:0 auto 7pt; }
+.pips i{ display:inline-block; width:9pt; height:9pt; border-radius:50%;
+  margin:0 3pt; background:#E4E2DA; }
+.pips i.on{ background:var(--panel-2); }
+.pips .cap{ display:block; font-family:var(--f-ui); font-size:6.1pt; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--ink-3); margin-top:7pt; }
+
+/* ---- appendix ------------------------------------------------------------ */
+table.spec{ width:100%; border-collapse:collapse; margin-bottom:11pt; }
+table.spec th{ font-family:var(--f-ui); font-size:6.1pt; font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink-3); text-align:left;
+  padding:0 8pt 4pt 0; border-bottom:.8pt solid var(--rule-2); }
+table.spec td{ font-size:8.2pt; padding:4.4pt 8pt 4.4pt 0;
+  border-bottom:.5pt solid var(--rule); vertical-align:top; }
+table.spec td.k{ font-family:var(--f-ui); font-size:7.3pt; color:var(--ink-2); width:118pt; }
+table.spec td.m{ font-family:var(--f-mono); font-size:7pt; }
+table.bands{ width:100%; border-collapse:separate; border-spacing:4pt 0; margin-bottom:12pt; }
+table.bands td{ padding:7pt 9pt; border-radius:2pt; vertical-align:top; }
+table.bands .rg{ font-family:var(--f-mono); font-size:6.9pt; }
+table.bands .nm{ font-family:var(--f-ui); font-size:7.4pt; font-weight:700; margin:3pt 0 2pt; }
+table.bands .ds{ font-size:7.4pt; line-height:1.34; }
+td.b1{ background:#F3E7E6; color:#7A251F; } td.b2{ background:#F6EFE1; color:#75521A; }
+td.b3{ background:#E3EDE8; color:#25523E; } td.b4{ background:#DEE9ED; color:#17414F; }
+</style>
+
+<!-- ======================= PAGE 1 — SCORECARD ======================= -->
+<div class="page">
+
+  <div class="idbar">
+    <div class="brandlock">
+      <!-- PLACEHOLDER LOGO — swap this <svg>, keep the 26×26 box -->
+      <svg viewBox="0 0 26 26" style="width:26pt;height:26pt">
+        <rect width="26" height="26" rx="4" fill="#133039"/>
+        <rect x="6"  y="13" width="2.4" height="5"  rx="1.2" fill="#A8762A"/>
+        <rect x="10" y="9"  width="2.4" height="9"  rx="1.2" fill="#EAF1F2"/>
+        <rect x="14" y="6"  width="2.4" height="12" rx="1.2" fill="#EAF1F2"/>
+        <rect x="18" y="11" width="2.4" height="7"  rx="1.2" fill="#A8762A"/>
+      </svg>
+      <span class="brandname">Pres<span>Coach</span></span>
+      <span class="ph">logo placeholder</span>
+    </div>
+    <div class="r">COACHING REPORT · ISSUED: AUGUST 5, 2026</div>
+  </div>
+
+  <div class="hero">
+    <table style="width:497pt; border-collapse:collapse;"><tr>
+      <td style="width:296pt; vertical-align:top; padding-right:14pt;">
+        <div class="eyebrow dk">Submission RPT-2026-0805-1242-MG</div>
+        <div class="hero-title">rerun of AgentCore intro</div>
+        <div class="hero-meta">
+          <b>Michael Geiser</b> · mgeiser@mgeiser.net<br>
+          1_Introducing AgentCore.mp3 · 5 min 07 sec · uploaded 12:42 ET<br>
+          Speaker identified in audio: <b>Frank Kane</b><br>
+          Note on file: repeatability check for drift-test gold data
+        </div>
+      </td>
+      <td style="width:201pt; vertical-align:top;">
+        <svg viewBox="0 0 190 122" style="width:190pt;height:122pt;margin:0 auto;">
+          <path d="M 17,104 A 78,78 0 0 1 70.9,29.8"   fill="none" stroke="#9E2B25" stroke-width="8" opacity=".32"/>
+          <path d="M 70.9,29.8 A 78,78 0 0 1 130.4,34.5" fill="none" stroke="#B4772A" stroke-width="8" opacity=".42"/>
+          <path d="M 130.4,34.5 A 78,78 0 0 1 164.5,68.6" fill="none" stroke="#2E6B57" stroke-width="8" opacity=".42"/>
+          <path d="M 164.5,68.6 A 78,78 0 0 1 173,104"   fill="none" stroke="#7FB8C6" stroke-width="8" opacity=".42"/>
+          <g stroke="#66909D" stroke-width="1">
+            <line x1="17" y1="104" x2="24" y2="104"/>
+            <line x1="70.9" y1="29.8" x2="73.1" y2="36.5"/>
+            <line x1="130.4" y1="34.5" x2="127.2" y2="40.8"/>
+            <line x1="164.5" y1="68.6" x2="158.3" y2="71.8"/>
+            <line x1="173" y1="104" x2="166" y2="104"/>
+          </g>
+          <path d="M 31,104 A 64,64 0 0 1 112.9,42.5" fill="none" stroke="#A8762A"
+                stroke-width="5" stroke-linecap="round"/>
+          <line x1="108.9" y1="53.0" x2="114.9" y2="32.4" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
+          <text x="95" y="98" text-anchor="middle" font-family="TeX Gyre Adventor"
+                font-size="34" font-weight="700" fill="#fff" letter-spacing="-1.6">5.9</text>
+          <text x="17"  y="118" font-family="DejaVu Sans Mono" font-size="7" fill="#7FA6B1">0</text>
+          <text x="173" y="118" text-anchor="end" font-family="DejaVu Sans Mono" font-size="7" fill="#7FA6B1">10</text>
+        </svg>
+        <div class="gband">Competent · 0.6 below Effective</div>
+        <div class="gverdict">Technically credible, not yet persuasive.<br>The knowledge is there. The craft is what is missing.</div>
+      </td>
+    </tr></table>
+
+    <!-- ===== SIGNATURE ELEMENT: the talk timeline ===== -->
+    <div class="tl-head">
+      <span class="l">Where it happened · 5:07 of audio</span>
+      <span class="g"><i style="background:#9E2B25"></i>High<i style="background:#D9A44E"></i>Medium<i style="background:#4E9E7E"></i>Worked well</span>
+    </div>
+    <svg viewBox="0 0 497 74" style="width:497pt;height:74pt">
+      <g font-family="DejaVu Sans Mono" font-size="6.2">
+        <text x="193" y="11" fill="#E4B871">1:59  six ideas in 59s</text>
+        <text x="356" y="11" text-anchor="middle" fill="#E4B871">3:40  no setup pause</text>
+        <text x="497" y="11" text-anchor="end" fill="#E58C84">4:54  close = 4% of talk</text>
+      </g>
+      <g stroke-width="1.6" stroke-linecap="round">
+        <line x1="193" y1="14" x2="193" y2="30" stroke="#9E2B25"/>
+        <line x1="356" y1="14" x2="356" y2="30" stroke="#D9A44E"/>
+        <line x1="486" y1="14" x2="486" y2="30" stroke="#9E2B25"/>
+        <line x1="290" y1="46" x2="290" y2="56" stroke="#4E9E7E"/>
+      </g>
+      <rect x="0"   y="30" width="57"  height="16" fill="#7FA6B1" opacity=".34"/>
+      <rect x="57"  y="30" width="419" height="16" fill="#7FA6B1" opacity=".15"/>
+      <rect x="193" y="30" width="95"  height="16" fill="#9E2B25" opacity=".42"/>
+      <rect x="291" y="30" width="141" height="16" fill="#B4772A" opacity=".34"/>
+      <rect x="476" y="30" width="21"  height="16" fill="#9E2B25" opacity=".62"/>
+      <line x1="0" y1="46" x2="497" y2="46" stroke="#5C8794" stroke-width=".8"/>
+      <text x="286" y="62" text-anchor="end" font-family="DejaVu Sans Mono" font-size="6.2"
+            fill="#8FC4B0">2:58  the one pause over a second</text>
+      <g font-family="DejaVu Sans Mono" font-size="6.2" fill="#7FA6B1">
+        <text x="0"   y="71">OPEN 11%</text>
+        <text x="266" y="71" text-anchor="middle">BODY 84%</text>
+        <text x="497" y="71" text-anchor="end" fill="#E58C84">CLOSE 4%</text>
+      </g>
+    </svg>
+  </div>
+
+  <table class="lay"><tr>
+    <td style="width:320pt; padding-right:16pt; border-right:.8pt solid var(--rule);">
+      <div class="eyebrow" style="margin-bottom:6pt;">Seven dimensions · ranked weakest first</div>
+      <svg viewBox="0 0 306 134" style="width:306pt;height:134pt">
+        <g font-family="TeX Gyre Heros" font-size="7.4" fill="#15181C">
+          <text x="0" y="12">Audience engagement</text><text x="0" y="30">Executive presence</text>
+          <text x="0" y="48">Persuasion</text><text x="0" y="66">Structure</text>
+          <text x="0" y="84">Pacing</text><text x="0" y="102">Delivery</text>
+          <text x="0" y="120">Technical comms</text>
+        </g>
+        <g fill="#EAE8E1">
+          <rect x="92" y="4"   width="158" height="9" rx="1.5"/><rect x="92" y="22"  width="158" height="9" rx="1.5"/>
+          <rect x="92" y="40"  width="158" height="9" rx="1.5"/><rect x="92" y="58"  width="158" height="9" rx="1.5"/>
+          <rect x="92" y="76"  width="158" height="9" rx="1.5"/><rect x="92" y="94"  width="158" height="9" rx="1.5"/>
+          <rect x="92" y="112" width="158" height="9" rx="1.5"/>
+        </g>
+        <rect x="92" y="4"   width="66.4"  height="9" rx="1.5" fill="#9E2B25"/>
+        <rect x="92" y="22"  width="82.2"  height="9" rx="1.5" fill="#9E2B25"/>
+        <rect x="92" y="40"  width="91.6"  height="9" rx="1.5" fill="#3D7A8C"/>
+        <rect x="92" y="58"  width="98.0"  height="9" rx="1.5" fill="#3D7A8C"/>
+        <rect x="92" y="76"  width="98.0"  height="9" rx="1.5" fill="#3D7A8C"/>
+        <rect x="92" y="94"  width="107.4" height="9" rx="1.5" fill="#1C4A59"/>
+        <rect x="92" y="112" width="107.4" height="9" rx="1.5" fill="#1C4A59"/>
+        <line x1="194.7" y1="1" x2="194.7" y2="124" stroke="#A8762A" stroke-width="1.3"/>
+        <text x="194.7" y="132" text-anchor="middle" font-family="TeX Gyre Heros"
+              font-size="5.8" fill="#A8762A" letter-spacing=".08">EFFECTIVE STARTS AT 6.5</text>
+        <g font-family="TeX Gyre Adventor" font-size="10" font-weight="700" fill="#15181C" text-anchor="end">
+          <text x="278" y="12">4.2</text><text x="278" y="30">5.2</text><text x="278" y="48">5.8</text>
+          <text x="278" y="66">6.2</text><text x="278" y="84">6.2</text><text x="278" y="102">6.8</text>
+          <text x="278" y="120">6.8</text>
+        </g>
+        <g font-family="DejaVu Sans Mono" font-size="6.4" fill="#B6B4AB" text-anchor="end">
+          <text x="306" y="12">—</text><text x="306" y="30">—</text><text x="306" y="48">—</text>
+          <text x="306" y="66">—</text><text x="306" y="84">—</text><text x="306" y="102">—</text>
+          <text x="306" y="120">—</text>
+        </g>
+      </svg>
+
+      <table class="sev"><tr>
+        <td class="sv-h"><div class="n">14</div><div class="l">High</div></td>
+        <td class="sv-m"><div class="n">22</div><div class="l">Medium</div></td>
+        <td class="sv-l"><div class="n">9</div><div class="l">Low</div></td>
+        <td class="sv-s"><div class="n">6</div><div class="l">Strengths</div></td>
+      </tr></table>
+    </td>
+
+    <td style="width:207pt; padding-left:14pt; padding-right:6pt;">
+      <div class="eyebrow mhdr">Measured, not judged</div>
+      <table class="metrics">
+        <tr><td class="k">Speaking rate</td><td class="v flag">164<u>wpm</u></td></tr>
+        <tr><td class="k">Target for dense content</td><td class="v nn" style="font-size:7.2pt;">130–145</td></tr>
+        <tr><td class="k">Filler words in 5:07</td><td class="v ok">3</td></tr>
+        <tr><td class="k">“So” as sentence opener</td><td class="v flag">30+</td></tr>
+        <tr><td class="k">Pauses over one second</td><td class="v flag">1</td></tr>
+        <tr><td class="k">Longest unbroken run</td><td class="v flag">59<u>sec</u></td></tr>
+        <tr><td class="k">Close, share of talk</td><td class="v flag">4<u>%</u></td></tr>
+        <tr><td class="k">Enunciation confidence</td><td class="v ok">0.99</td></tr>
+      </table>
+      <p style="font-size:7.7pt; color:var(--ink-2); margin-top:9pt;">These eight come from the transcript
+      and its word timings, not from model judgment. They reproduce exactly on a re-run of the same audio.
+      The seven dimension scores will not.</p>
+    </td>
+  </tr></table>
+
+  <p class="lede" style="margin-top:12pt;">This reads as an enthusiastic feature tour rather than a case
+  for why the technology matters. The gap is not competence, it is craft. You know the material cold, the
+  energy is real, and the enunciation is excellent. What the audience never gets is a reason to care before
+  the features start.</p>
+</div>
+
+<!-- ======================= PAGE 2 — THE THREE MOVES ======================= -->
+<div class="page">
+  <h2 class="section">Three things to change before the next recording</h2>
+
+  <p>Three habits are doing most of the damage, and they share causes. There is no story anywhere in the
+  five minutes, so Engagement, Persuasion, and Executive presence all take the same hit from the same
+  place. The softening language runs underneath an otherwise authoritative delivery and takes the edge off
+  it. And the talk has no roadmap at the front and no conclusion at the back, which is why the content
+  lands but does not stick. These are three fixes, not thirty. Everything else in this report is refinement
+  on top of them.</p>
+
+  <div style="margin-top:11pt;">
+    <div class="move">
+      <div class="gain"><div class="n">+0.9</div><div class="l">projected</div></div>
+      <div>
+        <h3>Open with sixty seconds of somebody's bad Monday</h3>
+        <p>Before you name the product, put a person in the room. A developer builds something impressive
+        over a weekend, it works beautifully on the laptop, and then real users arrive and it falls apart.
+        That is the problem AgentCore solves, and right now the audience never watches it happen to anyone.</p>
+        <div class="lifts">Lifts <b>Audience engagement</b> · <b>Persuasion</b> · <b>Executive presence</b></div>
+      </div>
+    </div>
+
+    <div class="move">
+      <div class="gain"><div class="n">+0.6</div><div class="l">projected</div></div>
+      <div>
+        <h3>Delete every hedge and replace it with a word or with silence</h3>
+        <p>“Kind of a mishmash.” “Sort of.” “Pretty cool if you ask me.” Each one is small. Together they
+        signal an uncertainty you do not actually have. Pick the precise word, or say nothing at all and
+        let the pause carry the weight instead.</p>
+        <div class="lifts">Lifts <b>Executive presence</b> · <b>Delivery</b> · <b>Persuasion</b></div>
+      </div>
+    </div>
+
+    <div class="move">
+      <div class="gain"><div class="n">+0.4</div><div class="l">projected</div></div>
+      <div>
+        <h3>Give the talk an actual ending</h3>
+        <p>The close is thirteen seconds long and works as a segue into the demo. Spend thirty instead.
+        Name the three capabilities they have to remember, then hand them a challenge to apply one of them
+        to a project they already own.</p>
+        <div class="lifts">Lifts <b>Structure</b> · <b>Pacing</b> · <b>Persuasion</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wins" style="margin-top:13pt;">
+    <div class="l">Do not lose these while you fix the rest</div>
+    <ul>
+      <li>Three filler words in five minutes of dense technical material is genuinely rare. Protect it.</li>
+      <li>The conversational register makes infrastructure content approachable without costing you credibility.</li>
+      <li>Volunteering that AWS Strands is not required, when it is Amazon's own framework, buys more trust than any slide would.</li>
+      <li>Median transcription confidence of 0.99 says your enunciation is already carrying the room.</li>
+    </ul>
+  </div>
+
+  <p class="footnote">Projected impact is modelled from the rubric weightings. It is a ranking of where
+  effort pays back, not a promise about your next score. The next submission is what confirms it.</p>
+</div>
+
+<!-- ======================= PAGE 3 — WEAKEST DIMENSION ======================= -->
+<div class="page">
+  <div class="dimhead">
+    <div class="dimscore alert"><div class="n">4.2<u>/10</u></div><div class="l">Score</div></div>
+    <div style="flex:1;">
+      <div class="eyebrow">Dimension 5 of 7</div>
+      <h2>Audience engagement</h2>
+      <div class="verdict">You are talking <em>to</em> the audience for five minutes and never <em>with</em>
+      them. The second-person language is doing real work, but there is <b>no story, no question they
+      answer, and nobody to root for.</b></div>
+      <div class="rankline">Weakest dimension · 2.6 below your strongest · 3 high-severity findings</div>
+    </div>
+  </div>
+
+  <div class="strip">
+    <div class="l">Engagement findings across the timeline</div>
+    <svg viewBox="0 0 507 34" style="width:507pt;height:34pt">
+      <g font-family="DejaVu Sans Mono" font-size="6.2" fill="#7C848E">
+        <text x="0" y="8">no hook</text>
+        <text x="352" y="8" text-anchor="middle" fill="#2E6B57">two good rhetorical questions</text>
+        <text x="507" y="8" text-anchor="end">no invitation to engage</text>
+      </g>
+      <rect x="0"   y="16" width="507" height="11" fill="#E4E2DA"/>
+      <rect x="0"   y="16" width="58"  height="11" fill="#9E2B25" opacity=".62"/>
+      <rect x="486" y="16" width="21"  height="11" fill="#9E2B25" opacity=".62"/>
+      <rect x="348" y="16" width="4"   height="11" fill="#2E6B57"/>
+      <rect x="358" y="16" width="4"   height="11" fill="#2E6B57"/>
+      <line x1="0" y1="27" x2="507" y2="27" stroke="#C6C4BA" stroke-width="1"/>
+      <g font-family="DejaVu Sans Mono" font-size="6" fill="#A8A69D">
+        <text x="0" y="34">0:00</text><text x="507" y="34" text-anchor="end">5:07</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="finding">
+    <div class="rail rail-h"></div>
+    <div style="flex:1;">
+      <div class="fhead"><span class="sevtag h">High</span><span class="fname">No story anywhere in the talk</span>
+        <span class="effort">EFFORT MEDIUM · IMPACT HIGH</span></div>
+      <p>The whole five minutes is feature enumeration. No arc, no anecdote, no scenario with a person in
+      it. The closest thing to a narrative is the abstract phrase “taking your idea to production,” which
+      asks the audience to supply the story themselves.</p>
+      <div class="swap">
+        <div class="was"><div class="k">You said</div><div class="t">“…take your agentic AI prototypes and turn them into production-level solutions.”</div></div>
+        <div class="now"><div class="k">Try instead</div><div class="t">“You built it in a weekend. It worked on your laptop. Then ten thousand users showed up and you spent three weeks inside Docker configs. That is the problem.”</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="rail rail-h"></div>
+    <div style="flex:1;">
+      <div class="fhead"><span class="sevtag h">High</span><span class="fname">Nothing invites the audience in</span>
+        <span class="effort">EFFORT LOW · IMPACT HIGH</span></div>
+      <p>No polls, no show of hands, no prompt of any kind, and no acknowledgement that questions exist,
+      not even a forward reference to a Q&amp;A. Recorded format is not an excuse. Asking a question and
+      pausing before you answer it still creates the feeling of a dialogue.</p>
+      <div class="evidence">
+        <span class="q">“…you don't have to fuss around with Docker or ECR or ECS.”</span>
+        <span class="ts">01:12 · second-person framing present, but no turn is ever handed to the listener</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="rail rail-m"></div>
+    <div style="flex:1;">
+      <div class="fhead"><span class="sevtag m">Medium</span><span class="fname">Rhetorical questions work, then stop</span>
+        <span class="effort">EFFORT LOW · IMPACT MEDIUM</span></div>
+      <p>The two questions in the memory section are the strongest engagement moments in the talk. They
+      appear once, around three and a half minutes in, and never return.</p>
+      <div class="evidence">
+        <span class="q">“How do I actually keep track of these conversations over time?”</span>
+        <span class="ts">03:32 · put one of these at every capability transition</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="rail rail-m"></div>
+    <div style="flex:1;">
+      <div class="fhead"><span class="sevtag m">Medium</span><span class="fname">The delivery never breaks its own pattern</span>
+        <span class="effort">EFFORT MEDIUM · IMPACT MEDIUM</span></div>
+      <p>Uniform pacing, no analogy, no surprise, no before-and-after contrast. One pattern interrupt in
+      five minutes would reset attention for everyone who drifted at minute two.</p>
+    </div>
+  </div>
+
+  <div class="drill">
+    <div class="clock">10<u>minutes</u></div>
+    <div>
+      <h4>Practice drill for this dimension</h4>
+      <p>Record only your first sixty seconds, three times. Take one, the scenario with no product name.
+      Take two, the same scenario plus one number. Take three, the same again but pause a full two seconds
+      before you say “AgentCore.” Keep the take where you would not want to skip ahead.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= PAGE 4 — STRONGEST DIMENSION ======================= -->
+<div class="page">
+  <div class="dimhead">
+    <div class="dimscore"><div class="n">6.8<u>/10</u></div><div class="l">Score</div></div>
+    <div style="flex:1;">
+      <div class="eyebrow">Dimension 1 of 7</div>
+      <h2>Delivery</h2>
+      <div class="verdict">The mechanics are clean and the <b>emphasis is missing</b>. You run at one speed
+      and one volume through material that needs at least three of each.</div>
+      <div class="rankline">Strongest dimension · tied with Technical comms · 1 high-severity finding</div>
+    </div>
+  </div>
+
+  <div class="wins">
+    <div class="l">What is working</div>
+    <ul>
+      <li>Three fillers in 307 seconds of technical content. Most speakers land four to five times that.</li>
+      <li>Median word confidence of 0.99 across the transcript. Articulation is not your problem.</li>
+      <li>“Visceral feeling,” “nitty gritty,” “nasty problem.” The register is warm and it is yours.</li>
+    </ul>
+  </div>
+
+  <div class="strip">
+    <div class="l">Speaking rate across the talk · target band for dense content shaded</div>
+    <svg width="507" height="56" viewBox="0 0 507 56">
+      <rect x="0" y="38" width="507" height="10" fill="#2E6B57" opacity=".20"/>
+      <text x="4" y="45" font-family="DejaVu Sans Mono" font-size="5.6" fill="#2E6B57">TARGET 130–145 WPM</text>
+      <g font-family="DejaVu Sans Mono" font-size="5.8" fill="#9A988F">
+        <text x="480" y="22">175</text><text x="480" y="54">130</text>
+      </g>
+      <line x1="193" y1="16" x2="193" y2="50" stroke="#9E2B25" stroke-width=".9" stroke-dasharray="3 2"/>
+      <line x1="290" y1="16" x2="290" y2="50" stroke="#9E2B25" stroke-width=".9" stroke-dasharray="3 2"/>
+      <polyline points="0,29 46,30 92,25 138,22 184,20 230,20 276,24 322,21 368,26 414,24 460,28 507,30"
+                fill="none" stroke="#9E2B25" stroke-width="1.8"/>
+      <text x="197" y="12" font-family="DejaVu Sans Mono" font-size="5.8" fill="#9E2B25">acronym cluster: ECR / ECS / MCP / SDK</text>
+    </svg>
+  </div>
+
+  <div class="finding">
+    <div class="rail rail-h"></div>
+    <div style="flex:1;">
+      <div class="fhead"><span class="sevtag h">High</span><span class="fname">One speed for everything</span>
+        <span class="effort">EFFORT LOW · IMPACT HIGH</span></div>
+      <p>You hold 160 to 175 words per minute for the entire talk, including the stretch where you name
+      four frameworks in a row. Dense acronyms need 130 to 145. The audience is not slower than you, they
+      have just never heard the term before.</p>
+      <div class="swap">
+        <div class="was"><div class="k">You said, at speed</div><div class="t">“OpenAI Agents SDK, LangGraph, LangChain, Crew AI”</div></div>
+        <div class="now"><div class="k">Try instead</div><div class="t">“OpenAI Agents SDK … <em>[beat]</em> … or LangGraph … <em>[beat]</em> … or LangChain.”</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="rail rail-m"></div>
+    <div style="flex:1;">
+      <div class="fhead"><span class="sevtag m">Medium</span><span class="fname">Nothing is set up with silence</span>
+        <span class="effort">EFFORT LOW · IMPACT HIGH</span></div>
+      <p>You had exactly one pause over a second in five minutes, and it was a good one. Your three biggest
+      claims all arrive with no runway in front of them.</p>
+      <div class="evidence">
+        <span class="q">“Big one is memory.”</span>
+        <span class="ts">03:40 · arrives cold · 1.5s of silence in front of this changes how it lands</span>
+      </div>
+      <div class="evidence">
+        <span class="q">“So let's get started.”</span>
+        <span class="ts">04:54 · 0.24s of space in front of it</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="rail rail-m"></div>
+    <div style="flex:1;">
+      <div class="fhead"><span class="sevtag m">Medium</span><span class="fname">The enthusiasm is stated but not heard</span>
+        <span class="effort">EFFORT MEDIUM · IMPACT MEDIUM</span></div>
+      <p>“Really cool” and “super super easy” carry almost no pitch movement. The words say excited and the
+      voice says even. Lift about a musical step and ten percent in volume on those lines, or cut them.</p>
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="rail rail-l"></div>
+    <div style="flex:1;">
+      <div class="fhead"><span class="sevtag l">Low</span><span class="fname">Three product names are getting swallowed</span>
+        <span class="effort">EFFORT LOW · IMPACT LOW</span></div>
+      <p>Transcription confidence dropped to 0.51 on CloudWatch, 0.45 on “production-level,” and 0.13 on
+      Strands, against a 0.99 median everywhere else. Those are the words a listener is most likely to
+      search for afterward.</p>
+    </div>
+  </div>
+
+  <div class="drill">
+    <div class="clock">6<u>minutes</u></div>
+    <div>
+      <h4>Practice drill for this dimension</h4>
+      <p>Read the framework list out loud at 140 words per minute with a metronome running. Then say
+      “CLOUD-Watch,” “STRANDS,” and “production-LEVEL” ten times each, over-articulated to the point of
+      feeling ridiculous. That is the level that sounds normal on a recording.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= PAGE 5 — PROGRESS TREND (STUB) ======================= -->
+<div class="page">
+  <h2 class="section">Progress over time</h2>
+
+  <div class="flagbox">
+    <span class="d"></span>
+    <p><b>Preview of a capability that is not live yet.</b> The three panels below show what this section
+    renders once the progress-trend service ships. Sample values only. The real section for this
+    submission is the empty state at the bottom of the page.</p>
+  </div>
+
+  <div class="tcard">
+    <div class="hd"><h3>Overall score · last six submissions</h3><span class="chg up">▲ 1.4 since March</span></div>
+    <svg viewBox="0 0 502 96" style="width:501pt;height:96pt">
+      <line x1="0" y1="26" x2="502" y2="26" stroke="#EDD9B4" stroke-width="1"/>
+      <line x1="0" y1="52" x2="502" y2="52" stroke="#DEDCD4" stroke-width="1"/>
+      <g font-family="DejaVu Sans Mono" font-size="6.4">
+        <text x="2" y="23" fill="#A8762A">8.0 effective</text>
+        <text x="2" y="49" fill="#9A988F">6.5 target</text>
+      </g>
+      <polyline points="34,80 126,74 218,63 310,58 402,44 470,34" fill="none" stroke="#1C4A59" stroke-width="2.6"/>
+      <g fill="#1C4A59">
+        <circle cx="34" cy="80" r="4"/><circle cx="126" cy="74" r="4"/><circle cx="218" cy="63" r="4"/>
+        <circle cx="310" cy="58" r="4"/><circle cx="402" cy="44" r="4"/>
+      </g>
+      <circle cx="470" cy="34" r="5.4" fill="#A8762A"/>
+      <line x1="310" y1="6" x2="310" y2="86" stroke="#9E2B25" stroke-width="1" stroke-dasharray="3 2"/>
+      <text x="315" y="12" font-family="DejaVu Sans Mono" font-size="6.2" fill="#9E2B25">evaluator v2.1 · scores rebased here</text>
+      <g font-family="DejaVu Sans Mono" font-size="6.4" fill="#9A988F" text-anchor="middle">
+        <text x="34" y="94">MAR</text><text x="126" y="94">APR</text><text x="218" y="94">MAY</text>
+        <text x="310" y="94">JUN</text><text x="402" y="94">JUL</text>
+        <text x="470" y="94" fill="#A8762A">AUG</text>
+      </g>
+    </svg>
+  </div>
+
+  <table class="lay"><tr>
+    <td style="width:263pt; padding-right:9pt;">
+      <div class="tcard" style="margin-bottom:9pt;">
+        <div class="hd"><h3>Pacing</h3><span class="chg up">▲ 20% since February</span></div>
+        <svg viewBox="0 0 230 34" style="width:228pt;height:34pt">
+          <polyline points="0,28 46,26 92,20 138,16 184,11 230,8" fill="none" stroke="#2E6B57" stroke-width="2.2"/>
+        </svg>
+        <p>Words per minute has come down every single month since February. This is the habit that has
+        actually changed.</p>
+      </div>
+    </td>
+    <td style="width:264pt; padding-left:9pt;">
+      <div class="tcard" style="margin-bottom:9pt;">
+        <div class="hd"><h3>Executive presence</h3><span class="chg flat">◆ flat across 6 runs</span></div>
+        <svg viewBox="0 0 231 34" style="width:229pt;height:34pt">
+          <polyline points="0,19 46,21 92,18 138,20 184,19 231,19" fill="none" stroke="#8A8479" stroke-width="2.2"/>
+        </svg>
+        <p>Six submissions, no movement. The hedging finding has appeared in every report since February.</p>
+      </div>
+    </td>
+  </tr></table>
+
+  <p style="font-size:8.5pt; margin-top:2pt;"><strong>Why the dashed red line matters.</strong> Dimension
+  scores are model output, not measurement, so a prompt change or a model swap can move a score without
+  the speaker changing anything at all. Every point on these charts carries the evaluator version that
+  produced it, and the chart shows you where that version changed. A trend line that hides its own rebase
+  is worse than no trend line.</p>
+
+  <div class="empty" style="margin-top:12pt;">
+    <h3>This is your first submission</h3>
+    <p>Trends need three data points before they mean anything. Record the same talk again after working
+    the three moves on page two, and this page starts filling in.</p>
+    <div class="pips"><i class="on"></i><i></i><i></i>
+      <span class="cap">1 of 3 · trends unlock at three</span></div>
+  </div>
+</div>
+
+<!-- ======================= PAGE 6 — HOW THIS WAS SCORED ======================= -->
+<div class="page">
+  <h2 class="section">How this was scored</h2>
+
+  <div class="eyebrow" style="margin-bottom:6pt;">Score bands</div>
+  <table class="bands"><tr>
+    <td class="b1"><div class="rg">0.0 – 4.0</div><div class="nm">Developing</div>
+      <div class="ds">Content or delivery is getting in the audience's way.</div></td>
+    <td class="b2"><div class="rg">4.0 – 6.5</div><div class="nm">Competent</div>
+      <div class="ds">Clear and correct. Not yet memorable or persuasive.</div></td>
+    <td class="b3"><div class="rg">6.5 – 8.5</div><div class="nm">Effective</div>
+      <div class="ds">Lands with the room and holds attention throughout.</div></td>
+    <td class="b4"><div class="rg">8.5 – 10.0</div><div class="nm">Exceptional</div>
+      <div class="ds">People quote it afterward and then act on it.</div></td>
+  </tr></table>
+
+  <p>Seven specialist agents evaluated this recording independently against a shared rubric. A supervisor
+  agent merged their output, collapsed findings that three or more agents had raised in different words,
+  and ranked what survived by projected impact. Forty-five raw findings became twenty-two after that pass.
+  Anything a specialist flagged that did not survive the merge stays available in the full evaluation JSON
+  attached to the submission record.</p>
+
+  <p>The eight metrics on page one are computed from the transcript and its word-level timings, not from
+  model judgment. Speaking rate, filler counts, pause distribution, and segment balance will reproduce
+  exactly on a re-run of the same audio. Dimension scores will not, and that is expected. They are model
+  output and they carry a version stamp for exactly that reason.</p>
+
+  <div class="eyebrow" style="margin:13pt 0 6pt;">Provenance for this run</div>
+  <table class="spec">
+    <tr><th style="width:126pt;">Component</th><th>Version and settings</th></tr>
+    <tr><td class="k">Report ID</td><td class="m">RPT-2026-0805-1242-MG</td></tr>
+    <tr><td class="k">Evaluator release</td><td class="m">prescoach-eval 2.0.4</td></tr>
+    <tr><td class="k">Rubric version</td><td class="m">rubric-v3 · 7 dimensions · 41 criteria</td></tr>
+    <tr><td class="k">Prompt set</td><td class="m">supervisor v11 · specialists v9 (delivery v9.2)</td></tr>
+    <tr><td class="k">Model</td><td class="m">anthropic.claude-sonnet-4-5 · temperature 0.2</td></tr>
+    <tr><td class="k">Transcription</td><td class="m">Amazon Transcribe · en-US · word-level timings on</td></tr>
+    <tr><td class="k">Evaluation window</td><td class="m">00:00.000 – 05:07.412 · full submission</td></tr>
+    <tr><td class="k">Run completed</td><td class="m">2026-08-05 12:47:31 ET · 4 min 51 s wall clock</td></tr>
+  </table>
+
+  <p class="footnote">Scores are guidance from an automated evaluator, not a measurement of ability. They
+  are most useful compared against your own earlier runs on the same rubric version, and least useful
+  compared against another speaker. Full findings, transcript, and word timings are available from the
+  submission record.</p>
+</div>

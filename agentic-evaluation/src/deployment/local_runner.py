@@ -34,7 +34,7 @@ from agents.registry import AgentRegistry
 from agents.session_supervisor import SessionSupervisor
 from deployment.agentcore_config import AgentCoreConfig, load_config
 from services.error_notifier import ErrorNotifier
-from services.report_generator import ReportGenerator
+from services.report_generator import ReportGenerator, ReportGeneratorV2
 from services.sqs_consumer import SQSConsumer
 from services.status_manager import StatusManager
 
@@ -123,6 +123,14 @@ def build_session_supervisor(config: AgentCoreConfig) -> SessionSupervisor:
         s3_client=s3_client,
     )
 
+    # Create ReportGeneratorV2 for the new WeasyPrint pipeline.
+    # Activated by setting USE_REPORT_V2=true in the environment.
+    report_generator_v2 = ReportGeneratorV2(
+        bucket_name=infra.s3_bucket_name,
+        s3_client=s3_client,
+        dynamodb_resource=dynamodb_resource,
+    )
+
     # Build agent registry and coaching supervisor
     registry = AgentRegistry()
 
@@ -144,6 +152,7 @@ def build_session_supervisor(config: AgentCoreConfig) -> SessionSupervisor:
         s3_client=s3_client,
         bucket_name=infra.s3_bucket_name,
         registry=registry,
+        report_generator_v2=report_generator_v2,
     )
 
     return session_supervisor

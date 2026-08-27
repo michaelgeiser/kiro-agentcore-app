@@ -12,6 +12,7 @@ graceful SIGTERM handling for Spot reclamation.
 
 import json
 import logging
+import os
 import signal
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -20,7 +21,7 @@ from typing import Any
 import boto3
 from pydantic import ValidationError
 
-from agents.coaching_supervisor import CoachingSupervisor
+from agents.coaching_supervisor import CoachingSupervisor, SubmissionMetadata as SynthesisMetadata
 from agents.registry import AgentRegistry
 from models.data_models import (
     EvaluationInput,
@@ -32,10 +33,11 @@ from models.data_models import (
     get_evaluation_result_path,
 )
 from services.error_notifier import ErrorNotifier
-from services.report_generator import ReportGenerator, SubmissionMetadata
+from services.report_generator import ReportGenerator, ReportGeneratorV2, SubmissionMetadata
 from services.retry import _compute_delay
 from services.sqs_consumer import SQSConsumer
 from services.status_manager import StatusManager
+from services.transcript_loader import load_transcript_from_s3
 
 logger = logging.getLogger(__name__)
 
@@ -73,16 +75,19 @@ class SessionSupervisor:
         bucket_name: str,
         registry: AgentRegistry | None = None,
         retry_config: RetryConfig | None = None,
+        report_generator_v2: ReportGeneratorV2 | None = None,
     ) -> None:
         self._sqs_consumer = sqs_consumer
         self._status_manager = status_manager
         self._coaching_supervisor = coaching_supervisor
         self._report_generator = report_generator
+        self._report_generator_v2 = report_generator_v2
         self._error_notifier = error_notifier
         self._s3_client = s3_client
         self._bucket_name = bucket_name
         self._registry = registry
         self._retry_config = retry_config or RetryConfig()
+        self._use_report_v2 = os.environ.get("USE_REPORT_V2", "").lower() == "true"
 
     def handle_message(self, raw_message: dict) -> SessionResult:
         """Process a single handoff message through the full evaluation pipeline.
@@ -260,11 +265,12 @@ class SessionSupervisor:
         )
 
         try:
-            report_path = self._report_generator.generate(
+            report_path = self._generate_report(
                 submission_id=submission_id,
                 user_id=handoff.user_id,
-                results=stored_results,
-                metadata=report_metadata,
+                stored_results=stored_results,
+                report_metadata=report_metadata,
+                transcript_s3_key=handoff.transcript_s3_key,
             )
         except Exception as exc:
             logger.error(
@@ -577,6 +583,172 @@ class SessionSupervisor:
                 exc,
             )
             return None
+
+    def _generate_report(
+        self,
+        submission_id: str,
+        user_id: str,
+        stored_results: list[EvaluationResult],
+        report_metadata: SubmissionMetadata | None,
+        transcript_s3_key: str,
+    ) -> str:
+        """Generate a coaching report using v1 or v2 pipeline.
+
+        When USE_REPORT_V2=true and a ReportGeneratorV2 is configured,
+        runs the synthesis pass to produce a SynthesizedReport and renders
+        it via WeasyPrint. Otherwise falls back to the existing ReportLab
+        pipeline.
+
+        Args:
+            submission_id: Unique identifier for the submission.
+            user_id: Unique identifier for the user.
+            stored_results: EvaluationResult objects from specialist agents.
+            report_metadata: Submission metadata for the report header.
+            transcript_s3_key: S3 key for the transcript JSON file.
+
+        Returns:
+            The S3 key path where the report was stored.
+        """
+        if self._use_report_v2 and self._report_generator_v2 is not None:
+            return self._generate_report_v2(
+                submission_id=submission_id,
+                user_id=user_id,
+                stored_results=stored_results,
+                report_metadata=report_metadata,
+                transcript_s3_key=transcript_s3_key,
+            )
+
+        # Fall back to v1 ReportLab pipeline
+        return self._report_generator.generate(
+            submission_id=submission_id,
+            user_id=user_id,
+            results=stored_results,
+            metadata=report_metadata,
+        )
+
+    def _generate_report_v2(
+        self,
+        submission_id: str,
+        user_id: str,
+        stored_results: list[EvaluationResult],
+        report_metadata: SubmissionMetadata | None,
+        transcript_s3_key: str,
+    ) -> str:
+        """Generate a coaching report using the v2 WeasyPrint pipeline.
+
+        Runs the Coaching Supervisor synthesis pass to produce a
+        SynthesizedReport, then renders it to PDF via ReportGeneratorV2.
+
+        Steps:
+        1. Load transcript data from S3 (word-level timings)
+        2. Build SynthesisMetadata from report_metadata
+        3. Call synthesis_pass() with evaluation results + transcript + metadata
+        4. Pass the SynthesizedReport to ReportGeneratorV2.generate()
+
+        Args:
+            submission_id: Unique identifier for the submission.
+            user_id: Unique identifier for the user.
+            stored_results: EvaluationResult objects from specialist agents.
+            report_metadata: Submission metadata for the report header.
+            transcript_s3_key: S3 key for the transcript JSON file.
+
+        Returns:
+            The S3 key path where the report was stored
+                (reports/{user_id}/{submission_id}/coaching_report.pdf).
+        """
+        logger.info(
+            "Using Report v2 pipeline for submission_id=%s", submission_id
+        )
+
+        # Step 1: Load transcript data from S3
+        transcript_data = load_transcript_from_s3(
+            s3_client=self._s3_client,
+            bucket_name=self._bucket_name,
+            transcript_s3_key=transcript_s3_key,
+        )
+
+        # Step 2: Build SynthesisMetadata from report_metadata
+        synthesis_metadata = self._build_synthesis_metadata(
+            submission_id=submission_id,
+            user_id=user_id,
+            report_metadata=report_metadata,
+        )
+
+        # Step 3: Call synthesis_pass() to produce SynthesizedReport
+        synthesized_report = self._coaching_supervisor.synthesis_pass(
+            results=stored_results,
+            transcript=transcript_data,
+            metadata=synthesis_metadata,
+        )
+
+        logger.info(
+            "Synthesis pass completed for submission_id=%s, report_id=%s, "
+            "overall_score=%.1f, score_band=%s",
+            submission_id,
+            synthesized_report.report_id,
+            synthesized_report.overall_score,
+            synthesized_report.score_band.value,
+        )
+
+        # Step 4: Generate PDF via ReportGeneratorV2
+        s3_key = self._report_generator_v2.generate(
+            report=synthesized_report,
+            user_id=user_id,
+            submission_id=submission_id,
+        )
+
+        logger.info(
+            "Report v2 generated for submission_id=%s at s3://%s/%s",
+            submission_id,
+            self._bucket_name,
+            s3_key,
+        )
+
+        return s3_key
+
+    def _build_synthesis_metadata(
+        self,
+        submission_id: str,
+        user_id: str,
+        report_metadata: SubmissionMetadata | None,
+    ) -> SynthesisMetadata:
+        """Build SynthesisMetadata for the synthesis pass from report metadata.
+
+        Converts the ReportGenerator's SubmissionMetadata (used for the v1
+        pipeline) into the CoachingSupervisor's SubmissionMetadata dataclass
+        required by synthesis_pass().
+
+        Args:
+            submission_id: Unique identifier for the submission.
+            user_id: Unique identifier for the user.
+            report_metadata: Optional metadata from DynamoDB/Cognito lookup.
+
+        Returns:
+            SynthesisMetadata instance for the synthesis pass.
+        """
+        if report_metadata is not None:
+            return SynthesisMetadata(
+                user_name=report_metadata.user_name or user_id,
+                presentation_title=report_metadata.presentation_title or "Untitled",
+                file_name=report_metadata.file_name or "",
+                upload_date=report_metadata.upload_date or "",
+                audio_duration_seconds=0.0,
+                speaker_identified=False,
+                user_id=user_id,
+                submission_id=submission_id,
+            )
+
+        # Fallback when metadata is unavailable
+        return SynthesisMetadata(
+            user_name=user_id,
+            presentation_title="Untitled",
+            file_name="",
+            upload_date="",
+            audio_duration_seconds=0.0,
+            speaker_identified=False,
+            user_id=user_id,
+            submission_id=submission_id,
+        )
 
     def _get_user_display_name(self, user_id: str) -> str:
         """Look up the user's display name and email from Cognito.

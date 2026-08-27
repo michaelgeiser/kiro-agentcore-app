@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Coaching Report — {{ presentation_title }}</title>
+    <link rel="stylesheet" href="coaching_report.css">
+    <style>
+        /* Footer with report_id - WeasyPrint string-set approach */
+        @page {
+            @bottom-right {
+                content: "{{ report_id }}";
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ============================================================
+     PAGE 1: SCORECARD
+     ============================================================ -->
+<div class="scorecard-page">
+
+    <!-- Brand Bar -->
+    <div class="brand-bar">
+        <span class="brand-name">Coaching Report</span>
+        <span class="report-date">{{ upload_date | format_date }}</span>
+    </div>
+
+    <!-- Submission Metadata -->
+    <div class="metadata">
+        <span class="meta-item"><span class="meta-label">Presentation:</span> {{ presentation_title }}</span>
+        <span class="meta-item"><span class="meta-label">Speaker:</span> {{ user_name }}</span>
+        <span class="meta-item"><span class="meta-label">File:</span> {{ file_name }}</span>
+        <span class="meta-item"><span class="meta-label">Duration:</span> {{ audio_duration_seconds | format_duration }}</span>
+        {% if speaker_identified %}
+        <span class="meta-item"><span class="meta-label">Note:</span> Evaluated speaker differs from account holder</span>
+        {% endif %}
+    </div>
+
+    <!-- Overall Score Gauge Arc -->
+    <div class="scorecard-gauge">
+        <svg width="240" height="140" viewBox="0 0 240 140">
+            <!-- Background arc -->
+            <path d="M 20 130 A 100 100 0 0 1 220 130" fill="none" stroke="#e0e0e0" stroke-width="12" stroke-linecap="round"/>
+
+            <!-- Band segments: Developing (0-4), Competent (4-6.5), Effective (6.5-8.5), Exceptional (8.5-10) -->
+            <!-- Developing: 0° to 72° (4/10 * 180°) -->
+            {% set dev_end_x = 120 - 100 * (0.309) %}
+            {% set dev_end_y = 130 - 100 * (0.951) %}
+            <path d="M 20 130 A 100 100 0 0 1 {{ 120 - 100 * 0.809 }} {{ 130 - 100 * 0.588 }}" fill="none" stroke="{{ 'Developing' | score_band_color }}" stroke-width="12" stroke-linecap="butt" opacity="0.3"/>
+
+            <!-- Competent: 72° to 117° (6.5/10 * 180°) -->
+            <path d="M {{ 120 - 100 * 0.809 }} {{ 130 - 100 * 0.588 }} A 100 100 0 0 1 {{ 120 - 100 * 0.0872 }} {{ 130 - 100 * 0.9962 }}" fill="none" stroke="{{ 'Competent' | score_band_color }}" stroke-width="12" stroke-linecap="butt" opacity="0.3"/>
+
+            <!-- Effective: 117° to 153° (8.5/10 * 180°) -->
+            <path d="M {{ 120 - 100 * 0.0872 }} {{ 130 - 100 * 0.9962 }} A 100 100 0 0 1 {{ 120 + 100 * 0.454 }} {{ 130 - 100 * 0.891 }}" fill="none" stroke="{{ 'Effective' | score_band_color }}" stroke-width="12" stroke-linecap="butt" opacity="0.3"/>
+
+            <!-- Exceptional: 153° to 180° (10/10 * 180°) -->
+            <path d="M {{ 120 + 100 * 0.454 }} {{ 130 - 100 * 0.891 }} A 100 100 0 0 1 220 130" fill="none" stroke="{{ 'Exceptional' | score_band_color }}" stroke-width="12" stroke-linecap="butt" opacity="0.3"/>
+
+            <!-- Score indicator arc -->
+            {% set score_angle = overall_score / 10.0 * 180.0 %}
+            {% set score_rad = score_angle * 3.14159 / 180.0 %}
+            {% set score_x = 120 - 100 * (score_rad | cos_val) %}
+            {% set score_y = 130 - 100 * (score_rad | sin_val) %}
+            <path d="{{ overall_score | score_to_arc_path }}" fill="none" stroke="{{ score_band | score_band_color }}" stroke-width="14" stroke-linecap="round"/>
+
+            <!-- Band boundary ticks at 4.0, 6.5, 8.5 -->
+            {% for boundary in [4.0, 6.5, 8.5] %}
+            {% set b_angle = boundary / 10.0 * 180.0 %}
+            {% set b_rad = b_angle * 3.14159 / 180.0 %}
+            {% set bx_inner = 120 - 88 * (b_rad | cos_val) %}
+            {% set by_inner = 130 - 88 * (b_rad | sin_val) %}
+            {% set bx_outer = 120 - 112 * (b_rad | cos_val) %}
+            {% set by_outer = 130 - 112 * (b_rad | sin_val) %}
+            <line x1="{{ bx_inner }}" y1="{{ by_inner }}" x2="{{ bx_outer }}" y2="{{ by_outer }}" stroke="#333" stroke-width="2"/>
+            {% endfor %}
+
+            <!-- Score text -->
+            <text x="120" y="115" text-anchor="middle" font-family="DejaVu Sans Mono, Liberation Mono, monospace" font-size="28" font-weight="700" fill="{{ score_band | score_band_color }}">{{ "%.1f" | format(overall_score) }}</text>
+            <text x="120" y="132" text-anchor="middle" font-family="DejaVu Sans, Liberation Sans, sans-serif" font-size="9" fill="#666">/10</text>
+        </svg>
+
+        <div class="band-label band-{{ score_band.value | lower }}">{{ score_band.value }}</div>
+        {% if distance_to_next_band > 0 %}
+        <div class="distance-label">{{ "%.1f" | format(distance_to_next_band) }} below next band</div>
+        {% endif %}
+    </div>
+
+    <!-- Two Sentence Verdict -->
+    <div class="verdict">{{ two_sentence_verdict }}</div>
+
+    <!-- Talk Timeline -->
+    <div class="talk-timeline">
+        <div class="timeline-label">Talk Timeline</div>
+        <svg width="100%" height="40" viewBox="0 0 500 40" preserveAspectRatio="none">
+            <!-- Open segment -->
+            {% set open_width = talk_timeline.open_percent / 100.0 * 500 %}
+            {% set body_start = open_width %}
+            {% set body_width = talk_timeline.body_percent / 100.0 * 500 %}
+            {% set close_start = body_start + body_width %}
+            {% set close_width = talk_timeline.close_percent / 100.0 * 500 %}
+
+            <rect x="0" y="8" width="{{ open_width }}" height="20" fill="#bbdefb" rx="2"/>
+            <rect x="{{ body_start }}" y="8" width="{{ body_width }}" height="20" fill="#c8e6c9" rx="0"/>
+            <rect x="{{ close_start }}" y="8" width="{{ close_width }}" height="20" fill="#ffe0b2" rx="2"/>
+
+            <!-- Segment labels -->
+            <text x="{{ open_width / 2 }}" y="22" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="8" fill="#1565c0">Open {{ "%.0f" | format(talk_timeline.open_percent) }}%</text>
+            <text x="{{ body_start + body_width / 2 }}" y="22" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="8" fill="#2e7d32">Body {{ "%.0f" | format(talk_timeline.body_percent) }}%</text>
+            <text x="{{ close_start + close_width / 2 }}" y="22" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="8" fill="#e65100">Close {{ "%.0f" | format(talk_timeline.close_percent) }}%</text>
+
+            <!-- High-severity pins -->
+            {% for pin in talk_timeline.timeline_pins %}
+            {% if pin.severity.value == "high" %}
+            {% set pin_x = (pin.timestamp_seconds / talk_timeline.total_duration_seconds) * 500 %}
+            <line x1="{{ pin_x }}" y1="4" x2="{{ pin_x }}" y2="32" stroke="{{ pin.severity.value | severity_color }}" stroke-width="2"/>
+            <circle cx="{{ pin_x }}" cy="4" r="3" fill="{{ pin.severity.value | severity_color }}"/>
+            {% endif %}
+            {% endfor %}
+        </svg>
+    </div>
+
+    <!-- Dimension Bars (weakest-first) -->
+    <div class="dimension-bars">
+        {% for dim in dimensions | sort(attribute='rank') %}
+        <div class="dimension-bar-row">
+            <span class="dimension-bar-name">{{ dim.dimension_name }}</span>
+            <span class="dimension-bar-svg">
+                <svg width="100%" height="16" viewBox="0 0 200 16" preserveAspectRatio="none">
+                    <!-- Background -->
+                    <rect x="0" y="4" width="200" height="8" fill="#f0f0f0" rx="4"/>
+                    <!-- Score fill -->
+                    {% set bar_width = dim.score / 10.0 * 200 %}
+                    <rect x="0" y="4" width="{{ bar_width }}" height="8" fill="{{ dim.score_band | score_band_color }}" rx="4"/>
+                    <!-- Target line at 6.5 -->
+                    <line x1="130" y1="0" x2="130" y2="16" stroke="#333" stroke-width="1" stroke-dasharray="2,2"/>
+                    <!-- Score label -->
+                    <text x="{{ bar_width + 4 }}" y="12" font-family="DejaVu Sans Mono, monospace" font-size="7" fill="#333">{{ "%.1f" | format(dim.score) }}</text>
+                </svg>
+            </span>
+            <span class="dimension-bar-delta">—</span>
+        </div>
+        {% endfor %}
+        <div style="font-family: var(--font-ui); font-size: 7pt; color: #999; text-align: right; margin-top: 2pt;">
+            Effective starts at 6.5 ↑
+        </div>
+    </div>
+
+    <!-- Severity Chips -->
+    <div class="severity-chips">
+        {% set total_severity = namespace(high=0, medium=0, low=0, strength=0) %}
+        {% for dim in dimensions %}
+            {% set total_severity.high = total_severity.high + dim.severity_counts.high %}
+            {% set total_severity.medium = total_severity.medium + dim.severity_counts.medium %}
+            {% set total_severity.low = total_severity.low + dim.severity_counts.low %}
+            {% set total_severity.strength = total_severity.strength + dim.severity_counts.strength %}
+        {% endfor %}
+        <span class="chip chip-high">High: {{ total_severity.high }}</span>
+        <span class="chip chip-medium">Medium: {{ total_severity.medium }}</span>
+        <span class="chip chip-low">Low: {{ total_severity.low }}</span>
+        <span class="chip chip-strength">Strengths: {{ total_severity.strength }}</span>
+    </div>
+
+    <!-- Transcript Metrics Panel -->
+    {% if transcript_metrics %}
+    <div class="metrics-panel">
+        <div class="panel-title">Measured, not judged</div>
+        <div class="metrics-grid">
+            <div class="metric-item">
+                <span class="metric-label">Speaking Rate</span>
+                <span class="metric-value {% if transcript_metrics.speaking_rate_wpm < transcript_metrics.target_range_wpm[0] or transcript_metrics.speaking_rate_wpm > transcript_metrics.target_range_wpm[1] %}out-of-range{% else %}in-range{% endif %}">{{ transcript_metrics.speaking_rate_wpm }} WPM</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Target Range</span>
+                <span class="metric-value">{{ transcript_metrics.target_range_wpm[0] }}–{{ transcript_metrics.target_range_wpm[1] }} WPM</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Filler Words</span>
+                <span class="metric-value">{{ transcript_metrics.filler_word_count }}</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">"So" Openers</span>
+                <span class="metric-value">{{ transcript_metrics.so_opener_count }}</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Pauses &gt; 1s</span>
+                <span class="metric-value">{{ transcript_metrics.pauses_over_one_second }}</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Longest Run</span>
+                <span class="metric-value">{{ "%.1f" | format(transcript_metrics.longest_unbroken_run_seconds) }}s</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Close Share</span>
+                <span class="metric-value">{{ "%.1f" | format(transcript_metrics.close_share_percent) }}%</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Enunciation</span>
+                <span class="metric-value">{{ "%.0f" | format(transcript_metrics.enunciation_confidence * 100) }}%</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Lede Paragraph -->
+    <div class="lede">{{ lede_paragraph }}</div>
+
+</div>
+
+<!-- ============================================================
+     PAGE 2: THREE MOVES
+     ============================================================ -->
+<div class="page-section three-moves-page">
+
+    <div class="three-moves-header">
+        <h2>Your Three Moves</h2>
+    </div>
+
+    <div class="diagnosis">{{ diagnosis_paragraph }}</div>
+
+    {% for move in three_moves %}
+    <div class="move-card">
+        <div class="move-header">
+            <span class="move-impact">+{{ "%.1f" | format(move.projected_impact_score) }}</span>
+            <span class="move-title">{{ move.title }}</span>
+        </div>
+        <div class="move-advice">{{ move.coaching_advice }}</div>
+        <div class="dimensions-lifted">Lifts: {{ move.dimensions_lifted | join(", ") }}</div>
+    </div>
+    {% endfor %}
+
+    {% if strengths_to_protect %}
+    <div class="strengths-panel">
+        <div class="panel-title">Do not lose these while you fix the rest</div>
+        <ul>
+            {% for strength in strengths_to_protect %}
+            <li>{{ strength }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="three-moves-footnote">
+        Projected impact scores are estimates derived from rubric weightings and do not guarantee exact score increases.
+    </div>
+
+</div>
+
+<!-- ============================================================
+     PAGES 3+: DIMENSION CARDS (weakest-first)
+     ============================================================ -->
+{% for dim in dimensions | sort(attribute='rank') %}
+<div class="page-section dimension-card">
+
+    <!-- Header: Score Block + Dimension Info -->
+    <div class="dimension-card-header">
+        <div class="score-block {% if dim.is_weakest %}alert-bg{% endif %}">
+            <div class="score-large" {% if dim.is_weakest %}style="color: var(--color-alert);"{% endif %}>{{ "%.1f" | format(dim.score) }}</div>
+            <div class="score-suffix">/10</div>
+            <div class="score-band-label band-{{ dim.score_band.value | lower }}">{{ dim.score_band.value }}</div>
+        </div>
+        <div class="dimension-info">
+            <div class="dimension-name">{{ dim.dimension_name }}</div>
+            <div class="dimension-verdict">{{ dim.one_sentence_verdict }}</div>
+            <div class="dimension-rank">
+                {% if dim.is_weakest %}Weakest dimension{% else %}Rank {{ dim.rank }} of 7{% endif %}
+                · {{ dim.severity_counts.high }} high-severity finding{{ "s" if dim.severity_counts.high != 1 else "" }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Dimension Timeline Strip (findings with timestamps pinned to audio timeline) -->
+    {% if dim.findings | selectattr('evidence_timestamp_seconds') | list %}
+    <div class="dimension-timeline">
+        <svg width="100%" height="24" viewBox="0 0 500 24" preserveAspectRatio="none">
+            <rect x="0" y="10" width="500" height="4" fill="#e0e0e0" rx="2"/>
+            {% for f in dim.findings %}
+            {% if f.evidence_timestamp_seconds is not none %}
+            {% set pin_x = (f.evidence_timestamp_seconds / talk_timeline.total_duration_seconds) * 500 %}
+            <circle cx="{{ pin_x }}" cy="12" r="5" fill="{{ f.severity.value | severity_color }}" opacity="0.8"/>
+            {% endif %}
+            {% endfor %}
+        </svg>
+    </div>
+    {% endif %}
+
+    <!-- What is Working (Strengths) -->
+    {% if dim.strengths %}
+    <div class="strengths-section">
+        <h4>What is working</h4>
+        <ul>
+            {% for strength in dim.strengths %}
+            <li>{{ strength }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Findings (sorted by severity: high, medium, low) -->
+    {% if dim.findings %}
+        {% for finding in dim.findings | sort_by_severity %}
+        <div class="finding severity-{{ finding.severity.value }} no-break">
+            <div class="finding-header">
+                <span class="finding-severity-tag tag-{{ finding.severity.value }}">{{ finding.severity.value | upper }}</span>
+                <span class="finding-title">{{ finding.title }}</span>
+            </div>
+            <div class="finding-explanation">{{ finding.explanation }}</div>
+            {% if finding.evidence_quote %}
+            <div class="finding-evidence">
+                {% if finding.evidence_timestamp_seconds is not none %}
+                <span class="timestamp">[{{ finding.evidence_timestamp_seconds | format_duration }}]</span>
+                {% endif %}
+                "{{ finding.evidence_quote }}"
+            </div>
+            {% endif %}
+            <div class="finding-suggestion"><strong>Try:</strong> {{ finding.suggestion }}</div>
+            <div class="finding-tags">Effort: {{ finding.effort_tag.value }} · Impact: {{ finding.impact_tag.value }}</div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p style="color: var(--color-muted); font-style: italic;">No findings were identified for this dimension.</p>
+    {% endif %}
+
+    <!-- Swap Pair -->
+    {% if dim.swap_pair %}
+    <div class="swap-pair">
+        <div class="swap-title">Say this instead</div>
+        <div class="swap-content">
+            <div class="you-said">
+                <div class="swap-label">You said</div>
+                "{{ dim.swap_pair.you_said }}"
+            </div>
+            <div class="try-instead">
+                <div class="swap-label">Try instead</div>
+                "{{ dim.swap_pair.try_instead }}"
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Practice Drill -->
+    {% if dim.practice_drill %}
+    <div class="practice-drill">
+        <div class="drill-header">
+            <span class="drill-title">Practice Drill</span>
+            <span class="drill-time">{{ dim.practice_drill.time_box_minutes }} min</span>
+        </div>
+        <div class="drill-instructions">{{ dim.practice_drill.instructions }}</div>
+    </div>
+    {% endif %}
+
+</div>
+{% endfor %}
+
+<!-- ============================================================
+     PROGRESS PAGE (Static Placeholder)
+     ============================================================ -->
+<div class="page-section progress-placeholder">
+
+    <h2>Progress</h2>
+
+    <div class="empty-state-message">
+        This is your first submission. Trends need three data points before they mean anything.
+    </div>
+
+    <div class="progress-pips">
+        <div class="progress-pip filled"></div>
+        <div class="progress-pip"></div>
+        <div class="progress-pip"></div>
+    </div>
+
+    <div class="progress-flag">
+        ⚠ Preview — This capability is not yet live. Submit two more presentations to activate trend tracking.
+    </div>
+
+</div>
+
+<!-- ============================================================
+     HOW THIS WAS SCORED PAGE
+     ============================================================ -->
+<div class="page-section scoring-page">
+
+    <h2>How This Was Scored</h2>
+
+    <!-- Band Definitions -->
+    <h3>Score Bands</h3>
+    <div class="band-definitions">
+        <div class="band-def">
+            <span class="band-range band-exceptional">8.5–10.0</span>
+            <span class="band-name band-exceptional">Exceptional</span>
+            <span class="band-desc">People quote it afterward and then act on it.</span>
+        </div>
+        <div class="band-def">
+            <span class="band-range band-effective">6.5–8.5</span>
+            <span class="band-name band-effective">Effective</span>
+            <span class="band-desc">Lands with the room and holds attention throughout.</span>
+        </div>
+        <div class="band-def">
+            <span class="band-range band-competent">4.0–6.5</span>
+            <span class="band-name band-competent">Competent</span>
+            <span class="band-desc">Clear and correct. Not yet memorable or persuasive.</span>
+        </div>
+        <div class="band-def">
+            <span class="band-range band-developing">0.0–4.0</span>
+            <span class="band-name band-developing">Developing</span>
+            <span class="band-desc">Content or delivery is getting in the audience's way.</span>
+        </div>
+    </div>
+
+    <!-- Methodology -->
+    <h3>Methodology</h3>
+    <div class="methodology">
+        <p>This report is produced by an automated evaluation system consisting of seven specialist agents, each independently scoring one dimension of your presentation against a detailed rubric. A supervisor agent then merges their outputs, collapses duplicate observations into single findings, and ranks everything by projected impact.</p>
+        <p><strong>Measured metrics</strong> (speaking rate, filler words, pauses, etc.) are computed directly from the transcript and word-level timings. They are reproducible — running the same audio through the system again will produce identical numbers.</p>
+        <p><strong>Model judgment</strong> (dimension scores, findings, suggestions) involves language model reasoning and may vary slightly between evaluation runs on the same content.</p>
+    </div>
+
+    <!-- Provenance Table -->
+    <h3>Provenance</h3>
+    <table class="provenance-table">
+        <tr><th>Report ID</th><td>{{ provenance.report_id }}</td></tr>
+        <tr><th>Evaluator Release</th><td>{{ provenance.evaluator_release }}</td></tr>
+        <tr><th>Rubric Version</th><td>{{ provenance.rubric_version }}</td></tr>
+        <tr><th>Prompt Set Version</th><td>{{ provenance.prompt_set_version }}</td></tr>
+        <tr><th>Model</th><td>{{ provenance.model_id }} (temp={{ provenance.model_temperature }})</td></tr>
+        <tr><th>Transcription Service</th><td>{{ provenance.transcription_service }}</td></tr>
+        <tr><th>Evaluation Window</th><td>{{ provenance.evaluation_window }}</td></tr>
+        <tr><th>Run Completed</th><td>{{ provenance.run_completed_timestamp }}</td></tr>
+    </table>
+
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+        <strong>Disclaimer:</strong> Scores are guidance from an automated evaluator. They are most useful compared against your own earlier runs on the same rubric version. They are least useful compared against another speaker's scores. This tool measures; it does not judge worth.
+    </div>
+
+</div>
+
+</body>
+</html>
