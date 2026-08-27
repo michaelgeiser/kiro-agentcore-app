@@ -387,6 +387,7 @@ class TestEndToEndReportGeneration:
             supervisor = CoachingSupervisor.__new__(CoachingSupervisor)
             # Initialize only what synthesis_pass needs (no LLM dependency)
             supervisor._agent = None
+            supervisor._model_id = "us.anthropic.claude-sonnet-4-6"
 
         synthesized_report = supervisor.synthesis_pass(
             results=realistic_evaluation_results,
@@ -475,6 +476,7 @@ class TestEndToEndReportGeneration:
         with patch("agents.coaching_supervisor.Agent"):
             supervisor = CoachingSupervisor.__new__(CoachingSupervisor)
             supervisor._agent = None
+            supervisor._model_id = "us.anthropic.claude-sonnet-4-6"
 
         report = supervisor.synthesis_pass(
             results=realistic_evaluation_results,
@@ -504,6 +506,7 @@ class TestEndToEndReportGeneration:
         with patch("agents.coaching_supervisor.Agent"):
             supervisor = CoachingSupervisor.__new__(CoachingSupervisor)
             supervisor._agent = None
+            supervisor._model_id = "us.anthropic.claude-sonnet-4-6"
 
         report = supervisor.synthesis_pass(
             results=realistic_evaluation_results,
@@ -541,6 +544,7 @@ class TestEndToEndReportGeneration:
         with patch("agents.coaching_supervisor.Agent"):
             supervisor = CoachingSupervisor.__new__(CoachingSupervisor)
             supervisor._agent = None
+            supervisor._model_id = "us.anthropic.claude-sonnet-4-6"
 
         report = supervisor.synthesis_pass(
             results=realistic_evaluation_results,

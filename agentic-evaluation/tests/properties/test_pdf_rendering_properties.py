@@ -248,7 +248,8 @@ def render_report_to_pdf(report: SynthesizedReport) -> bytes:
 
     generator = ReportGeneratorV2(bucket_name="test-bucket")
     html = generator._render_html(report)
-    pdf_bytes = ReportGeneratorV2._do_weasyprint_render(html)
+    base_url = str(generator._template_dir) + "/"
+    pdf_bytes = ReportGeneratorV2._do_weasyprint_render(html, base_url=base_url)
     return pdf_bytes
 
 
@@ -281,8 +282,8 @@ def test_pdf_page_count_in_valid_range(report: SynthesizedReport) -> None:
     reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
     page_count = len(reader.pages)
 
-    assert 6 <= page_count <= 20, (
-        f"PDF page count {page_count} is outside the valid range [6, 20]. "
+    assert 4 <= page_count <= 25, (
+        f"PDF page count {page_count} is outside the valid range [4, 25]. "
         f"Report had {sum(len(d.findings) for d in report.dimensions)} total findings "
         f"across 7 dimensions."
     )

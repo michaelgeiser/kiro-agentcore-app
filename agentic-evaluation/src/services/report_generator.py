@@ -1294,7 +1294,8 @@ class ReportGeneratorV2:
         import concurrent.futures
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(self._do_weasyprint_render, html)
+            base_url = str(self._template_dir) + "/"
+            future = executor.submit(self._do_weasyprint_render, html, base_url)
             try:
                 pdf_bytes = future.result(timeout=self._timeout_seconds)
                 return pdf_bytes
@@ -1313,18 +1314,19 @@ class ReportGeneratorV2:
                 )
 
     @staticmethod
-    def _do_weasyprint_render(html: str) -> bytes:
+    def _do_weasyprint_render(html: str, base_url: str | None = None) -> bytes:
         """Perform the actual WeasyPrint rendering (called in thread).
 
         Args:
             html: HTML content to convert to PDF.
+            base_url: Base URL for resolving relative paths (e.g., CSS files).
 
         Returns:
             PDF bytes.
         """
         from weasyprint import HTML
 
-        return HTML(string=html).write_pdf()
+        return HTML(string=html, base_url=base_url).write_pdf()
 
     def _upload(
         self,
