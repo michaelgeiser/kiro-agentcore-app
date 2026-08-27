@@ -255,13 +255,9 @@ h4 { font-size: 10pt; font-weight: 600; }
     width: 120pt;
 }
 
-.dimension-bars-legend .legend-marker {
-    margin-left: 8pt;
-    padding-left: calc(65% - 120pt);
-    font-family: var(--font-ui);
-    font-size: 7pt;
-    color: #999;
-    white-space: nowrap;
+.dimension-bars-legend .legend-bar-area {
+    flex: 1;
+    margin: 0 8pt;
 }
 
 /* === Severity Chips === */
