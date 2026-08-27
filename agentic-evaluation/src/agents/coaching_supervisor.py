@@ -754,8 +754,9 @@ class CoachingSupervisor:
             transcript, capped_findings_by_dim
         )
 
-        # Build provenance
-        provenance = self._build_provenance(metadata)
+        # Build provenance (share a single report_id across report + provenance)
+        report_id = str(uuid.uuid4())
+        provenance = self._build_provenance(metadata, report_id=report_id)
 
         # Build narrative fields (second-person, no speaker name)
         two_sentence_verdict = self._generate_two_sentence_verdict(
@@ -771,7 +772,7 @@ class CoachingSupervisor:
             file_name=metadata.file_name[:255],
             upload_date=metadata.upload_date or datetime.now(timezone.utc).isoformat(),
             audio_duration_seconds=metadata.audio_duration_seconds,
-            report_id=str(uuid.uuid4()),
+            report_id=report_id,
             speaker_identified=metadata.speaker_identified,
             overall_score=overall_score,
             score_band=score_band,
@@ -1171,17 +1172,18 @@ class CoachingSupervisor:
             timeline_pins=pins,
         )
 
-    def _build_provenance(self, metadata: SubmissionMetadata) -> Provenance:
+    def _build_provenance(self, metadata: SubmissionMetadata, report_id: str | None = None) -> Provenance:
         """Build the Provenance object for the report.
 
         Args:
             metadata: Submission metadata containing user/submission IDs.
+            report_id: Shared report UUID. Generated if not provided.
 
         Returns:
             A Provenance object with current run details.
         """
         return Provenance(
-            report_id=str(uuid.uuid4()),
+            report_id=report_id or str(uuid.uuid4()),
             evaluator_release="2.0.0",
             rubric_version="1.0.0",
             prompt_set_version="1.0.0",

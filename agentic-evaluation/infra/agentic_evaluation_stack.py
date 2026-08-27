@@ -286,6 +286,7 @@ class AgenticEvaluationStack(Stack):
                 "MAX_CONCURRENT_EVALUATIONS": "5",
                 "EVALUATION_MODEL_ID": "us.anthropic.claude-sonnet-4-6",
                 "COACHING_SUPERVISOR_MODEL_ID": "us.anthropic.claude-sonnet-4-6",
+                "USE_REPORT_V2": "true",
                 "COGNITO_USER_POOL_NAME": f"{resource_prefix}-users",
             },
         )
