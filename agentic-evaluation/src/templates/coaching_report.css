@@ -157,6 +157,7 @@ h4 { font-size: 10pt; font-weight: 600; }
 /* === Scorecard Page === */
 .scorecard-gauge {
     text-align: center;
+    background: #bbdefb;
     margin: 12pt 0;
 }
 
