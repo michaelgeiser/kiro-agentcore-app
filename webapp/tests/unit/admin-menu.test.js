@@ -7,13 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Mock the env-vars module
-vi.mock('../../js/views/env-vars.js', () => ({
-  openEnvVarsLightbox: vi.fn(),
-}));
-
 import { renderAdminMenu } from '../../js/views/admin-menu.js';
-import { openEnvVarsLightbox } from '../../js/views/env-vars.js';
 
 describe('Admin Hover Menu', () => {
   let navContainer;
@@ -64,7 +58,7 @@ describe('Admin Hover Menu', () => {
   });
 
   describe('Dropdown items (Requirement 1.3)', () => {
-    it('contains "Environment Variables" menu item', () => {
+    it('contains "Environment Variables" menu item as a link to #env-vars', () => {
       renderAdminMenu(navContainer);
 
       const items = navContainer.querySelectorAll('.admin-menu__item');
@@ -72,6 +66,8 @@ describe('Admin Hover Menu', () => {
         (item) => item.textContent === 'Environment Variables'
       );
       expect(envVarsItem).not.toBeUndefined();
+      expect(envVarsItem.tagName).toBe('A');
+      expect(envVarsItem.getAttribute('href')).toBe('#env-vars');
     });
 
     it('contains "Feature Flags" menu item as a link to #feature-flags', () => {
@@ -86,16 +82,21 @@ describe('Admin Hover Menu', () => {
       expect(featureFlagsItem.getAttribute('href')).toBe('#feature-flags');
     });
 
-    it('"Environment Variables" item calls openEnvVarsLightbox on click', () => {
+    it('"Environment Variables" item hides the dropdown on click', () => {
       renderAdminMenu(navContainer);
 
+      const container = navContainer.querySelector('.admin-menu');
+      const dropdown = navContainer.querySelector('.admin-menu__dropdown');
       const items = navContainer.querySelectorAll('.admin-menu__item');
       const envVarsItem = Array.from(items).find(
         (item) => item.textContent === 'Environment Variables'
       );
+
+      // Show the dropdown, then click the item
+      container.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
       envVarsItem.click();
 
-      expect(openEnvVarsLightbox).toHaveBeenCalledOnce();
+      expect(dropdown.classList.contains('admin-menu__dropdown--visible')).toBe(false);
     });
   });
 
@@ -190,11 +191,12 @@ describe('Admin Hover Menu', () => {
   });
 
   describe('Menu appended to navContainer', () => {
-    it('appends the admin menu as a child of navContainer', () => {
+    it('appends the admin menu (wrapped in an <li>) as a child of navContainer', () => {
       renderAdminMenu(navContainer);
 
       expect(navContainer.children.length).toBe(1);
-      expect(navContainer.firstChild.classList.contains('admin-menu')).toBe(true);
+      expect(navContainer.firstChild.tagName).toBe('LI');
+      expect(navContainer.querySelector('.admin-menu')).not.toBeNull();
     });
   });
 });

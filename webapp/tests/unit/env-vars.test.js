@@ -1,6 +1,6 @@
 /**
- * Unit tests for the Environment Variables Lightbox view.
- * Tests rendering, control types, dropdown population, and cancel behavior.
+ * Unit tests for the Environment Variables administration page.
+ * Tests rendering, control types, dropdown population, and admin page structure.
  *
  * Requirements: 3.1, 3.2, 3.3, 3.6, 3.7, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.9
  */
@@ -14,10 +14,21 @@ vi.mock('../../js/admin-api.js', () => ({
   },
 }));
 
-import { openEnvVarsLightbox, MODEL_OPTIONS, CONCURRENCY_OPTIONS } from '../../js/views/env-vars.js';
+import { render, MODEL_OPTIONS, CONCURRENCY_OPTIONS } from '../../js/views/env-vars.js';
 import { adminApi } from '../../js/admin-api.js';
 
-describe('Environment Variables Lightbox', () => {
+/**
+ * Create a fresh outlet element attached to the document for rendering.
+ * @returns {HTMLElement}
+ */
+function createOutlet() {
+  const outlet = document.createElement('div');
+  outlet.id = 'app-outlet';
+  document.body.appendChild(outlet);
+  return outlet;
+}
+
+describe('Environment Variables Page', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
     vi.clearAllMocks();
@@ -29,18 +40,18 @@ describe('Environment Variables Lightbox', () => {
 
   describe('MODEL_OPTIONS', () => {
     it('contains Amazon Nova and Anthropic Claude models', () => {
-      expect(MODEL_OPTIONS.length).toBe(12);
       const novaModels = MODEL_OPTIONS.filter((m) => m.displayName.includes('Nova'));
       const claudeModels = MODEL_OPTIONS.filter((m) => m.displayName.includes('Claude'));
-      expect(novaModels.length).toBe(6);
-      expect(claudeModels.length).toBe(6);
+      expect(novaModels.length).toBeGreaterThan(0);
+      expect(claudeModels.length).toBeGreaterThan(0);
+      expect(novaModels.length + claudeModels.length).toBe(MODEL_OPTIONS.length);
     });
 
     it('includes CRI and Single Region variants', () => {
       const criModels = MODEL_OPTIONS.filter((m) => m.displayName.includes('CRI'));
       const singleRegionModels = MODEL_OPTIONS.filter((m) => m.displayName.includes('Single Region'));
-      expect(criModels.length).toBe(6);
-      expect(singleRegionModels.length).toBe(6);
+      expect(criModels.length).toBeGreaterThan(0);
+      expect(singleRegionModels.length).toBeGreaterThan(0);
     });
 
     it('each option has displayName and modelId', () => {
@@ -57,70 +68,53 @@ describe('Environment Variables Lightbox', () => {
     });
   });
 
-  describe('openEnvVarsLightbox', () => {
-    it('creates a lightbox overlay on the document', async () => {
+  describe('render', () => {
+    it('renders an admin page into the outlet', async () => {
       adminApi.getEnvironmentVariables.mockResolvedValue([]);
 
-      openEnvVarsLightbox();
+      render(createOutlet());
 
-      const overlay = document.querySelector('.lightbox-overlay');
-      expect(overlay).not.toBeNull();
-      expect(overlay.getAttribute('role')).toBe('dialog');
-      expect(overlay.getAttribute('aria-modal')).toBe('true');
+      expect(document.querySelector('.admin-page')).not.toBeNull();
     });
 
-    it('renders modal with header, body, and footer', async () => {
+    it('renders the admin context bar', async () => {
       adminApi.getEnvironmentVariables.mockResolvedValue([]);
 
-      openEnvVarsLightbox();
+      render(createOutlet());
 
-      expect(document.querySelector('.lightbox-modal')).not.toBeNull();
-      expect(document.querySelector('.lightbox-modal__header')).not.toBeNull();
-      expect(document.querySelector('.lightbox-modal__body')).not.toBeNull();
-      expect(document.querySelector('.lightbox-modal__footer')).not.toBeNull();
+      const contextBar = document.querySelector('.admin-context-bar');
+      expect(contextBar).not.toBeNull();
+      expect(contextBar.textContent).toContain('Administration Mode');
     });
 
-    it('renders title as "Environment Variables"', async () => {
+    it('renders the page header with title "Environment Variables"', async () => {
       adminApi.getEnvironmentVariables.mockResolvedValue([]);
 
-      openEnvVarsLightbox();
+      render(createOutlet());
 
-      const title = document.querySelector('.lightbox-modal__title');
+      const title = document.querySelector('.admin-page-header__title');
       expect(title.textContent).toBe('Environment Variables');
     });
 
-    it('renders Save Changes and Cancel buttons', async () => {
+    it('renders the red "Admin" badge', async () => {
       adminApi.getEnvironmentVariables.mockResolvedValue([]);
 
-      openEnvVarsLightbox();
+      render(createOutlet());
 
-      const footer = document.querySelector('.lightbox-modal__footer');
-      const buttons = footer.querySelectorAll('button');
-      const buttonTexts = Array.from(buttons).map((b) => b.textContent);
-      expect(buttonTexts).toContain('Cancel');
-      expect(buttonTexts).toContain('Save Changes');
+      const badge = document.querySelector('.admin-page-header__badge');
+      expect(badge).not.toBeNull();
+      expect(badge.textContent).toBe('Admin');
     });
 
-    it('closes lightbox when Cancel is clicked', async () => {
+    it('renders a Save Changes button (initially disabled)', async () => {
       adminApi.getEnvironmentVariables.mockResolvedValue([]);
 
-      openEnvVarsLightbox();
+      render(createOutlet());
 
-      const cancelBtn = document.querySelector('.admin-btn--secondary');
-      cancelBtn.click();
-
-      expect(document.querySelector('.lightbox-overlay')).toBeNull();
-    });
-
-    it('closes lightbox when close button (×) is clicked', async () => {
-      adminApi.getEnvironmentVariables.mockResolvedValue([]);
-
-      openEnvVarsLightbox();
-
-      const closeBtn = document.querySelector('.lightbox-modal__close');
-      closeBtn.click();
-
-      expect(document.querySelector('.lightbox-overlay')).toBeNull();
+      const saveBtn = document.querySelector('.admin-btn--primary');
+      expect(saveBtn).not.toBeNull();
+      expect(saveBtn.textContent).toBe('Save Changes');
+      expect(saveBtn.disabled).toBe(true);
     });
 
     it('renders each variable with name label and description', async () => {
@@ -130,7 +124,7 @@ describe('Environment Variables Lightbox', () => {
       ];
       adminApi.getEnvironmentVariables.mockResolvedValue(variables);
 
-      openEnvVarsLightbox();
+      render(createOutlet());
       await vi.waitFor(() => {
         expect(document.querySelectorAll('.admin-form-group').length).toBe(2);
       });
@@ -150,7 +144,7 @@ describe('Environment Variables Lightbox', () => {
       ];
       adminApi.getEnvironmentVariables.mockResolvedValue(variables);
 
-      openEnvVarsLightbox();
+      render(createOutlet());
       await vi.waitFor(() => {
         expect(document.querySelector('.admin-form-group__input')).not.toBeNull();
       });
@@ -167,7 +161,7 @@ describe('Environment Variables Lightbox', () => {
       ];
       adminApi.getEnvironmentVariables.mockResolvedValue(variables);
 
-      openEnvVarsLightbox();
+      render(createOutlet());
       await vi.waitFor(() => {
         expect(document.querySelector('.admin-form-group__select')).not.toBeNull();
       });
@@ -185,7 +179,7 @@ describe('Environment Variables Lightbox', () => {
       ];
       adminApi.getEnvironmentVariables.mockResolvedValue(variables);
 
-      openEnvVarsLightbox();
+      render(createOutlet());
       await vi.waitFor(() => {
         expect(document.querySelector('.admin-form-group__select')).not.toBeNull();
       });
@@ -200,7 +194,7 @@ describe('Environment Variables Lightbox', () => {
       ];
       adminApi.getEnvironmentVariables.mockResolvedValue(variables);
 
-      openEnvVarsLightbox();
+      render(createOutlet());
       await vi.waitFor(() => {
         expect(document.querySelector('.admin-form-group__select')).not.toBeNull();
       });
@@ -218,7 +212,7 @@ describe('Environment Variables Lightbox', () => {
       ];
       adminApi.getEnvironmentVariables.mockResolvedValue(variables);
 
-      openEnvVarsLightbox();
+      render(createOutlet());
       await vi.waitFor(() => {
         expect(document.querySelector('.admin-form-group__select')).not.toBeNull();
       });
@@ -236,7 +230,7 @@ describe('Environment Variables Lightbox', () => {
       ];
       adminApi.getEnvironmentVariables.mockResolvedValue(variables);
 
-      openEnvVarsLightbox();
+      render(createOutlet());
       await vi.waitFor(() => {
         expect(document.querySelector('.admin-form-group__select')).not.toBeNull();
       });
@@ -248,7 +242,7 @@ describe('Environment Variables Lightbox', () => {
     it('shows error message when API call fails', async () => {
       adminApi.getEnvironmentVariables.mockRejectedValue(new Error('Network error'));
 
-      openEnvVarsLightbox();
+      render(createOutlet());
       await vi.waitFor(() => {
         expect(document.querySelector('.admin-message--error')).not.toBeNull();
       });

@@ -13,7 +13,7 @@
  * the constructed save payload shall include all and only those variables whose Changed_Flag
  * is true; variables with Changed_Flag false shall not appear in the payload.
  *
- * This test exercises the actual lightbox DOM rendered by openEnvVarsLightbox(),
+ * This test exercises the actual page DOM rendered by render(),
  * dispatching real DOM events to trigger change listeners.
  */
 
@@ -36,7 +36,19 @@ vi.mock('../../js/api.js', () => ({
 }));
 
 import { adminApi } from '../../js/admin-api.js';
-import { openEnvVarsLightbox } from '../../js/views/env-vars.js';
+import { render } from '../../js/views/env-vars.js';
+
+/**
+ * Helper: create a fresh outlet element attached to the document and render the page into it.
+ * @returns {HTMLElement} the rendered admin-page element (used as a query root)
+ */
+function renderPage() {
+  const outlet = document.createElement('div');
+  outlet.id = 'app-outlet';
+  document.body.appendChild(outlet);
+  render(outlet);
+  return outlet;
+}
 
 /**
  * Known variable names used in the admin panel (from KNOWN_VARIABLES in env-vars.js).
@@ -92,15 +104,15 @@ describe('Property 4: Change tracking round-trip preserves clean state (via ligh
   });
 
   afterEach(() => {
-    // Clean up any remaining lightbox overlays
-    const overlay = document.querySelector('.lightbox-overlay');
-    if (overlay) overlay.remove();
+    // Clean up any remaining rendered pages
+    document.body.innerHTML = '';
     vi.clearAllMocks();
   });
 
-  it('changing a text input away then back to original removes admin-form-group--changed class', () => {
-    fc.assert(
-      fc.property(distinctPairArb, async ([originalValue, modifiedValue]) => {
+  it('changing a text input away then back to original removes admin-form-group--changed class', async () => {
+    await fc.assert(
+      fc.asyncProperty(distinctPairArb, async ([originalValue, modifiedValue]) => {
+        document.body.innerHTML = '';
         // Setup: mock API to return a single text variable
         adminApi.getEnvironmentVariables.mockResolvedValue([
           {
@@ -111,12 +123,11 @@ describe('Property 4: Change tracking round-trip preserves clean state (via ligh
           },
         ]);
 
-        // Open lightbox
-        openEnvVarsLightbox();
+        // Render the page
+        const overlay = renderPage();
         await waitForRender();
 
         // Find the rendered input
-        const overlay = document.querySelector('.lightbox-overlay');
         const input = overlay.querySelector('input[name="IDLE_TIMEOUT_MINUTES"]');
         const formGroup = input.closest('.admin-form-group');
 
@@ -144,9 +155,10 @@ describe('Property 4: Change tracking round-trip preserves clean state (via ligh
     );
   });
 
-  it('setting a text input to same value as original never adds changed class', () => {
-    fc.assert(
-      fc.property(valueArb, async (originalValue) => {
+  it('setting a text input to same value as original never adds changed class', async () => {
+    await fc.assert(
+      fc.asyncProperty(valueArb, async (originalValue) => {
+        document.body.innerHTML = '';
         // Setup: mock API to return a single text variable
         adminApi.getEnvironmentVariables.mockResolvedValue([
           {
@@ -157,12 +169,11 @@ describe('Property 4: Change tracking round-trip preserves clean state (via ligh
           },
         ]);
 
-        // Open lightbox
-        openEnvVarsLightbox();
+        // Render the page
+        const overlay = renderPage();
         await waitForRender();
 
         // Find the rendered input
-        const overlay = document.querySelector('.lightbox-overlay');
         const input = overlay.querySelector('input[name="COGNITO_USER_POOL_NAME"]');
         const formGroup = input.closest('.admin-form-group');
 
@@ -187,8 +198,7 @@ describe('Property 5: Save payload contains exactly the changed variables (via l
   });
 
   afterEach(() => {
-    const overlay = document.querySelector('.lightbox-overlay');
-    if (overlay) overlay.remove();
+    document.body.innerHTML = '';
     vi.clearAllMocks();
   });
 
@@ -217,9 +227,13 @@ describe('Property 5: Save payload contains exactly the changed variables (via l
     // Ensure at least one changed and one unchanged if possible, or allow any mix
     .filter((vars) => vars.length === 2);
 
-  it('payload sent to updateEnvironmentVariables contains exactly the changed variables', () => {
-    fc.assert(
-      fc.property(variableChangesArb, async (variables) => {
+  it('payload sent to updateEnvironmentVariables contains exactly the changed variables', async () => {
+    await fc.assert(
+      fc.asyncProperty(variableChangesArb, async (variables) => {
+        // Reset per-run state: clear DOM and mock call history
+        document.body.innerHTML = '';
+        adminApi.updateEnvironmentVariables.mockClear();
+
         // Filter out cases where shouldChange is true but original === new (not really a change)
         const effectiveChanges = variables.map((v) => ({
           ...v,
@@ -241,11 +255,9 @@ describe('Property 5: Save payload contains exactly the changed variables (via l
           message: 'Saved',
         });
 
-        // Open lightbox
-        openEnvVarsLightbox();
+        // Render the page
+        const overlay = renderPage();
         await waitForRender();
-
-        const overlay = document.querySelector('.lightbox-overlay');
 
         // Apply changes
         for (const v of effectiveChanges) {
@@ -301,11 +313,12 @@ describe('Property 5: Save payload contains exactly the changed variables (via l
     );
   });
 
-  it('payload is empty (save disabled) when all variables revert to original values', () => {
-    fc.assert(
-      fc.property(
+  it('payload is empty (save disabled) when all variables revert to original values', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.tuple(valueArb, valueArb).filter(([a, b]) => a !== b),
         async ([originalValue, tempValue]) => {
+          document.body.innerHTML = '';
           // Setup: mock API to return a variable
           adminApi.getEnvironmentVariables.mockResolvedValue([
             {
@@ -316,11 +329,9 @@ describe('Property 5: Save payload contains exactly the changed variables (via l
             },
           ]);
 
-          // Open lightbox
-          openEnvVarsLightbox();
+          // Render the page
+          const overlay = renderPage();
           await waitForRender();
-
-          const overlay = document.querySelector('.lightbox-overlay');
           const input = overlay.querySelector('input[name="IDLE_TIMEOUT_MINUTES"]');
           const saveBtn = overlay.querySelector('.admin-btn--primary');
 
@@ -346,3 +357,4 @@ describe('Property 5: Save payload contains exactly the changed variables (via l
     );
   });
 });
+

@@ -10,6 +10,7 @@ import { auth, isAdmin } from './auth.js';
 import { render as renderUpload } from './views/upload.js';
 import { render as renderList } from './views/list.js';
 import { render as renderFeatureFlags } from './views/feature-flags.js';
+import { render as renderEnvVars } from './views/env-vars.js';
 import { renderAdminMenu } from './views/admin-menu.js';
 import { showToast } from './utils/dom.js';
 
@@ -99,9 +100,9 @@ async function init() {
 
   const outlet = document.getElementById('app-outlet');
   const router = new Router(
-    { upload: renderUpload, list: renderList, home: renderHome, 'feature-flags': renderFeatureFlags },
+    { upload: renderUpload, list: renderList, home: renderHome, 'feature-flags': renderFeatureFlags, 'env-vars': renderEnvVars },
     outlet,
-    { guardFn: isAdmin, guardedRoutes: ['feature-flags'], fallbackRoute: 'upload' }
+    { guardFn: isAdmin, guardedRoutes: ['feature-flags', 'env-vars'], fallbackRoute: 'upload' }
   );
   router.start();
 

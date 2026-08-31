@@ -41,14 +41,13 @@ export function renderAdminMenu(navContainer) {
   });
 
   // 4. Add menu items
-  const envVarsItem = createElement('button', {
+  const envVarsItem = createElement('a', {
     className: 'admin-menu__item',
     textContent: 'Environment Variables',
+    href: '#env-vars',
     role: 'menuitem',
-    onClick: async () => {
+    onClick: () => {
       _hideDropdown(dropdown, trigger);
-      const { openEnvVarsLightbox } = await import('./env-vars.js');
-      openEnvVarsLightbox();
     },
   });
 

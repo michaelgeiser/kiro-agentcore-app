@@ -31,13 +31,25 @@ vi.mock('../../js/admin-api.js', () => ({
 }));
 
 import { adminApi } from '../../js/admin-api.js';
-import { MODEL_OPTIONS, openEnvVarsLightbox } from '../../js/views/env-vars.js';
+import { MODEL_OPTIONS, render } from '../../js/views/env-vars.js';
 
 /**
  * Helper: flush pending promises to allow async operations to resolve.
  */
 function flushPromises() {
   return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
+ * Helper: create a fresh outlet element attached to the document and render the page into it.
+ * @returns {HTMLElement} the outlet element
+ */
+function renderPage() {
+  const outlet = document.createElement('div');
+  outlet.id = 'app-outlet';
+  document.body.appendChild(outlet);
+  render(outlet);
+  return outlet;
 }
 
 /**
@@ -99,11 +111,11 @@ describe('Property 1: Variable rendering includes all required fields', () => {
         document.body.innerHTML = '';
         adminApi.getEnvironmentVariables.mockResolvedValue([variable]);
 
-        openEnvVarsLightbox();
+        const overlay = renderPage();
         await flushPromises();
 
-        const overlay = document.querySelector('.lightbox-overlay');
-        expect(overlay).not.toBeNull();
+        const page = overlay.querySelector('.admin-page');
+        expect(page).not.toBeNull();
 
         const label = overlay.querySelector('.admin-form-group__label');
         expect(label).not.toBeNull();
@@ -119,11 +131,11 @@ describe('Property 1: Variable rendering includes all required fields', () => {
         document.body.innerHTML = '';
         adminApi.getEnvironmentVariables.mockResolvedValue([variable]);
 
-        openEnvVarsLightbox();
+        const overlay = renderPage();
         await flushPromises();
 
-        const overlay = document.querySelector('.lightbox-overlay');
-        expect(overlay).not.toBeNull();
+        const page = overlay.querySelector('.admin-page');
+        expect(page).not.toBeNull();
 
         const description = overlay.querySelector('.admin-form-group__description');
         expect(description).not.toBeNull();
@@ -139,11 +151,11 @@ describe('Property 1: Variable rendering includes all required fields', () => {
         document.body.innerHTML = '';
         adminApi.getEnvironmentVariables.mockResolvedValue([variable]);
 
-        openEnvVarsLightbox();
+        const overlay = renderPage();
         await flushPromises();
 
-        const overlay = document.querySelector('.lightbox-overlay');
-        expect(overlay).not.toBeNull();
+        const page = overlay.querySelector('.admin-page');
+        expect(page).not.toBeNull();
 
         const input = overlay.querySelector(`input[name="${variable.name}"]`);
         expect(input).not.toBeNull();
@@ -173,11 +185,11 @@ describe('Property 2: Input type determines rendered control type', () => {
 
         adminApi.getEnvironmentVariables.mockResolvedValue([testVariable]);
 
-        openEnvVarsLightbox();
+        const overlay = renderPage();
         await flushPromises();
 
-        const overlay = document.querySelector('.lightbox-overlay');
-        expect(overlay).not.toBeNull();
+        const page = overlay.querySelector('.admin-page');
+        expect(page).not.toBeNull();
 
         if (testVariable.inputType === 'model-dropdown') {
           const select = overlay.querySelector(`select[name="${testVariable.name}"]`);
@@ -210,10 +222,9 @@ describe('Property 2: Input type determines rendered control type', () => {
           document.body.innerHTML = '';
           adminApi.getEnvironmentVariables.mockResolvedValue([variable]);
 
-          openEnvVarsLightbox();
+          const overlay = renderPage();
           await flushPromises();
 
-          const overlay = document.querySelector('.lightbox-overlay');
           const select = overlay.querySelector(`select[name="${variable.name}"]`);
           expect(select).not.toBeNull();
 
@@ -249,10 +260,9 @@ describe('Property 3: Dropdown selection reflects current value validity', () =>
           document.body.innerHTML = '';
           adminApi.getEnvironmentVariables.mockResolvedValue([variable]);
 
-          openEnvVarsLightbox();
+          const overlay = renderPage();
           await flushPromises();
 
-          const overlay = document.querySelector('.lightbox-overlay');
           const select = overlay.querySelector(`select[name="${variable.name}"]`);
           expect(select).not.toBeNull();
 
@@ -286,10 +296,9 @@ describe('Property 3: Dropdown selection reflects current value validity', () =>
           document.body.innerHTML = '';
           adminApi.getEnvironmentVariables.mockResolvedValue([variable]);
 
-          openEnvVarsLightbox();
+          const overlay = renderPage();
           await flushPromises();
 
-          const overlay = document.querySelector('.lightbox-overlay');
           const select = overlay.querySelector(`select[name="${variable.name}"]`);
           expect(select).not.toBeNull();
 

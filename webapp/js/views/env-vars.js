@@ -1,6 +1,8 @@
 /**
- * Environment Variables Lightbox — View module.
- * Renders a modal dialog for viewing and editing runtime environment variables.
+ * Environment Variables administration page.
+ * Renders a full admin page for viewing and editing runtime environment variables,
+ * matching the visual structure of the Feature Flags page (admin theme, context bar,
+ * page header with red "Admin" badge).
  *
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9,
  *              5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.5, 6.6
@@ -48,70 +50,95 @@ export const MODEL_OPTIONS = [
 export const CONCURRENCY_OPTIONS = [1, 2, 3, 5, 10];
 
 /**
- * Open the environment variables lightbox.
- * Fetches current values from API, renders controls, handles cancel.
+ * Show an admin-themed toast notification on the page.
+ * Creates a temporary message element, appends it to the page container,
+ * and auto-removes after 3 seconds.
+ *
+ * @param {HTMLElement} container - The page container to append the toast to
+ * @param {string} message - The message text to display
+ * @param {'success'|'error'} type - Toast variant
+ */
+function showAdminToast(container, message, type) {
+  const toast = document.createElement('div');
+  toast.className = `admin-message admin-message--${type}`;
+  toast.setAttribute('role', 'alert');
+  toast.setAttribute('aria-live', 'assertive');
+  toast.textContent = message;
+
+  const header = container.querySelector('.admin-page-header');
+  if (header && header.nextSibling) {
+    container.insertBefore(toast, header.nextSibling);
+  } else {
+    container.appendChild(toast);
+  }
+
+  setTimeout(() => {
+    if (toast.parentNode) {
+      toast.parentNode.removeChild(toast);
+    }
+  }, 3000);
+}
+
+/**
+ * Render the Environment Variables administration page.
+ * Fetches current values from the admin API and displays them with the appropriate
+ * input controls, change tracking, and a Save Changes action.
+ *
+ * @param {HTMLElement} outlet - The router outlet element
  * @returns {void}
  */
-export function openEnvVarsLightbox() {
-  // Create the overlay
-  const overlay = document.createElement('div');
-  overlay.className = 'lightbox-overlay';
-  overlay.setAttribute('role', 'dialog');
-  overlay.setAttribute('aria-modal', 'true');
-  overlay.setAttribute('aria-labelledby', 'env-vars-lightbox-title');
+export function render(outlet) {
+  outlet.innerHTML = '';
 
-  // Create the modal
-  const modal = document.createElement('div');
-  modal.className = 'lightbox-modal';
+  // Admin page wrapper
+  const page = document.createElement('div');
+  page.className = 'admin-page';
 
-  // Header
+  // Admin context bar
+  const contextBar = document.createElement('div');
+  contextBar.className = 'admin-context-bar';
+  contextBar.innerHTML = '<span class="admin-context-bar__icon"></span> Administration Mode';
+
+  // Page header with red "Admin" badge
   const header = document.createElement('div');
-  header.className = 'lightbox-modal__header';
+  header.className = 'admin-page-header';
 
-  const title = document.createElement('h2');
-  title.className = 'lightbox-modal__title';
-  title.id = 'env-vars-lightbox-title';
+  const title = document.createElement('h1');
+  title.className = 'admin-page-header__title';
   title.textContent = 'Environment Variables';
 
-  const closeBtn = document.createElement('button');
-  closeBtn.className = 'lightbox-modal__close';
-  closeBtn.setAttribute('aria-label', 'Close');
-  closeBtn.textContent = '\u00D7';
-  closeBtn.addEventListener('click', () => closeLightbox(overlay));
+  const badge = document.createElement('span');
+  badge.className = 'admin-page-header__badge';
+  badge.textContent = 'Admin';
 
   header.appendChild(title);
-  header.appendChild(closeBtn);
+  header.appendChild(badge);
 
-  // Body (scrollable)
-  const body = document.createElement('div');
-  body.className = 'lightbox-modal__body';
-  body.textContent = 'Loading...';
+  // Content area (holds the variables list or loading/error state)
+  const content = document.createElement('div');
+  content.style.padding = 'var(--spacing-lg)';
+  content.textContent = 'Loading environment variables...';
 
-  // Footer
+  // Footer with actions (Save Changes)
   const footer = document.createElement('div');
-  footer.className = 'lightbox-modal__footer';
-
-  const cancelBtn = document.createElement('button');
-  cancelBtn.className = 'admin-btn admin-btn--secondary';
-  cancelBtn.textContent = 'Cancel';
-  cancelBtn.addEventListener('click', () => closeLightbox(overlay));
+  footer.className = 'admin-page-footer';
+  footer.style.display = 'flex';
+  footer.style.justifyContent = 'flex-end';
+  footer.style.gap = 'var(--spacing-sm)';
+  footer.style.padding = '0 var(--spacing-lg) var(--spacing-lg)';
 
   const saveBtn = document.createElement('button');
   saveBtn.className = 'admin-btn admin-btn--primary';
   saveBtn.textContent = 'Save Changes';
   saveBtn.disabled = true; // Disabled initially — nothing changed yet
 
-  footer.appendChild(cancelBtn);
   footer.appendChild(saveBtn);
 
-  // Assemble modal
-  modal.appendChild(header);
-  modal.appendChild(body);
-  modal.appendChild(footer);
-  overlay.appendChild(modal);
-
-  // Append to document
-  document.body.appendChild(overlay);
+  page.appendChild(contextBar);
+  page.appendChild(header);
+  page.appendChild(content);
+  page.appendChild(footer);
+  outlet.appendChild(page);
 
   // Change tracking state: Set of variable names that have been modified
   const changedVars = new Set();
@@ -120,39 +147,31 @@ export function openEnvVarsLightbox() {
   adminApi
     .getEnvironmentVariables()
     .then((variables) => {
-      renderVariables(body, variables);
-      attachChangeListeners(body, changedVars, saveBtn);
-      updateSaveButtonState(body, changedVars, saveBtn);
+      renderVariables(content, variables);
+      attachChangeListeners(content, changedVars, saveBtn);
+      updateSaveButtonState(content, changedVars, saveBtn);
     })
     .catch((error) => {
-      body.textContent = '';
+      content.textContent = '';
       const errorMsg = document.createElement('div');
       errorMsg.className = 'admin-message admin-message--error';
       errorMsg.textContent = `Failed to load environment variables: ${error.message || 'Unknown error'}`;
-      body.appendChild(errorMsg);
+      content.appendChild(errorMsg);
     });
 
   // Wire up Save button
   saveBtn.addEventListener('click', () => {
-    handleSave(body, changedVars, saveBtn, overlay);
+    handleSave(content, changedVars, saveBtn, page);
   });
 }
 
 /**
- * Close and remove the lightbox overlay from the DOM.
- * @param {HTMLElement} overlay - The overlay element to remove
- */
-function closeLightbox(overlay) {
-  overlay.remove();
-}
-
-/**
- * Render all environment variables into the lightbox body.
- * @param {HTMLElement} body - The lightbox body container
+ * Render all environment variables into the content container.
+ * @param {HTMLElement} content - The content container
  * @param {Array<{name: string, value: string, description: string, inputType: string}>} variables
  */
-function renderVariables(body, variables) {
-  body.textContent = '';
+function renderVariables(content, variables) {
+  content.textContent = '';
 
   for (const variable of variables) {
     const group = document.createElement('div');
@@ -171,7 +190,7 @@ function renderVariables(body, variables) {
     group.appendChild(label);
     group.appendChild(description);
     group.appendChild(control);
-    body.appendChild(group);
+    content.appendChild(group);
   }
 }
 
@@ -281,26 +300,26 @@ function createTextInput(variable) {
 
 
 /**
- * Attach change event listeners to all input controls within the lightbox body.
+ * Attach change event listeners to all input controls within the content container.
  * On each change, compares current value to the original value (stored in data-original-value)
  * and updates the Changed_Flag set and visual indication accordingly.
  *
- * @param {HTMLElement} body - The lightbox body container
+ * @param {HTMLElement} content - The content container
  * @param {Set<string>} changedVars - Set of changed variable names
  * @param {HTMLButtonElement} saveBtn - The Save Changes button
  */
-function attachChangeListeners(body, changedVars, saveBtn) {
-  const controls = body.querySelectorAll('input, select');
+function attachChangeListeners(content, changedVars, saveBtn) {
+  const controls = content.querySelectorAll('input, select');
   for (const control of controls) {
     control.addEventListener('change', () => {
       onControlChange(control, changedVars);
-      updateSaveButtonState(body, changedVars, saveBtn);
+      updateSaveButtonState(content, changedVars, saveBtn);
     });
     // Also listen on 'input' for text inputs for real-time tracking
     if (control.tagName === 'INPUT') {
       control.addEventListener('input', () => {
         onControlChange(control, changedVars);
-        updateSaveButtonState(body, changedVars, saveBtn);
+        updateSaveButtonState(content, changedVars, saveBtn);
       });
     }
   }
@@ -337,11 +356,11 @@ function onControlChange(control, changedVars) {
  * - No variables have been changed (nothing to save), OR
  * - Any model dropdown has an empty/placeholder value selected
  *
- * @param {HTMLElement} body - The lightbox body container
+ * @param {HTMLElement} content - The content container
  * @param {Set<string>} changedVars - Set of changed variable names
  * @param {HTMLButtonElement} saveBtn - The Save Changes button
  */
-function updateSaveButtonState(body, changedVars, saveBtn) {
+function updateSaveButtonState(content, changedVars, saveBtn) {
   // Disable if nothing changed
   if (changedVars.size === 0) {
     saveBtn.disabled = true;
@@ -349,7 +368,7 @@ function updateSaveButtonState(body, changedVars, saveBtn) {
   }
 
   // Disable if any model dropdown has empty/placeholder value
-  const selects = body.querySelectorAll('select');
+  const selects = content.querySelectorAll('select');
   for (const select of selects) {
     if (select.value === '') {
       saveBtn.disabled = true;
@@ -363,19 +382,19 @@ function updateSaveButtonState(body, changedVars, saveBtn) {
 /**
  * Handle the Save Changes button click.
  * Constructs payload with only changed variables, calls updateEnvironmentVariables API.
- * On success: shows success message briefly, then closes lightbox.
- * On failure: shows error message, keeps lightbox open for retry.
+ * On success: shows success message and resets change tracking.
+ * On failure: shows error message, keeps values for retry.
  *
- * @param {HTMLElement} body - The lightbox body container
+ * @param {HTMLElement} content - The content container
  * @param {Set<string>} changedVars - Set of changed variable names
  * @param {HTMLButtonElement} saveBtn - The Save Changes button
- * @param {HTMLElement} overlay - The lightbox overlay element
+ * @param {HTMLElement} page - The admin page container (for toasts)
  */
-async function handleSave(body, changedVars, saveBtn, overlay) {
+async function handleSave(content, changedVars, saveBtn, page) {
   // Construct payload with only changed variables
   const payload = {};
   for (const varName of changedVars) {
-    const control = body.querySelector(`[name="${varName}"]`);
+    const control = content.querySelector(`[name="${varName}"]`);
     if (control) {
       payload[varName] = control.value;
     }
@@ -385,31 +404,32 @@ async function handleSave(body, changedVars, saveBtn, overlay) {
   saveBtn.disabled = true;
   saveBtn.textContent = 'Saving...';
 
-  // Remove any previous messages
-  const previousMsg = body.querySelector('.admin-message');
-  if (previousMsg) {
-    previousMsg.remove();
-  }
-
   try {
     await adminApi.updateEnvironmentVariables(payload);
 
-    // Show success message briefly, then close
-    const successMsg = document.createElement('div');
-    successMsg.className = 'admin-message admin-message--success';
-    successMsg.textContent =
-      'Configuration saved. ECS service redeployment triggered — new tasks will use updated values within minutes.';
-    body.insertBefore(successMsg, body.firstChild);
+    showAdminToast(
+      page,
+      'Configuration saved. ECS service redeployment triggered — new tasks will use updated values within minutes.',
+      'success'
+    );
 
-    setTimeout(() => {
-      closeLightbox(overlay);
-    }, 1500);
+    // Reset change tracking: update original values and clear the changed set
+    for (const varName of changedVars) {
+      const control = content.querySelector(`[name="${varName}"]`);
+      if (control) {
+        control.setAttribute('data-original-value', control.value);
+        const formGroup = control.closest('.admin-form-group');
+        if (formGroup) {
+          formGroup.classList.remove('admin-form-group--changed');
+        }
+      }
+    }
+    changedVars.clear();
+
+    saveBtn.textContent = 'Save Changes';
+    updateSaveButtonState(content, changedVars, saveBtn);
   } catch (error) {
-    // Show error message, keep lightbox open for retry
-    const errorMsg = document.createElement('div');
-    errorMsg.className = 'admin-message admin-message--error';
-    errorMsg.textContent = `Failed to save changes: ${error.message || 'Unknown error'}`;
-    body.insertBefore(errorMsg, body.firstChild);
+    showAdminToast(page, `Failed to save changes: ${error.message || 'Unknown error'}`, 'error');
 
     // Re-enable save button for retry
     saveBtn.disabled = false;
